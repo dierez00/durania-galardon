@@ -1,65 +1,136 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
+import { Shield, Eye, EyeOff } from "lucide-react";
+
+export default function LoginPage() {
+  const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="min-h-screen flex">
+      {/* Left panel - branding */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#1a5632] to-[#0d3320] relative overflow-hidden items-center justify-center">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 left-20 w-64 h-64 border border-white/20 rounded-full" />
+          <div className="absolute bottom-32 right-16 w-96 h-96 border border-white/10 rounded-full" />
+          <div className="absolute top-1/2 left-1/3 w-48 h-48 border border-white/15 rounded-full" />
+        </div>
+        <div className="relative z-10 text-center text-white px-12 max-w-lg">
+          <div className="w-24 h-24 bg-white/10 backdrop-blur rounded-2xl flex items-center justify-center mx-auto mb-8 border border-white/20">
+            <Shield className="w-12 h-12 text-white" />
+          </div>
+          <h1 className="text-4xl font-bold mb-4 tracking-tight">SIINIGA</h1>
+          <p className="text-lg text-white/80 mb-2">
+            Sistema de Identificacion Individual del Ganado
+          </p>
+          <div className="w-16 h-0.5 bg-white/30 mx-auto my-6" />
+          <p className="text-sm text-white/60 leading-relaxed">
+            Control ganadero, trazabilidad sanitaria y gestion de exportacion bovina.
+            Sistema oficial del estado.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </div>
+
+      {/* Right panel - login form */}
+      <div className="flex-1 flex items-center justify-center bg-background p-8">
+        <div className="w-full max-w-md">
+          {/* Mobile logo */}
+          <div className="lg:hidden text-center mb-8">
+            <div className="w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <Shield className="w-8 h-8 text-primary" />
+            </div>
+            <h1 className="text-2xl font-bold text-foreground">SIINIGA</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Sistema de Identificacion Individual del Ganado
+            </p>
+          </div>
+
+          <Card className="border-0 shadow-lg">
+            <CardContent className="pt-8 pb-8 px-8">
+              <div className="mb-8">
+                <h2 className="text-2xl font-semibold text-foreground">Iniciar Sesion</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Ingrese sus credenciales para acceder al sistema
+                </p>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  router.push("/dashboard");
+                }}
+                className="space-y-5"
+              >
+                <div className="space-y-2">
+                  <Label htmlFor="email">Correo Electronico</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="usuario@siiniga.gob.mx"
+                    className="h-11"
+                    defaultValue="admin@siiniga.gob.mx"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Contrasena</Label>
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Recuperar contrasena
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Ingrese su contrasena"
+                      className="h-11 pr-10"
+                      defaultValue="password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full h-11 text-base font-medium"
+                >
+                  Iniciar Sesion
+                </Button>
+              </form>
+
+              <div className="mt-6 pt-6 border-t text-center">
+                <p className="text-xs text-muted-foreground">
+                  Sistema oficial - Acceso restringido a personal autorizado
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <p className="text-center text-xs text-muted-foreground mt-6">
+            SIINIGA Estatal v2.0 - Gobierno del Estado
+          </p>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
