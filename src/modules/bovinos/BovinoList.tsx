@@ -44,7 +44,7 @@ export function BovinoList({ bovinos, onSelect }: Props) {
               />
             </div>
             <Select value={filter} onValueChange={setFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-44">
                 <SelectValue placeholder="Estado sanitario" />
               </SelectTrigger>
               <SelectContent>
