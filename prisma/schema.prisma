@@ -1,0 +1,307 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_DIRECT")
+}
+
+// Notes:
+// - profiles.id references auth.users(id) in SQL. Prisma does not model this cross-schema auth table here.
+// - Trigger/function/RLS policies from the SQL migration are not represented in Prisma schema.
+// - Partial unique index on producer_documents (where is_current = true) must be kept in SQL migrations.
+
+enum ProfileStatus {
+  active
+  inactive
+  blocked
+}
+
+enum ProducerStatus {
+  active
+  inactive
+}
+
+enum UppStatus {
+  active
+  quarantined
+  suspended
+}
+
+enum AccessLevel {
+  owner
+  editor
+  viewer
+}
+
+enum ActiveInactiveStatus {
+  active
+  inactive
+}
+
+enum ProducerDocumentStatus {
+  pending
+  validated
+  expired
+  rejected
+}
+
+enum AnimalSex {
+  M
+  F
+}
+
+enum AnimalStatus {
+  active
+  blocked
+  in_transit
+  inactive
+}
+
+enum FieldTestResult {
+  negative
+  positive
+  inconclusive
+}
+
+model Profile {
+  id         String        @id @db.Uuid
+  email      String
+  status     ProfileStatus @default(active)
+  created_at DateTime      @default(now()) @db.Timestamptz(6)
+
+  producers            Producer[]      @relation("ProducerProfile")
+  mvz_profile          MvzProfile?
+  user_roles           UserRole[]
+  user_upp_accesses    UserUppAccess[] @relation("UserUppAccessUser")
+  granted_upp_accesses UserUppAccess[] @relation("UserUppAccessGrantedBy")
+
+  @@map("profiles")
+}
+
+model Role {
+  id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key  String @unique
+  name String
+
+  user_roles       UserRole[]
+  role_permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key         String  @unique
+  description String?
+  module      String?
+
+  role_permissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model UserRole {
+  user_id     String   @db.Uuid
+  role_id     String   @db.Uuid
+  assigned_at DateTime @default(now()) @db.Timestamptz(6)
+
+  user Profile @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  role Role    @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, role_id])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  role_id       String   @db.Uuid
+  permission_id String   @db.Uuid
+  granted_at    DateTime @default(now()) @db.Timestamptz(6)
+
+  role       Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+
+  @@id([role_id, permission_id])
+  @@map("role_permissions")
+}
+
+model Producer {
+  id         String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String?        @db.Uuid
+  curp       String?        @unique
+  full_name  String
+  status     ProducerStatus @default(active)
+  created_at DateTime       @default(now()) @db.Timestamptz(6)
+
+  user               Profile?           @relation("ProducerProfile", fields: [user_id], references: [id], onDelete: SetNull)
+  upps               Upp[]
+  producer_documents ProducerDocument[]
+
+  @@index([user_id], map: "idx_producers_user_id")
+  @@map("producers")
+}
+
+model Upp {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  producer_id    String    @db.Uuid
+  upp_code       String?   @unique
+  name           String
+  address_text   String?
+  location_lat   Decimal?  @db.Decimal
+  location_lng   Decimal?  @db.Decimal
+  hectares_total Decimal?  @db.Decimal
+  herd_limit     Int?
+  status         UppStatus @default(active)
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+
+  producer            Producer           @relation(fields: [producer_id], references: [id], onDelete: Restrict)
+  user_upp_accesses   UserUppAccess[]
+  mvz_upp_assignments MvzUppAssignment[]
+  animals             Animal[]
+  field_tests         FieldTest[]
+
+  @@index([producer_id], map: "idx_upps_producer_id")
+  @@map("upps")
+}
+
+model UserUppAccess {
+  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id            String               @db.Uuid
+  upp_id             String               @db.Uuid
+  access_level       AccessLevel
+  status             ActiveInactiveStatus @default(active)
+  granted_by_user_id String?              @db.Uuid
+  granted_at         DateTime             @default(now()) @db.Timestamptz(6)
+
+  user       Profile  @relation("UserUppAccessUser", fields: [user_id], references: [id], onDelete: Cascade)
+  upp        Upp      @relation(fields: [upp_id], references: [id], onDelete: Cascade)
+  granted_by Profile? @relation("UserUppAccessGrantedBy", fields: [granted_by_user_id], references: [id], onDelete: SetNull)
+
+  @@unique([user_id, upp_id])
+  @@index([user_id], map: "idx_user_upp_access_user")
+  @@map("user_upp_access")
+}
+
+model MvzProfile {
+  id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String               @unique @db.Uuid
+  full_name      String
+  license_number String               @unique
+  status         ActiveInactiveStatus @default(active)
+  created_at     DateTime             @default(now()) @db.Timestamptz(6)
+
+  user                Profile            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  mvz_upp_assignments MvzUppAssignment[]
+  field_tests         FieldTest[]
+
+  @@map("mvz_profiles")
+}
+
+model MvzUppAssignment {
+  id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mvz_profile_id String               @db.Uuid
+  upp_id         String               @db.Uuid
+  status         ActiveInactiveStatus @default(active)
+  assigned_at    DateTime             @default(now()) @db.Timestamptz(6)
+  unassigned_at  DateTime?            @db.Timestamptz(6)
+
+  mvz_profile MvzProfile @relation(fields: [mvz_profile_id], references: [id], onDelete: Cascade)
+  upp         Upp        @relation(fields: [upp_id], references: [id], onDelete: Cascade)
+
+  @@unique([mvz_profile_id, upp_id])
+  @@index([upp_id], map: "idx_mvz_assignments_upp")
+  @@map("mvz_upp_assignments")
+}
+
+model DocumentType {
+  id                      String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key                     String  @unique
+  name                    String
+  requires_expiry         Boolean @default(false)
+  requires_identity_match Boolean @default(false)
+
+  producer_documents ProducerDocument[]
+
+  @@map("document_types")
+}
+
+model ProducerDocument {
+  id                 String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  producer_id        String                 @db.Uuid
+  document_type_id   String                 @db.Uuid
+  file_storage_key   String
+  file_hash          String
+  uploaded_at        DateTime               @default(now()) @db.Timestamptz(6)
+  status             ProducerDocumentStatus @default(pending)
+  is_current         Boolean                @default(true)
+  expiry_date        DateTime?              @db.Date
+  extracted_fields   Json?
+  ocr_confidence     Decimal?               @db.Decimal
+  ocr_validated_at   DateTime?              @db.Timestamptz(6)
+  ocr_engine_version String?
+
+  producer      Producer     @relation(fields: [producer_id], references: [id], onDelete: Cascade)
+  document_type DocumentType @relation(fields: [document_type_id], references: [id], onDelete: Restrict)
+
+  @@index([producer_id], map: "idx_producer_docs_producer")
+  @@index([status], map: "idx_producer_docs_status")
+  @@map("producer_documents")
+}
+
+model Animal {
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  upp_id           String       @db.Uuid
+  siniiga_tag      String       @unique
+  sex              AnimalSex
+  birth_date       DateTime?    @db.Date
+  status           AnimalStatus @default(active)
+  mother_animal_id String?      @db.Uuid
+  created_at       DateTime     @default(now()) @db.Timestamptz(6)
+
+  upp         Upp         @relation(fields: [upp_id], references: [id], onDelete: Restrict)
+  mother      Animal?     @relation("AnimalParent", fields: [mother_animal_id], references: [id], onDelete: SetNull)
+  offspring   Animal[]    @relation("AnimalParent")
+  field_tests FieldTest[]
+
+  @@index([upp_id], map: "idx_animals_upp_id")
+  @@index([status], map: "idx_animals_status")
+  @@map("animals")
+}
+
+model TestType {
+  id            String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key           String @unique
+  name          String
+  validity_days Int
+
+  field_tests FieldTest[]
+
+  @@map("test_types")
+}
+
+model FieldTest {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  animal_id      String          @db.Uuid
+  upp_id         String          @db.Uuid
+  mvz_profile_id String          @db.Uuid
+  test_type_id   String          @db.Uuid
+  sample_date    DateTime        @db.Date
+  result         FieldTestResult
+  valid_until    DateTime?       @db.Date
+  captured_lat   Decimal?        @db.Decimal
+  captured_lng   Decimal?        @db.Decimal
+  created_at     DateTime        @default(now()) @db.Timestamptz(6)
+
+  animal      Animal     @relation(fields: [animal_id], references: [id], onDelete: Restrict)
+  upp         Upp        @relation(fields: [upp_id], references: [id], onDelete: Restrict)
+  mvz_profile MvzProfile @relation(fields: [mvz_profile_id], references: [id], onDelete: Restrict)
+  test_type   TestType   @relation(fields: [test_type_id], references: [id], onDelete: Restrict)
+
+  @@index([animal_id], map: "idx_field_tests_animal_id")
+  @@index([upp_id], map: "idx_field_tests_upp_id")
+  @@index([mvz_profile_id], map: "idx_field_tests_mvz")
+  @@index([sample_date], map: "idx_field_tests_sample_date")
+  @@map("field_tests")
+}
