@@ -121,11 +121,8 @@ export default function LandingPage() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Button asChild variant="outline">
-                <Link href="/admin/login">Login admin</Link>
-              </Button>
               <Button asChild>
-                <Link href="/login">Login publico</Link>
+                <Link href="/login">Login</Link>
               </Button>
             </div>
           </div>

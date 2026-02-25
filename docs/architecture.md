@@ -10,7 +10,6 @@ src/
       login/page.tsx
     (admin)/
       admin/
-        login/page.tsx
         (protected)/
           layout.tsx
           panel/page.tsx
@@ -69,8 +68,7 @@ Se crearon para expansion futura:
 ## Rutas
 
 - Landing publica: `/`
-- Login publico: `/login`
-- Login admin: `/admin/login`
+- Login unico: `/login`
 - Admin protegido: `/admin/panel`, `/admin/users`
 - Panel tenant: `/dashboard`, `/usuarios`, `/bovinos`, etc.
 - API base y auth:

@@ -15,8 +15,7 @@ Todas las fechas usan formato YYYY-MM-DD.
   - `PATCH /api/admin/users/:id/status`
 - Landing publica en `/` con flujo hardcodeado de agendacion (servicio, fecha/hora, confirmacion) y descarga ICS.
 - Nuevas rutas de autenticacion:
-  - `/login` (publico)
-  - `/admin/login` (admin)
+  - `/login` (unico)
   - `/admin/panel`
   - `/admin/users`
 - Utilidades de auth y rol:
@@ -31,6 +30,7 @@ Todas las fechas usan formato YYYY-MM-DD.
 - `src/shared/ui/layout/Topbar.tsx` implementa cierre de sesion real con Supabase.
 - `.env.example` actualizado con variables de Supabase y `DATABASE_URL_DIRECT`.
 - `src/app/(admin)/panel/page.tsx` se mantiene como redireccion legacy a `/admin/panel`.
+- Login unificado en `/login` y eliminacion de la vista `/admin/login`.
 
 ## [2026-02-24]
 

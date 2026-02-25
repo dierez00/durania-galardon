@@ -11,6 +11,7 @@
 - `docs/architecture.md`: rutas actualizadas de landing/login/admin y nuevas APIs de auth.
 - `docs/setup.md`: variables de entorno de Supabase Auth y prerequisitos de migracion SQL.
 - `docs/README.md`: indice actualizado y mapa de rutas principales.
+- `docs/auth-admin.md`: login unificado en `/login` con redireccion por rol.
 
 ## [2026-02-24]
 

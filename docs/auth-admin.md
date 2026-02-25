@@ -3,14 +3,13 @@
 ## Objetivo
 
 - Integrar autenticacion real con Supabase.
-- Separar login publico y login admin.
+- Unificar login en una sola pantalla publica.
 - Habilitar alta y gestion basica de usuarios desde `/admin/users`.
 
 ## Rutas funcionales
 
 - Landing publica: `/`
-- Login publico: `/login`
-- Login admin: `/admin/login`
+- Login unico: `/login`
 - Panel admin: `/admin/panel`
 - Gestion usuarios admin: `/admin/users`
 

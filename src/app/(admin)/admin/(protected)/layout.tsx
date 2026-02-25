@@ -28,14 +28,14 @@ export default function AdminProtectedLayout({
       const { data } = await supabase.auth.getSession();
 
       if (!data.session) {
-        router.replace("/admin/login");
+        router.replace("/login");
         return;
       }
 
       const roleResult = await resolveClientRole(supabase, data.session.user.id);
       if (!roleResult.role) {
         await supabase.auth.signOut();
-        router.replace("/admin/login");
+        router.replace("/login");
         return;
       }
 
@@ -93,7 +93,7 @@ export default function AdminProtectedLayout({
               const supabase = getSupabaseBrowserClient();
               await supabase.auth.signOut();
               await fetch("/api/auth/logout", { method: "POST" });
-              router.push("/admin/login");
+              router.push("/login");
             }}
           >
             Cerrar sesion
