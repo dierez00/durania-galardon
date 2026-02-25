@@ -4,6 +4,34 @@ Todas las fechas usan formato YYYY-MM-DD.
 
 ## [Unreleased]
 
+### Added
+
+- Integracion de Supabase Auth con rutas:
+  - `POST /api/auth/login`
+  - `POST /api/auth/logout`
+- Endpoints admin para usuarios:
+  - `GET /api/admin/users`
+  - `POST /api/admin/users`
+  - `PATCH /api/admin/users/:id/status`
+- Landing publica en `/` con flujo hardcodeado de agendacion (servicio, fecha/hora, confirmacion) y descarga ICS.
+- Nuevas rutas de autenticacion:
+  - `/login` (publico)
+  - `/admin/login` (admin)
+  - `/admin/panel`
+  - `/admin/users`
+- Utilidades de auth y rol:
+  - `src/server/auth/*`
+  - `src/shared/lib/auth.ts`
+  - `src/shared/lib/auth-client.ts`
+  - `src/shared/lib/supabase-browser.ts`
+
+### Changed
+
+- `src/app/(tenant)/layout.tsx` ahora protege acceso por sesion/rol y bloquea admin en rutas tenant.
+- `src/shared/ui/layout/Topbar.tsx` implementa cierre de sesion real con Supabase.
+- `.env.example` actualizado con variables de Supabase y `DATABASE_URL_DIRECT`.
+- `src/app/(admin)/panel/page.tsx` se mantiene como redireccion legacy a `/admin/panel`.
+
 ## [2026-02-24]
 
 ### Added

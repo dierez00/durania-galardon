@@ -1,5 +1,17 @@
 # Docs Changelog
 
+## [Unreleased]
+
+### Added
+
+- `docs/auth-admin.md`: flujos de autenticacion, politicas de rol y endpoints admin.
+
+### Changed
+
+- `docs/architecture.md`: rutas actualizadas de landing/login/admin y nuevas APIs de auth.
+- `docs/setup.md`: variables de entorno de Supabase Auth y prerequisitos de migracion SQL.
+- `docs/README.md`: indice actualizado y mapa de rutas principales.
+
 ## [2026-02-24]
 
 ### Added
