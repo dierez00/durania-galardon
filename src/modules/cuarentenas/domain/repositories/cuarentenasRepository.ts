@@ -1,4 +1,6 @@
+import type { Cuarentena } from "../entities/CuarentenasEntity";
+
 export interface CuarentenasRepository {
-  // TODO: define module repository contract
+  list(): Cuarentena[];
 }
 

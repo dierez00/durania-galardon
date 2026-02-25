@@ -1,4 +1,6 @@
+import type { Exportacion } from "../entities/ExportacionesEntity";
+
 export interface ExportacionesRepository {
-  // TODO: define module repository contract
+  list(): Exportacion[];
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -11,36 +11,48 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/shared/ui/table";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/shared/ui/dialog";
-import { Plus, Search, Eye, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
+import {
+  RanchosFilters,
+  RanchosList,
+  listRanchos,
+  filterRanchosUseCase,
+  type RanchosFiltersState,
+} from "@/modules/ranchos";
+import { mockRanchosRepository } from "@/modules/ranchos/infra/mock";
+import type { Rancho } from "@/modules/ranchos/domain/entities/RanchosEntity";
 
-const ranchos = [
-  { id: 1, nombre: "Rancho El Potrero", productor: "Juan Perez Ramirez", municipio: "Chihuahua", localidad: "El Sauz", coords: "28.6353, -106.0889", bovinos: 120, estado: "Activo" },
-  { id: 2, nombre: "Rancho Las Palmas", productor: "Juan Perez Ramirez", municipio: "Chihuahua", localidad: "Aldama Centro", coords: "28.8401, -105.9151", bovinos: 85, estado: "Activo" },
-  { id: 3, nombre: "Rancho San Miguel", productor: "Pedro Gomez Torres", municipio: "Delicias", localidad: "Km 42", coords: "28.1870, -105.4714", bovinos: 95, estado: "Activo" },
-  { id: 4, nombre: "Rancho La Esperanza", productor: "Roberto Hernandez", municipio: "Juarez", localidad: "Samalayuca", coords: "31.3456, -106.4437", bovinos: 210, estado: "Activo" },
-  { id: 5, nombre: "Rancho Los Alamos", productor: "Roberto Hernandez", municipio: "Juarez", localidad: "Praxedis", coords: "31.3689, -106.0210", bovinos: 165, estado: "Activo" },
-  { id: 6, nombre: "Hacienda Santa Rosa", productor: "Francisco Lopez Mendez", municipio: "Parral", localidad: "Villa Matamoros", coords: "26.9320, -105.6619", bovinos: 310, estado: "Inactivo" },
-];
+const allRanchos = listRanchos(mockRanchosRepository);
 
 export default function RanchosPage() {
   const [view, setView] = useState<"list" | "detail">("list");
   const [openNew, setOpenNew] = useState(false);
+  const [selectedDetail, setSelectedDetail] = useState<Rancho>(allRanchos[0]);
+  const [filters, setFilters] = useState<RanchosFiltersState>({
+    search: "",
+    municipio: "",
+    estado: "",
+    fechaDesde: "",
+    fechaHasta: "",
+  });
+
+  const filteredRanchos = useMemo(
+    () => filterRanchosUseCase(allRanchos, filters),
+    [filters]
+  );
 
   return (
     <div className="space-y-6">
       {view === "list" ? (
         <>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Ranchos</h1>
-              <p className="text-sm text-muted-foreground mt-1">Gestion de unidades de produccion pecuaria</p>
-            </div>
-            <Dialog open={openNew} onOpenChange={setOpenNew}>
-              <DialogTrigger asChild>
-                <Button><Plus className="w-4 h-4 mr-2" />Nuevo Rancho</Button>
-              </DialogTrigger>
+          <div>
+            <h1 className="text-2xl font-bold">Ranchos</h1>
+            <p className="text-sm text-muted-foreground mt-1">Gestion de unidades de produccion pecuaria</p>
+          </div>
+
+          <Dialog open={openNew} onOpenChange={setOpenNew}>
               <DialogContent className="max-w-2xl">
                 <DialogHeader><DialogTitle>Registrar Nuevo Rancho</DialogTitle></DialogHeader>
                 <div className="space-y-4 mt-4">
@@ -69,73 +81,34 @@ export default function RanchosPage() {
                 </div>
               </DialogContent>
             </Dialog>
-          </div>
 
-          <Card className="py-4">
-            <CardContent className="py-0">
-              <div className="flex gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input placeholder="Buscar por nombre, productor o municipio..." className="pl-9" />
-                </div>
-                <Button variant="outline">Filtros</Button>
-              </div>
-            </CardContent>
-          </Card>
+          <RanchosFilters
+            filters={filters}
+            onFiltersChange={setFilters}
+            onAddRancho={() => setOpenNew(true)}
+          />
 
-          <Card>
-            <CardContent className="pt-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Productor</TableHead>
-                    <TableHead>Municipio</TableHead>
-                    <TableHead>Localidad</TableHead>
-                    <TableHead>Coordenadas</TableHead>
-                    <TableHead className="text-center">Bovinos</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {ranchos.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell className="font-medium">{r.nombre}</TableCell>
-                      <TableCell className="text-muted-foreground">{r.productor}</TableCell>
-                      <TableCell>{r.municipio}</TableCell>
-                      <TableCell>{r.localidad}</TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">{r.coords}</TableCell>
-                      <TableCell className="text-center">{r.bovinos}</TableCell>
-                      <TableCell>
-                        <Badge className={`border-0 ${r.estado === "Activo" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>{r.estado}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => setView("detail")}><Eye className="w-4 h-4" /></Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <RanchosList
+            ranchos={filteredRanchos}
+            onView={(r) => { setSelectedDetail(r); setView("detail"); }}
+          />
         </>
       ) : (
         <>
           <div className="flex items-center gap-4">
             <Button variant="outline" onClick={() => setView("list")}>Volver al listado</Button>
             <div>
-              <h1 className="text-2xl font-bold">Rancho El Potrero</h1>
-              <p className="text-sm text-muted-foreground">Productor: Juan Perez Ramirez - Chihuahua</p>
+              <h1 className="text-2xl font-bold">{selectedDetail.nombre}</h1>
+              <p className="text-sm text-muted-foreground">Productor: {selectedDetail.productor} - {selectedDetail.municipio}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {[
-              { label: "Bovinos", value: "120" },
-              { label: "Municipio", value: "Chihuahua" },
-              { label: "Localidad", value: "El Sauz" },
-              { label: "Coordenadas", value: "28.63, -106.08" },
+              { label: "Bovinos",      value: String(selectedDetail.bovinos) },
+              { label: "Municipio",    value: selectedDetail.municipio },
+              { label: "Localidad",    value: selectedDetail.localidad },
+              { label: "Coordenadas",  value: selectedDetail.coords },
             ].map((s) => (
               <Card key={s.label} className="py-4">
                 <CardContent className="py-0">

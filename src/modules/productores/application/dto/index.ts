@@ -1,2 +1,2 @@
-// TODO: add DTOs for productores
+export type { CreateProductorDTO } from "./CreateProductorDTO";
 

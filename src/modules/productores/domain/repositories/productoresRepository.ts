@@ -1,4 +1,6 @@
+import type { Productor } from "../entities/ProductoresEntity";
+
 export interface ProductoresRepository {
-  // TODO: define module repository contract
+  list(): Productor[];
 }
 

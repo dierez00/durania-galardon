@@ -1,2 +1,3 @@
-// TODO: add use cases for ranchos
+export { listRanchos } from "./listRanchos";
+export { filterRanchosUseCase } from "./filterRanchos";
 

@@ -1,2 +1,3 @@
-// TODO: add use cases for productores
+export { listProductores } from "./listProductores";
+export { filterProductoresUseCase } from "./filterProductores";
 

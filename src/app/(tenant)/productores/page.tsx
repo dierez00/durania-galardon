@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -11,38 +11,48 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/shared/ui/table";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/shared/ui/dialog";
-import { Plus, Search, Eye, Pencil, FileText, MapPin, History } from "lucide-react";
+import { FileText, MapPin, History } from "lucide-react";
+import {
+  ProductoresFilters,
+  ProductoresList,
+  listProductores,
+  filterProductoresUseCase,
+  type ProductoresFiltersState,
+} from "@/modules/productores";
+import { mockProductoresRepository } from "@/modules/productores/infra/mock";
+import type { Productor } from "@/modules/productores/domain/entities/ProductoresEntity";
 
-const productores = [
-  { id: 1, nombre: "Juan Perez Ramirez", curp: "PERJ800515HCHRM09", rfc: "PERJ800515XX1", municipio: "Chihuahua", ranchos: 3, bovinos: 245, estado: "Activo" },
-  { id: 2, nombre: "Pedro Gomez Torres", curp: "GOTP750320HCHM08", rfc: "GOTP750320YY2", municipio: "Delicias", ranchos: 2, bovinos: 180, estado: "Activo" },
-  { id: 3, nombre: "Miguel Angel Ruiz", curp: "RUIM880910HCHR05", rfc: "RUIM880910ZZ3", municipio: "Cuauhtemoc", ranchos: 1, bovinos: 95, estado: "Activo" },
-  { id: 4, nombre: "Roberto Hernandez", curp: "HERR700101HCHR06", rfc: "HERR700101AA4", municipio: "Juarez", ranchos: 4, bovinos: 520, estado: "Activo" },
-  { id: 5, nombre: "Francisco Lopez Mendez", curp: "LOMF650825HCHL07", rfc: "LOMF650825BB5", municipio: "Parral", ranchos: 2, bovinos: 310, estado: "Inactivo" },
-  { id: 6, nombre: "Alberto Castillo Vega", curp: "CAVA720415HCHV08", rfc: "CAVA720415CC6", municipio: "Camargo", ranchos: 1, bovinos: 78, estado: "Activo" },
-];
-
-const [selectedDetail] = [productores[0]];
+const allProductores = listProductores(mockProductoresRepository);
 
 export default function ProductoresPage() {
   const [view, setView] = useState<"list" | "detail">("list");
   const [openNew, setOpenNew] = useState(false);
+  const [selectedDetail, setSelectedDetail] = useState<Productor>(allProductores[0]);
+  const [filters, setFilters] = useState<ProductoresFiltersState>({
+    search: "",
+    municipio: "",
+    estado: "",
+    fechaDesde: "",
+    fechaHasta: "",
+  });
+
+  const filteredProductores = useMemo(
+    () => filterProductoresUseCase(allProductores, filters),
+    [filters]
+  );
 
   return (
     <div className="space-y-6">
       {view === "list" ? (
         <>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Productores</h1>
-              <p className="text-sm text-muted-foreground mt-1">Gestion completa de productores ganaderos</p>
-            </div>
-            <Dialog open={openNew} onOpenChange={setOpenNew}>
-              <DialogTrigger asChild>
-                <Button><Plus className="w-4 h-4 mr-2" />Alta de Productor</Button>
-              </DialogTrigger>
+          <div>
+            <h1 className="text-2xl font-bold">Productores</h1>
+            <p className="text-sm text-muted-foreground mt-1">Gestion completa de productores ganaderos</p>
+          </div>
+
+          <Dialog open={openNew} onOpenChange={setOpenNew}>
               <DialogContent className="max-w-2xl">
                 <DialogHeader><DialogTitle>Alta de Nuevo Productor</DialogTitle></DialogHeader>
                 <div className="space-y-4 mt-4">
@@ -76,57 +86,17 @@ export default function ProductoresPage() {
                 </div>
               </DialogContent>
             </Dialog>
-          </div>
 
-          <Card className="py-4">
-            <CardContent className="py-0">
-              <div className="flex gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input placeholder="Buscar por nombre, CURP o municipio..." className="pl-9" />
-                </div>
-                <Button variant="outline">Filtros</Button>
-              </div>
-            </CardContent>
-          </Card>
+          <ProductoresFilters
+            filters={filters}
+            onFiltersChange={setFilters}
+            onAddProductor={() => setOpenNew(true)}
+          />
 
-          <Card>
-            <CardContent className="pt-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>CURP</TableHead>
-                    <TableHead>Municipio</TableHead>
-                    <TableHead className="text-center">Ranchos</TableHead>
-                    <TableHead className="text-center">Bovinos</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {productores.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-medium">{p.nombre}</TableCell>
-                      <TableCell className="text-muted-foreground font-mono text-xs">{p.curp}</TableCell>
-                      <TableCell>{p.municipio}</TableCell>
-                      <TableCell className="text-center">{p.ranchos}</TableCell>
-                      <TableCell className="text-center">{p.bovinos}</TableCell>
-                      <TableCell>
-                        <Badge className={`border-0 ${p.estado === "Activo" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>{p.estado}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => setView("detail")}><Eye className="w-4 h-4" /></Button>
-                          <Button variant="ghost" size="icon"><Pencil className="w-4 h-4" /></Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <ProductoresList
+            productores={filteredProductores}
+            onView={(p) => { setSelectedDetail(p); setView("detail"); }}
+          />
         </>
       ) : (
         <>

@@ -33,3 +33,11 @@ export interface Bovino {
   cuarentenas?: BovinoCuarentena[];
   exportaciones?: BovinoExportacion[];
 }
+
+export interface BovinosFiltersState {
+  search: string;
+  sexo: string;
+  sanitario: string;
+  fechaDesde: string;
+  fechaHasta: string;
+}

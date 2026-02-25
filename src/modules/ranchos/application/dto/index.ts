@@ -1,2 +1,2 @@
-// TODO: add DTOs for ranchos
+export type { CreateRanchoDTO } from "./CreateRanchoDTO";
 

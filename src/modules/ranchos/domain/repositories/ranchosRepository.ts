@@ -1,4 +1,6 @@
+import type { Rancho } from "../entities/RanchosEntity";
+
 export interface RanchosRepository {
-  // TODO: define module repository contract
+  list(): Rancho[];
 }
 

@@ -1,4 +1,6 @@
+import type { PruebaSanitaria } from "../entities/PruebasEntity";
+
 export interface PruebasRepository {
-  // TODO: define module repository contract
+  list(): PruebaSanitaria[];
 }
 

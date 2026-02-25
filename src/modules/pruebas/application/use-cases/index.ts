@@ -1,2 +1,3 @@
-// TODO: add use cases for pruebas
+export { listPruebas } from "./listPruebas";
+export { filterPruebasUseCase } from "./filterPruebas";
 

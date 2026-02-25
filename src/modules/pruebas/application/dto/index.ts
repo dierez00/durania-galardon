@@ -1,2 +1,2 @@
-// TODO: add DTOs for pruebas
+export type { CreatePruebaDTO } from "./CreatePruebaDTO";
 
