@@ -3,6 +3,7 @@
 ## Documentos
 
 - [Arquitectura](./architecture.md)
+- [Auth y Admin Usuarios](./auth-admin.md)
 - [Prisma y SQL](./prisma-from-sql.md)
 - [Multi-tenant](./multitenancy.md)
 - [Setup y comandos](./setup.md)
@@ -16,6 +17,13 @@ Este proyecto usa:
 - Arquitectura modular estilo Hexagonal (domain/application/infra/presentation)
 - Prisma ORM
 - Supabase PostgreSQL
+- Supabase Auth (login publico y admin separados)
 - Resolucion de tenant por subdominio/header/fallback local
 
-Las rutas funcionales del panel se encuentran en `src/app/(tenant)`.
+Rutas principales:
+
+- `/` landing publica con flujo de citas hardcodeado
+- `/login` login publico
+- `/admin/login` login admin
+- `/admin/users` gestion y alta de usuarios
+- `/dashboard` y modulos tenant para roles no-admin

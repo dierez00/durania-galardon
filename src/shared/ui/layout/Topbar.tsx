@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Bell, User, LogOut, ChevronDown } from "lucide-react";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -11,8 +12,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
+import { getSupabaseBrowserClient } from "@/shared/lib/supabase-browser";
 
 export default function Topbar() {
+  const router = useRouter();
+
   return (
     <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6 sticky top-0 z-30">
       <div className="flex items-center gap-3">
@@ -68,11 +72,17 @@ export default function Topbar() {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/" className="cursor-pointer text-destructive">
+            <DropdownMenuItem
+              className="cursor-pointer text-destructive"
+              onSelect={async () => {
+                const supabase = getSupabaseBrowserClient();
+                await supabase.auth.signOut();
+                await fetch("/api/auth/logout", { method: "POST" });
+                router.push("/login");
+              }}
+            >
                 <LogOut className="w-4 h-4 mr-2" />
                 Cerrar Sesion
-              </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
