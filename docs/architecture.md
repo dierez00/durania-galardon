@@ -6,84 +6,105 @@
 src/
   app/
     (public)/
-      page.tsx               # landing publica
-      login/page.tsx
+      page.tsx                     # landing publica + wizard + CRM
+      login/page.tsx               # login unico
     (admin)/
       admin/
         (protected)/
           layout.tsx
           panel/page.tsx
           users/page.tsx
+          producers/page.tsx
+          mvz/page.tsx
+          upps/page.tsx
+          quarantines/page.tsx
+          exports/page.tsx
+          normative/page.tsx
+          audit/page.tsx
+          reports/page.tsx
+          settings/page.tsx
     (tenant)/
-      layout.tsx             # guardia de sesion/rol tenant
+      layout.tsx                   # guardia tenant por rol y permisos
+      producer/*                   # vistas de productor/empleado
+      mvz/*                        # vistas de MVZ
+      _legacy/*.tsx                # componentes legacy sin routing directo
     api/
       auth/
-        login/route.ts
-        logout/route.ts
       admin/
-        users/route.ts
-        users/[id]/status/route.ts
-  core/
-    domain/
-    application/
-    infra/
-  modules/
-    <modulo>/
-      domain/
-      application/
-      infra/
-      presentation/
-  shared/
-    ui/
-    hooks/
-    lib/
-    config/
+      producer/
+      mvz/
+      tenant/
+      public/
   server/
     auth/
-    db/
-    middleware/
     tenants/
+    middleware/
+    authz/
+    audit/
+    reports/
+  shared/
+    lib/
+    config/
+    ui/
+sql/
+  durania_mvp_migration_v2.sql
+  durania_mvp_migration_v3_tenant_iam.sql
+  durania_mvp_migration_v4_rbac_modules.sql
 ```
 
-## Principios aplicados
+## Modelo de acceso
 
-- `domain`: entidades y contratos de repositorio.
-- `application`: casos de uso y DTOs.
-- `infra`: adaptadores (mock/prisma/mappers).
-- `presentation`: componentes/paginas sin acceso directo a DB.
-- `server/auth`: reglas de autenticacion, resolucion de rol unico y validacion de token bearer.
+- Resolucion de tenant por subdominio/header/fallback local.
+- Roles por tenant (`tenant_roles` + `tenant_user_roles`).
+- Login unico con redireccion por rol tenant.
+- Guardias en layouts:
+  - `tenant_admin` solo en `/admin/*`.
+  - `producer|employee` en `/producer/*`.
+  - `mvz_government|mvz_internal` en `/mvz/*`.
+- Autorizacion fina por permisos en `src/server/authz`.
 
-## Modulos implementados en transicion
+## Migracion IAM v3
 
-- `usuarios`: con repositorio mock + use-cases (`listUsers`, `filterUsersUseCase`).
-- `bovinos`: con repositorio mock + use-case (`listBovinos`).
+La migracion `sql/durania_mvp_migration_v3_tenant_iam.sql` agrega:
 
-## Modulos plantilla
+- `tenants`
+- `tenant_memberships`
+- `tenant_roles`
+- `tenant_role_permissions`
+- `tenant_user_roles`
+- `appointment_requests`
 
-Se crearon para expansion futura:
+Y agrega `tenant_id` + backfill a tablas operativas:
 
-- `productores`, `ranchos`, `pruebas`, `cuarentenas`, `exportaciones`, `catalogos`
-- `customers`, `loans`, `interests`, `billing`
+- `producers`, `upps`, `user_upp_access`, `mvz_profiles`, `mvz_upp_assignments`,
+  `producer_documents`, `animals`, `field_tests`.
 
-## Rutas
+## APIs principales
 
-- Landing publica: `/`
-- Login unico: `/login`
-- Admin protegido: `/admin/panel`, `/admin/users`
-- Panel tenant: `/dashboard`, `/usuarios`, `/bovinos`, etc.
-- API base y auth:
-  - `GET /api/health`
-  - `GET /api/tenant/resolve`
+- Auth:
   - `POST /api/auth/login`
   - `POST /api/auth/logout`
+  - `GET /api/auth/me`
+- Admin usuarios:
   - `GET /api/admin/users`
   - `POST /api/admin/users`
   - `PATCH /api/admin/users/:id/status`
+- Tenant IAM:
+  - `GET/POST /api/tenant/iam/memberships`
+  - `GET/POST/PATCH /api/tenant/iam/roles`
+  - `PUT /api/tenant/iam/roles/:id/permissions`
+  - `POST /api/tenant/upp-access`
+  - `POST /api/tenant/mvz-assignments`
+- Citas:
+  - `POST /api/public/appointments`
+  - `GET/PATCH /api/tenant/appointments`
 
-## Reglas de acceso
+## Corte limpio de rutas tenant
 
-- Cada usuario debe tener exactamente un rol (`admin`, `mvz`, `producer`).
-- Redireccion por rol:
-  - `admin` -> `/admin/panel`
-  - `mvz` y `producer` -> `/dashboard`
-- `admin` no navega en rutas tenant; se redirige al modulo admin.
+- Las rutas tenant legacy directas fueron retiradas.
+- El acceso tenant queda acotado a:
+  - `/producer/*`
+  - `/mvz/*`
+- La separacion de vistas ahora se implementa con segmentos reales:
+  - `src/app/(tenant)/producer/*`
+  - `src/app/(tenant)/mvz/*`

@@ -10,8 +10,9 @@ datasource db {
 
 // Notes:
 // - profiles.id references auth.users(id) in SQL. Prisma does not model this cross-schema auth table here.
-// - Trigger/function/RLS policies from the SQL migration are not represented in Prisma schema.
+// - Trigger/function/RLS policies from SQL migrations are not represented in Prisma schema.
 // - Partial unique index on producer_documents (where is_current = true) must be kept in SQL migrations.
+// - Legacy global IAM (roles/user_roles/role_permissions) is kept for compatibility but deprecated in app layer.
 
 enum ProfileStatus {
   active
@@ -66,21 +67,44 @@ enum FieldTestResult {
   inconclusive
 }
 
+enum TenantMembershipStatus {
+  active
+  inactive
+  suspended
+}
+
+enum AppointmentRequestStatus {
+  requested
+  contacted
+  scheduled
+  discarded
+}
+
 model Profile {
   id         String        @id @db.Uuid
   email      String
   status     ProfileStatus @default(active)
   created_at DateTime      @default(now()) @db.Timestamptz(6)
 
+  // Legacy global IAM
+  user_roles UserRole[]
+
+  // Domain relations
   producers            Producer[]      @relation("ProducerProfile")
   mvz_profile          MvzProfile?
-  user_roles           UserRole[]
   user_upp_accesses    UserUppAccess[] @relation("UserUppAccessUser")
   granted_upp_accesses UserUppAccess[] @relation("UserUppAccessGrantedBy")
+
+  // Tenant IAM relations
+  created_tenants            Tenant[]           @relation("TenantCreatedByUser")
+  tenant_memberships         TenantMembership[] @relation("TenantMembershipUser")
+  invited_tenant_memberships TenantMembership[] @relation("TenantMembershipInvitedByUser")
+  assigned_tenant_user_roles TenantUserRole[]   @relation("TenantUserRoleAssignedByUser")
 
   @@map("profiles")
 }
 
+// Legacy global IAM (deprecated)
 model Role {
   id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   key  String @unique
@@ -98,7 +122,11 @@ model Permission {
   description String?
   module      String?
 
+  // Legacy global IAM
   role_permissions RolePermission[]
+
+  // Tenant IAM
+  tenant_role_permissions TenantRolePermission[]
 
   @@map("permissions")
 }
@@ -127,24 +155,136 @@ model RolePermission {
   @@map("role_permissions")
 }
 
+model Tenant {
+  id                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug               String        @unique
+  name               String
+  status             ProfileStatus @default(active)
+  created_by_user_id String?       @db.Uuid
+  created_at         DateTime      @default(now()) @db.Timestamptz(6)
+
+  created_by_user      Profile?             @relation("TenantCreatedByUser", fields: [created_by_user_id], references: [id], onDelete: SetNull)
+  tenant_memberships   TenantMembership[]
+  tenant_roles         TenantRole[]
+  appointment_requests AppointmentRequest[]
+
+  producers           Producer[]
+  upps                Upp[]
+  user_upp_accesses   UserUppAccess[]
+  mvz_profiles        MvzProfile[]
+  mvz_upp_assignments MvzUppAssignment[]
+  producer_documents  ProducerDocument[]
+  animals             Animal[]
+  field_tests         FieldTest[]
+
+  @@map("tenants")
+}
+
+model TenantMembership {
+  id                 String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id          String                 @db.Uuid
+  user_id            String                 @db.Uuid
+  status             TenantMembershipStatus @default(active)
+  invited_by_user_id String?                @db.Uuid
+  joined_at          DateTime               @default(now()) @db.Timestamptz(6)
+
+  tenant          Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  user            Profile  @relation("TenantMembershipUser", fields: [user_id], references: [id], onDelete: Cascade)
+  invited_by_user Profile? @relation("TenantMembershipInvitedByUser", fields: [invited_by_user_id], references: [id], onDelete: SetNull)
+
+  tenant_user_roles TenantUserRole[]
+
+  @@unique([tenant_id, user_id])
+  @@index([tenant_id, user_id], map: "idx_tenant_memberships_tenant_user")
+  @@map("tenant_memberships")
+}
+
+model TenantRole {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id  String   @db.Uuid
+  key        String
+  name       String
+  is_system  Boolean  @default(false)
+  priority   Int      @default(100)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  tenant                  Tenant                 @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  tenant_role_permissions TenantRolePermission[]
+  tenant_user_roles       TenantUserRole[]
+
+  @@unique([tenant_id, key])
+  @@index([tenant_id], map: "idx_tenant_roles_tenant")
+  @@map("tenant_roles")
+}
+
+model TenantRolePermission {
+  tenant_role_id String   @db.Uuid
+  permission_id  String   @db.Uuid
+  granted_at     DateTime @default(now()) @db.Timestamptz(6)
+
+  tenant_role TenantRole @relation(fields: [tenant_role_id], references: [id], onDelete: Cascade)
+  permission  Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+
+  @@id([tenant_role_id, permission_id])
+  @@map("tenant_role_permissions")
+}
+
+model TenantUserRole {
+  membership_id       String   @db.Uuid
+  tenant_role_id      String   @db.Uuid
+  assigned_by_user_id String?  @db.Uuid
+  assigned_at         DateTime @default(now()) @db.Timestamptz(6)
+
+  membership       TenantMembership @relation(fields: [membership_id], references: [id], onDelete: Cascade)
+  tenant_role      TenantRole       @relation(fields: [tenant_role_id], references: [id], onDelete: Cascade)
+  assigned_by_user Profile?         @relation("TenantUserRoleAssignedByUser", fields: [assigned_by_user_id], references: [id], onDelete: SetNull)
+
+  @@id([membership_id, tenant_role_id])
+  @@index([membership_id], map: "idx_tenant_user_roles_membership")
+  @@map("tenant_user_roles")
+}
+
+model AppointmentRequest {
+  id                String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id         String                   @db.Uuid
+  full_name         String
+  phone             String?
+  email             String?
+  requested_service String
+  requested_date    DateTime?                @db.Date
+  requested_time    String?
+  notes             String?
+  status            AppointmentRequestStatus @default(requested)
+  created_at        DateTime                 @default(now()) @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id], map: "idx_appointment_requests_tenant")
+  @@map("appointment_requests")
+}
+
 model Producer {
   id         String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id  String         @db.Uuid
   user_id    String?        @db.Uuid
   curp       String?        @unique
   full_name  String
   status     ProducerStatus @default(active)
   created_at DateTime       @default(now()) @db.Timestamptz(6)
 
+  tenant             Tenant             @relation(fields: [tenant_id], references: [id], onDelete: Restrict)
   user               Profile?           @relation("ProducerProfile", fields: [user_id], references: [id], onDelete: SetNull)
   upps               Upp[]
   producer_documents ProducerDocument[]
 
+  @@index([tenant_id], map: "idx_producers_tenant")
   @@index([user_id], map: "idx_producers_user_id")
   @@map("producers")
 }
 
 model Upp {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id      String    @db.Uuid
   producer_id    String    @db.Uuid
   upp_code       String?   @unique
   name           String
@@ -156,18 +296,21 @@ model Upp {
   status         UppStatus @default(active)
   created_at     DateTime  @default(now()) @db.Timestamptz(6)
 
+  tenant              Tenant             @relation(fields: [tenant_id], references: [id], onDelete: Restrict)
   producer            Producer           @relation(fields: [producer_id], references: [id], onDelete: Restrict)
   user_upp_accesses   UserUppAccess[]
   mvz_upp_assignments MvzUppAssignment[]
   animals             Animal[]
   field_tests         FieldTest[]
 
+  @@index([tenant_id], map: "idx_upps_tenant")
   @@index([producer_id], map: "idx_upps_producer_id")
   @@map("upps")
 }
 
 model UserUppAccess {
   id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id          String               @db.Uuid
   user_id            String               @db.Uuid
   upp_id             String               @db.Uuid
   access_level       AccessLevel
@@ -175,42 +318,50 @@ model UserUppAccess {
   granted_by_user_id String?              @db.Uuid
   granted_at         DateTime             @default(now()) @db.Timestamptz(6)
 
+  tenant     Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Restrict)
   user       Profile  @relation("UserUppAccessUser", fields: [user_id], references: [id], onDelete: Cascade)
   upp        Upp      @relation(fields: [upp_id], references: [id], onDelete: Cascade)
   granted_by Profile? @relation("UserUppAccessGrantedBy", fields: [granted_by_user_id], references: [id], onDelete: SetNull)
 
   @@unique([user_id, upp_id])
+  @@index([tenant_id], map: "idx_user_upp_access_tenant")
   @@index([user_id], map: "idx_user_upp_access_user")
   @@map("user_upp_access")
 }
 
 model MvzProfile {
   id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id      String               @db.Uuid
   user_id        String               @unique @db.Uuid
   full_name      String
   license_number String               @unique
   status         ActiveInactiveStatus @default(active)
   created_at     DateTime             @default(now()) @db.Timestamptz(6)
 
+  tenant              Tenant             @relation(fields: [tenant_id], references: [id], onDelete: Restrict)
   user                Profile            @relation(fields: [user_id], references: [id], onDelete: Cascade)
   mvz_upp_assignments MvzUppAssignment[]
   field_tests         FieldTest[]
 
+  @@index([tenant_id], map: "idx_mvz_profiles_tenant")
   @@map("mvz_profiles")
 }
 
 model MvzUppAssignment {
   id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id      String               @db.Uuid
   mvz_profile_id String               @db.Uuid
   upp_id         String               @db.Uuid
   status         ActiveInactiveStatus @default(active)
   assigned_at    DateTime             @default(now()) @db.Timestamptz(6)
   unassigned_at  DateTime?            @db.Timestamptz(6)
 
+  tenant      Tenant     @relation(fields: [tenant_id], references: [id], onDelete: Restrict)
   mvz_profile MvzProfile @relation(fields: [mvz_profile_id], references: [id], onDelete: Cascade)
   upp         Upp        @relation(fields: [upp_id], references: [id], onDelete: Cascade)
 
   @@unique([mvz_profile_id, upp_id])
+  @@index([tenant_id], map: "idx_mvz_assignments_tenant")
   @@index([upp_id], map: "idx_mvz_assignments_upp")
   @@map("mvz_upp_assignments")
 }
@@ -229,6 +380,7 @@ model DocumentType {
 
 model ProducerDocument {
   id                 String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id          String                 @db.Uuid
   producer_id        String                 @db.Uuid
   document_type_id   String                 @db.Uuid
   file_storage_key   String
@@ -242,9 +394,11 @@ model ProducerDocument {
   ocr_validated_at   DateTime?              @db.Timestamptz(6)
   ocr_engine_version String?
 
+  tenant        Tenant       @relation(fields: [tenant_id], references: [id], onDelete: Restrict)
   producer      Producer     @relation(fields: [producer_id], references: [id], onDelete: Cascade)
   document_type DocumentType @relation(fields: [document_type_id], references: [id], onDelete: Restrict)
 
+  @@index([tenant_id], map: "idx_producer_documents_tenant")
   @@index([producer_id], map: "idx_producer_docs_producer")
   @@index([status], map: "idx_producer_docs_status")
   @@map("producer_documents")
@@ -252,6 +406,7 @@ model ProducerDocument {
 
 model Animal {
   id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id        String       @db.Uuid
   upp_id           String       @db.Uuid
   siniiga_tag      String       @unique
   sex              AnimalSex
@@ -260,11 +415,13 @@ model Animal {
   mother_animal_id String?      @db.Uuid
   created_at       DateTime     @default(now()) @db.Timestamptz(6)
 
+  tenant      Tenant      @relation(fields: [tenant_id], references: [id], onDelete: Restrict)
   upp         Upp         @relation(fields: [upp_id], references: [id], onDelete: Restrict)
   mother      Animal?     @relation("AnimalParent", fields: [mother_animal_id], references: [id], onDelete: SetNull)
   offspring   Animal[]    @relation("AnimalParent")
   field_tests FieldTest[]
 
+  @@index([tenant_id], map: "idx_animals_tenant")
   @@index([upp_id], map: "idx_animals_upp_id")
   @@index([status], map: "idx_animals_status")
   @@map("animals")
@@ -283,6 +440,7 @@ model TestType {
 
 model FieldTest {
   id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id      String          @db.Uuid
   animal_id      String          @db.Uuid
   upp_id         String          @db.Uuid
   mvz_profile_id String          @db.Uuid
@@ -294,14 +452,146 @@ model FieldTest {
   captured_lng   Decimal?        @db.Decimal
   created_at     DateTime        @default(now()) @db.Timestamptz(6)
 
+  tenant      Tenant     @relation(fields: [tenant_id], references: [id], onDelete: Restrict)
   animal      Animal     @relation(fields: [animal_id], references: [id], onDelete: Restrict)
   upp         Upp        @relation(fields: [upp_id], references: [id], onDelete: Restrict)
   mvz_profile MvzProfile @relation(fields: [mvz_profile_id], references: [id], onDelete: Restrict)
   test_type   TestType   @relation(fields: [test_type_id], references: [id], onDelete: Restrict)
 
+  @@index([tenant_id], map: "idx_field_tests_tenant")
   @@index([animal_id], map: "idx_field_tests_animal_id")
   @@index([upp_id], map: "idx_field_tests_upp_id")
   @@index([mvz_profile_id], map: "idx_field_tests_mvz")
   @@index([sample_date], map: "idx_field_tests_sample_date")
   @@map("field_tests")
+}
+
+model AuditLog {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id     String?  @db.Uuid
+  actor_user_id String?  @db.Uuid
+  role_key      String?
+  action        String
+  resource      String
+  resource_id   String?
+  payload_json  Json?
+  ip            String?
+  user_agent    String?
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([tenant_id, created_at], map: "idx_audit_logs_tenant_created_at")
+  @@index([actor_user_id, created_at], map: "idx_audit_logs_actor")
+  @@map("audit_logs")
+}
+
+model StateQuarantine {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id            String   @db.Uuid
+  upp_id               String?  @db.Uuid
+  status               String
+  quarantine_type      String
+  title                String
+  reason               String?
+  geojson              Json?
+  started_at           DateTime @default(now()) @db.Timestamptz(6)
+  released_at          DateTime? @db.Timestamptz(6)
+  epidemiological_note String?
+  released_by_user_id  String?  @db.Uuid
+  created_by_user_id   String?  @db.Uuid
+  created_at           DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([tenant_id, status], map: "idx_state_quarantines_tenant_status")
+  @@index([upp_id], map: "idx_state_quarantines_upp")
+  @@map("state_quarantines")
+}
+
+model ExportRequest {
+  id                        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id                 String   @db.Uuid
+  producer_id               String?  @db.Uuid
+  upp_id                    String?  @db.Uuid
+  requested_by_user_id      String?  @db.Uuid
+  status                    String
+  compliance_60_rule        Boolean?
+  tb_br_validated           Boolean?
+  blue_tag_assigned         Boolean?
+  monthly_bucket            DateTime? @db.Date
+  metrics_json              Json?
+  blocked_reason            String?
+  validated_by_mvz_user_id  String?  @db.Uuid
+  approved_by_admin_user_id String?  @db.Uuid
+  created_at                DateTime @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([tenant_id, status], map: "idx_export_requests_tenant_status")
+  @@index([upp_id], map: "idx_export_requests_upp")
+  @@index([tenant_id, monthly_bucket], map: "idx_export_requests_monthly")
+  @@map("export_requests")
+}
+
+model MovementRequest {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id            String   @db.Uuid
+  producer_id          String?  @db.Uuid
+  upp_id               String?  @db.Uuid
+  requested_by_user_id String?  @db.Uuid
+  status               String
+  qr_code              String?
+  route_note           String?
+  incidence_note       String?
+  movement_date        DateTime? @db.Date
+  created_at           DateTime @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([tenant_id, status], map: "idx_movement_requests_tenant_status")
+  @@index([upp_id], map: "idx_movement_requests_upp")
+  @@map("movement_requests")
+}
+
+model NormativeSetting {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id          String   @db.Uuid
+  key                String
+  value_json         Json
+  effective_from     DateTime @default(now()) @db.Date
+  effective_until    DateTime? @db.Date
+  status             String
+  changed_by_user_id String?  @db.Uuid
+  created_at         DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([tenant_id, key, effective_from])
+  @@index([tenant_id, key, status], map: "idx_normative_settings_tenant_key")
+  @@map("normative_settings")
+}
+
+model NotificationEvent {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id      String   @db.Uuid
+  user_id        String?  @db.Uuid
+  role_key       String?
+  category       String
+  title          String
+  message        String?
+  severity       String
+  related_upp_id String?  @db.Uuid
+  is_read        Boolean  @default(false)
+  created_at     DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([tenant_id, user_id, created_at], map: "idx_notification_events_tenant_user")
+  @@index([tenant_id, role_key, created_at], map: "idx_notification_events_tenant_role")
+  @@map("notification_events")
+}
+
+model FieldTestSyncEvent {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id          String   @db.Uuid
+  mvz_user_id        String   @db.Uuid
+  client_mutation_id String
+  field_test_id      String?  @db.Uuid
+  payload_json       Json?
+  synced_at          DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([tenant_id, mvz_user_id, client_mutation_id])
+  @@index([tenant_id, synced_at], map: "idx_field_test_sync_events_tenant_synced")
+  @@map("field_test_sync_events")
 }

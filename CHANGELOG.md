@@ -6,31 +6,46 @@ Todas las fechas usan formato YYYY-MM-DD.
 
 ### Added
 
-- Integracion de Supabase Auth con rutas:
-  - `POST /api/auth/login`
-  - `POST /api/auth/logout`
-- Endpoints admin para usuarios:
-  - `GET /api/admin/users`
-  - `POST /api/admin/users`
-  - `PATCH /api/admin/users/:id/status`
-- Landing publica en `/` con flujo hardcodeado de agendacion (servicio, fecha/hora, confirmacion) y descarga ICS.
-- Nuevas rutas de autenticacion:
-  - `/login` (unico)
-  - `/admin/panel`
-  - `/admin/users`
-- Utilidades de auth y rol:
-  - `src/server/auth/*`
-  - `src/shared/lib/auth.ts`
-  - `src/shared/lib/auth-client.ts`
-  - `src/shared/lib/supabase-browser.ts`
+- Migracion SQL v3 tenant IAM: `sql/durania_mvp_migration_v3_tenant_iam.sql`.
+- Nuevas tablas tenant IAM:
+  - `tenants`
+  - `tenant_memberships`
+  - `tenant_roles`
+  - `tenant_role_permissions`
+  - `tenant_user_roles`
+- Tabla CRM de citas publicas: `appointment_requests`.
+- Endpoints tenant IAM:
+  - `GET/POST /api/tenant/iam/memberships`
+  - `GET/POST/PATCH /api/tenant/iam/roles`
+  - `PUT /api/tenant/iam/roles/:id/permissions`
+  - `POST /api/tenant/upp-access`
+  - `POST /api/tenant/mvz-assignments`
+- Endpoints CRM citas:
+  - `POST /api/public/appointments`
+  - `GET/PATCH /api/tenant/appointments`
+- Nuevas rutas por vista tenant:
+  - `/producer/*`
+  - `/mvz/*`
+- Modulo admin tenant IAM:
+  - `/admin/settings`
 
 ### Changed
 
-- `src/app/(tenant)/layout.tsx` ahora protege acceso por sesion/rol y bloquea admin en rutas tenant.
-- `src/shared/ui/layout/Topbar.tsx` implementa cierre de sesion real con Supabase.
-- `.env.example` actualizado con variables de Supabase y `DATABASE_URL_DIRECT`.
-- `src/app/(admin)/panel/page.tsx` se mantiene como redireccion legacy a `/admin/panel`.
-- Login unificado en `/login` y eliminacion de la vista `/admin/login`.
+- Login unificado en `/login` ahora resuelve rol por tenant y devuelve `tenantId`, `tenantSlug`, `roleKey`, `redirectTo`.
+- `src/server/auth/index.ts` y `src/shared/lib/auth-client.ts` migrados a resolucion de rol por tenant.
+- `src/app/api/admin/users/*` migrado a `tenant_admin` + memberships/roles tenant.
+- `src/app/(tenant)/layout.tsx` ahora restringe acceso solo a `/producer/*` y `/mvz/*` por rol.
+- `src/shared/ui/layout/Sidebar.tsx` ahora navega por contexto `/producer/*` o `/mvz/*`.
+- `prisma/schema.prisma` actualizado a v3 tenant IAM (`tenants`, memberships, roles tenant, appointment_requests y `tenant_id` en tablas operativas).
+
+### Removed
+
+- Rutas tenant legacy directas (`/dashboard`, `/usuarios`, `/ranchos`, `/bovinos`, `/pruebas`, `/cuarentenas`, `/exportaciones`, `/catalogos`, `/perfil`, `/notificaciones`).
+
+### Fixed
+
+- Conflicto de App Router por rutas paralelas duplicadas: se consolidaron segmentos reales bajo `/producer/*` y `/mvz/*`.
+- Resolucion tenant en login local: fallback robusto a `default-tenant` cuando `DEFAULT_TENANT_SLUG` no esta definido.
 
 ## [2026-02-24]
 

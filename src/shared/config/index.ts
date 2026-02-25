@@ -20,7 +20,7 @@ export function getServerEnv() {
     supabaseServiceRoleKey: requireEnv("SUPABASE_SERVICE_ROLE_KEY", process.env.SUPABASE_SERVICE_ROLE_KEY),
     databaseUrl: requireEnv("DATABASE_URL", process.env.DATABASE_URL),
     databaseUrlDirect: requireEnv("DATABASE_URL_DIRECT", process.env.DATABASE_URL_DIRECT),
-    defaultTenantSlug: process.env.DEFAULT_TENANT_SLUG ?? "dev-tenant",
+    defaultTenantSlug: process.env.DEFAULT_TENANT_SLUG ?? "default-tenant",
   };
 }
 

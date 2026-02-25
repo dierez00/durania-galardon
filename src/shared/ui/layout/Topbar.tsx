@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Bell, User, LogOut, ChevronDown } from "lucide-react";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -15,7 +15,9 @@ import {
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase-browser";
 
 export default function Topbar() {
+  const pathname = usePathname();
   const router = useRouter();
+  const routePrefix = pathname.startsWith("/mvz") ? "/mvz" : "/producer";
 
   return (
     <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6 sticky top-0 z-30">
@@ -27,7 +29,7 @@ export default function Topbar() {
 
       <div className="flex items-center gap-3">
         {/* Notifications */}
-        <Link href="/notificaciones">
+        <Link href={`${routePrefix}/notificaciones`}>
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="w-5 h-5" />
             <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-white text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -60,13 +62,13 @@ export default function Topbar() {
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link href="/perfil" className="cursor-pointer">
+              <Link href={`${routePrefix}/perfil`} className="cursor-pointer">
                 <User className="w-4 h-4 mr-2" />
                 Mi Perfil
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/notificaciones" className="cursor-pointer">
+              <Link href={`${routePrefix}/notificaciones`} className="cursor-pointer">
                 <Bell className="w-4 h-4 mr-2" />
                 Notificaciones
               </Link>

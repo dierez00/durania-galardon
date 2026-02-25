@@ -14,8 +14,15 @@ import { redirectPathForRole } from "@/shared/lib/auth";
 interface LoginApiResponse {
   ok: boolean;
   data?: {
-    role: "admin" | "mvz" | "producer";
+    roleKey:
+      | "tenant_admin"
+      | "producer"
+      | "employee"
+      | "mvz_government"
+      | "mvz_internal";
     redirectTo: string;
+    tenantId: string;
+    tenantSlug: string;
     session: {
       accessToken: string;
       refreshToken: string;

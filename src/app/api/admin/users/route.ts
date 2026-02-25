@@ -1,11 +1,13 @@
-import { resolveAuthenticatedRequestUser } from "@/server/auth";
+import { requireAuthorized } from "@/server/authz";
 import { getSupabaseAdminClient } from "@/server/auth/supabase";
 import {
   ROLE_LABELS,
   isAppRole,
+  isMvzViewRole,
   type AppRole,
 } from "@/shared/lib/auth";
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
+import { logAuditEvent } from "@/server/audit";
 
 interface CreateAdminUserBody {
   email?: string;
@@ -13,6 +15,18 @@ interface CreateAdminUserBody {
   role?: AppRole;
   fullName?: string;
   licenseNumber?: string;
+}
+
+interface UpdateAdminUserBody {
+  id?: string;
+  fullName?: string;
+  role?: AppRole;
+  licenseNumber?: string;
+}
+
+interface DeleteAdminUserBody {
+  id?: string;
+  hardDelete?: boolean;
 }
 
 function sleep(ms: number) {
@@ -43,6 +57,7 @@ type UserListItem = {
   id: string;
   email: string;
   status: "active" | "inactive" | "blocked";
+  membershipStatus: "active" | "inactive" | "suspended";
   role: AppRole | null;
   roleLabel: string;
   fullName: string;
@@ -50,104 +65,179 @@ type UserListItem = {
   createdAt: string;
 };
 
-type ProfileQueryRow = {
+type MembershipRow = {
+  id: string;
+  user_id: string;
+  status: "active" | "inactive" | "suspended";
+};
+
+type ProfileRow = {
   id: string;
   email: string;
   status: "active" | "inactive" | "blocked";
   created_at: string;
-  user_roles:
-    | Array<{
-        role:
-          | Array<{
-              key: string;
-            }>
-          | {
-              key: string;
-            }
-          | null;
-      }>
-    | null;
-  producers:
-    | Array<{
-        full_name: string;
-      }>
-    | null;
-  mvz_profile:
-    | Array<{
-        full_name: string;
-        license_number: string;
-      }>
+};
+
+type TenantRoleRow = {
+  membership_id: string;
+  tenant_role:
     | {
-        full_name: string;
-        license_number: string;
+        key: string;
+        name: string;
       }
+    | {
+        key: string;
+        name: string;
+      }[]
     | null;
 };
 
-function normalizeUser(profile: ProfileQueryRow): UserListItem {
-  const roleKey = (profile.user_roles ?? [])
-    .flatMap((item) => {
-      if (!item.role) {
-        return [];
-      }
+type ProducerRow = {
+  user_id: string;
+  full_name: string;
+};
 
-      if (Array.isArray(item.role)) {
-        return item.role.map((role) => role.key);
-      }
+type MvzRow = {
+  user_id: string;
+  full_name: string;
+  license_number: string;
+};
 
-      return [item.role.key];
-    })
-    .find(isAppRole) ?? null;
-
-  const producer = (profile.producers ?? [])[0] ?? null;
-  const mvzProfile = Array.isArray(profile.mvz_profile)
-    ? profile.mvz_profile[0] ?? null
-    : profile.mvz_profile;
-
-  return {
-    id: profile.id,
-    email: profile.email,
-    status: profile.status,
-    role: roleKey,
-    roleLabel: roleKey ? ROLE_LABELS[roleKey] : "Sin rol",
-    fullName:
-      mvzProfile?.full_name ??
-      producer?.full_name ??
-      profile.email.split("@")[0] ??
-      "Usuario",
-    licenseNumber: mvzProfile?.license_number ?? null,
-    createdAt: profile.created_at,
-  };
-}
-
-async function fetchUsers() {
-  const supabaseAdmin = getSupabaseAdminClient();
-  const { data, error } = await supabaseAdmin
-    .from("profiles")
-    .select(
-      "id,email,status,created_at,user_roles(role:roles(key)),producers(full_name),mvz_profile:mvz_profiles(full_name,license_number)"
-    )
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    throw new Error(error.message);
+function extractTenantRole(row: TenantRoleRow): { key: AppRole | null; name: string | null } {
+  if (!row.tenant_role) {
+    return { key: null, name: null };
   }
 
-  return ((data ?? []) as ProfileQueryRow[]).map((profile) => normalizeUser(profile));
+  const value = Array.isArray(row.tenant_role) ? row.tenant_role[0] : row.tenant_role;
+  if (!value) {
+    return { key: null, name: null };
+  }
+
+  if (!isAppRole(value.key)) {
+    return { key: null, name: value.name ?? null };
+  }
+
+  return { key: value.key, name: value.name ?? null };
+}
+
+async function fetchUsers(tenantId: string): Promise<UserListItem[]> {
+  const supabaseAdmin = getSupabaseAdminClient();
+
+  const membershipResult = await supabaseAdmin
+    .from("tenant_memberships")
+    .select("id,user_id,status")
+    .eq("tenant_id", tenantId)
+    .order("joined_at", { ascending: false });
+
+  if (membershipResult.error) {
+    throw new Error(membershipResult.error.message);
+  }
+
+  const memberships = (membershipResult.data ?? []) as MembershipRow[];
+  if (memberships.length === 0) {
+    return [];
+  }
+
+  const membershipIds = memberships.map((row) => row.id);
+  const userIds = memberships.map((row) => row.user_id);
+
+  const [profilesResult, rolesResult, producersResult, mvzResult] = await Promise.all([
+    supabaseAdmin
+      .from("profiles")
+      .select("id,email,status,created_at")
+      .in("id", userIds),
+    supabaseAdmin
+      .from("tenant_user_roles")
+      .select("membership_id,tenant_role:tenant_roles(key,name)")
+      .in("membership_id", membershipIds),
+    supabaseAdmin
+      .from("producers")
+      .select("user_id,full_name")
+      .eq("tenant_id", tenantId)
+      .in("user_id", userIds),
+    supabaseAdmin
+      .from("mvz_profiles")
+      .select("user_id,full_name,license_number")
+      .eq("tenant_id", tenantId)
+      .in("user_id", userIds),
+  ]);
+
+  if (profilesResult.error) {
+    throw new Error(profilesResult.error.message);
+  }
+
+  if (rolesResult.error) {
+    throw new Error(rolesResult.error.message);
+  }
+
+  if (producersResult.error) {
+    throw new Error(producersResult.error.message);
+  }
+
+  if (mvzResult.error) {
+    throw new Error(mvzResult.error.message);
+  }
+
+  const profileById = new Map(
+    ((profilesResult.data ?? []) as ProfileRow[]).map((profile) => [profile.id, profile])
+  );
+  const producerByUserId = new Map(
+    ((producersResult.data ?? []) as ProducerRow[]).map((producer) => [producer.user_id, producer])
+  );
+  const mvzByUserId = new Map(((mvzResult.data ?? []) as MvzRow[]).map((mvz) => [mvz.user_id, mvz]));
+
+  const roleByMembershipId = new Map<string, { key: AppRole | null; name: string | null }>();
+  ((rolesResult.data ?? []) as TenantRoleRow[]).forEach((row) => {
+    if (!roleByMembershipId.has(row.membership_id)) {
+      roleByMembershipId.set(row.membership_id, extractTenantRole(row));
+    }
+  });
+
+  return memberships
+    .map((membership) => {
+      const profile = profileById.get(membership.user_id);
+      if (!profile) {
+        return null;
+      }
+
+      const producer = producerByUserId.get(membership.user_id);
+      const mvzProfile = mvzByUserId.get(membership.user_id);
+      const roleInfo = roleByMembershipId.get(membership.id) ?? { key: null, name: null };
+
+      return {
+        id: profile.id,
+        email: profile.email,
+        status: profile.status,
+        membershipStatus: membership.status,
+        role: roleInfo.key,
+        roleLabel:
+          roleInfo.key
+            ? ROLE_LABELS[roleInfo.key]
+            : roleInfo.name ?? "Sin rol",
+        fullName:
+          mvzProfile?.full_name ??
+          producer?.full_name ??
+          profile.email.split("@")[0] ??
+          "Usuario",
+        licenseNumber: mvzProfile?.license_number ?? null,
+        createdAt: profile.created_at,
+      };
+    })
+    .filter((item): item is UserListItem => Boolean(item));
 }
 
 export async function GET(request: Request) {
-  const authResult = await resolveAuthenticatedRequestUser(request);
-  if ("error" in authResult) {
-    return apiError(authResult.error.code, authResult.error.message, authResult.error.status);
-  }
-
-  if (authResult.user.role !== "admin") {
-    return apiError("FORBIDDEN", "Solo administradores pueden gestionar usuarios.", 403);
+  const auth = await requireAuthorized(request, {
+    roles: ["tenant_admin"],
+    permissions: ["admin.users.read"],
+    resource: "admin.users",
+  });
+  if (!auth.ok) {
+    return auth.response;
   }
 
   try {
-    const users = await fetchUsers();
+    const users = await fetchUsers(auth.context.user.tenantId);
     return apiSuccess({ users });
   } catch (error) {
     return apiError(
@@ -159,13 +249,14 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const authResult = await resolveAuthenticatedRequestUser(request);
-  if ("error" in authResult) {
-    return apiError(authResult.error.code, authResult.error.message, authResult.error.status);
-  }
-
-  if (authResult.user.role !== "admin") {
-    return apiError("FORBIDDEN", "Solo administradores pueden crear usuarios.", 403);
+  const auth = await requireAuthorized(request, {
+    roles: ["tenant_admin"],
+    permissions: ["admin.users.create", "admin.users.roles"],
+    requireAllPermissions: true,
+    resource: "admin.users",
+  });
+  if (!auth.ok) {
+    return auth.response;
   }
 
   let body: CreateAdminUserBody;
@@ -184,27 +275,29 @@ export async function POST(request: Request) {
   if (!email || !password || !fullName || !role || !isAppRole(role)) {
     return apiError(
       "INVALID_PAYLOAD",
-      "Debe enviar email, password, fullName y role valido (admin, mvz o producer)."
+      "Debe enviar email, password, fullName y role valido (tenant_admin, producer, employee, mvz_government, mvz_internal)."
     );
   }
 
-  if (role === "mvz" && !licenseNumber) {
-    return apiError("INVALID_PAYLOAD", "licenseNumber es requerido para rol MVZ.");
+  if (isMvzViewRole(role) && !licenseNumber) {
+    return apiError("INVALID_PAYLOAD", "licenseNumber es requerido para roles MVZ.");
   }
 
   const supabaseAdmin = getSupabaseAdminClient();
-  const roleResult = await supabaseAdmin
-    .from("roles")
+
+  const tenantRoleResult = await supabaseAdmin
+    .from("tenant_roles")
     .select("id,key")
+    .eq("tenant_id", auth.context.user.tenantId)
     .eq("key", role)
     .maybeSingle();
 
-  if (roleResult.error) {
-    return apiError("ROLE_QUERY_FAILED", roleResult.error.message, 500);
+  if (tenantRoleResult.error) {
+    return apiError("ROLE_QUERY_FAILED", tenantRoleResult.error.message, 500);
   }
 
-  if (!roleResult.data) {
-    return apiError("ROLE_NOT_FOUND", `No existe rol configurado para key: ${role}.`, 500);
+  if (!tenantRoleResult.data) {
+    return apiError("ROLE_NOT_FOUND", `No existe rol tenant configurado para key: ${role}.`, 500);
   }
 
   const createResult = await supabaseAdmin.auth.admin.createUser({
@@ -229,9 +322,59 @@ export async function POST(request: Request) {
       throw new Error("PROFILE_NOT_CREATED");
     }
 
-    const roleAssignResult = await supabaseAdmin.from("user_roles").insert({
-      user_id: createdUserId,
-      role_id: roleResult.data.id,
+    let membershipId: string;
+    const membershipLookup = await supabaseAdmin
+      .from("tenant_memberships")
+      .select("id")
+      .eq("tenant_id", auth.context.user.tenantId)
+      .eq("user_id", createdUserId)
+      .maybeSingle();
+
+    if (membershipLookup.error) {
+      throw new Error(membershipLookup.error.message);
+    }
+
+    if (!membershipLookup.data) {
+      const membershipInsert = await supabaseAdmin
+        .from("tenant_memberships")
+        .insert({
+          tenant_id: auth.context.user.tenantId,
+          user_id: createdUserId,
+          status: "active",
+          invited_by_user_id: auth.context.user.id,
+        })
+        .select("id")
+        .single();
+
+      if (membershipInsert.error || !membershipInsert.data) {
+        throw new Error(membershipInsert.error?.message ?? "MEMBERSHIP_CREATE_FAILED");
+      }
+
+      membershipId = membershipInsert.data.id;
+    } else {
+      membershipId = membershipLookup.data.id;
+      const membershipUpdate = await supabaseAdmin
+        .from("tenant_memberships")
+        .update({ status: "active" })
+        .eq("id", membershipId);
+
+      if (membershipUpdate.error) {
+        throw new Error(membershipUpdate.error.message);
+      }
+    }
+
+    const clearOldRoles = await supabaseAdmin
+      .from("tenant_user_roles")
+      .delete()
+      .eq("membership_id", membershipId);
+    if (clearOldRoles.error) {
+      throw new Error(clearOldRoles.error.message);
+    }
+
+    const roleAssignResult = await supabaseAdmin.from("tenant_user_roles").insert({
+      membership_id: membershipId,
+      tenant_role_id: tenantRoleResult.data.id,
+      assigned_by_user_id: auth.context.user.id,
     });
     if (roleAssignResult.error) {
       throw new Error(roleAssignResult.error.message);
@@ -239,6 +382,7 @@ export async function POST(request: Request) {
 
     if (role === "producer") {
       const producerResult = await supabaseAdmin.from("producers").insert({
+        tenant_id: auth.context.user.tenantId,
         user_id: createdUserId,
         full_name: fullName,
       });
@@ -247,8 +391,9 @@ export async function POST(request: Request) {
       }
     }
 
-    if (role === "mvz") {
+    if (isMvzViewRole(role)) {
       const mvzResult = await supabaseAdmin.from("mvz_profiles").insert({
+        tenant_id: auth.context.user.tenantId,
         user_id: createdUserId,
         full_name: fullName,
         license_number: licenseNumber!,
@@ -258,21 +403,24 @@ export async function POST(request: Request) {
       }
     }
 
-    const createdUserResult = await supabaseAdmin
-      .from("profiles")
-      .select(
-        "id,email,status,created_at,user_roles(role:roles(key)),producers(full_name),mvz_profile:mvz_profiles(full_name,license_number)"
-      )
-      .eq("id", createdUserId)
-      .single();
-
-    if (createdUserResult.error || !createdUserResult.data) {
-      throw new Error(createdUserResult.error?.message ?? "USER_READ_FAILED");
+    const users = await fetchUsers(auth.context.user.tenantId);
+    const createdUser = users.find((user) => user.id === createdUserId);
+    if (!createdUser) {
+      throw new Error("USER_READ_FAILED");
     }
+
+    await logAuditEvent({
+      request,
+      user: auth.context.user,
+      action: "create",
+      resource: "admin.users",
+      resourceId: createdUserId,
+      payload: { email, role },
+    });
 
     return apiSuccess(
       {
-        user: normalizeUser(createdUserResult.data as ProfileQueryRow),
+        user: createdUser,
       },
       { status: 201 }
     );
@@ -280,10 +428,217 @@ export async function POST(request: Request) {
     await supabaseAdmin.auth.admin.deleteUser(createdUserId);
 
     const message = error instanceof Error ? error.message : "UNKNOWN_ERROR";
+    await logAuditEvent({
+      request,
+      user: auth.context.user,
+      action: "fraud_attempt",
+      resource: "admin.users",
+      resourceId: createdUserId,
+      payload: {
+        reason: "USER_PROVISION_FAILED",
+        message,
+      },
+    });
     return apiError(
       "USER_PROVISION_FAILED",
       `No fue posible completar la asignacion de rol/perfil. (${message})`,
       400
     );
   }
+}
+
+export async function PATCH(request: Request) {
+  const auth = await requireAuthorized(request, {
+    roles: ["tenant_admin"],
+    permissions: ["admin.users.update", "admin.users.roles"],
+    resource: "admin.users",
+  });
+  if (!auth.ok) {
+    return auth.response;
+  }
+
+  let body: UpdateAdminUserBody;
+  try {
+    body = (await request.json()) as UpdateAdminUserBody;
+  } catch {
+    return apiError("INVALID_BODY", "El cuerpo de la solicitud no es JSON valido.");
+  }
+
+  const userId = body.id?.trim();
+  const fullName = body.fullName?.trim();
+  const nextRole = body.role;
+  const licenseNumber = body.licenseNumber?.trim();
+
+  if (!userId || (!fullName && !nextRole)) {
+    return apiError("INVALID_PAYLOAD", "Debe enviar id y al menos fullName o role.");
+  }
+
+  if (nextRole && isMvzViewRole(nextRole) && !licenseNumber) {
+    return apiError("INVALID_PAYLOAD", "licenseNumber es requerido para asignar roles MVZ.");
+  }
+
+  const supabaseAdmin = getSupabaseAdminClient();
+  const membershipResult = await supabaseAdmin
+    .from("tenant_memberships")
+    .select("id")
+    .eq("tenant_id", auth.context.user.tenantId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (membershipResult.error || !membershipResult.data) {
+    return apiError("USER_NOT_FOUND", "No existe usuario en este tenant con ese id.", 404);
+  }
+
+  if (nextRole) {
+    const tenantRoleResult = await supabaseAdmin
+      .from("tenant_roles")
+      .select("id,key")
+      .eq("tenant_id", auth.context.user.tenantId)
+      .eq("key", nextRole)
+      .maybeSingle();
+
+    if (tenantRoleResult.error || !tenantRoleResult.data) {
+      return apiError("ROLE_NOT_FOUND", "No existe rol configurado en este tenant.", 404);
+    }
+
+    const clearRoles = await supabaseAdmin
+      .from("tenant_user_roles")
+      .delete()
+      .eq("membership_id", membershipResult.data.id);
+
+    if (clearRoles.error) {
+      return apiError("USER_ROLE_CLEAR_FAILED", clearRoles.error.message, 400);
+    }
+
+    const assignRole = await supabaseAdmin.from("tenant_user_roles").insert({
+      membership_id: membershipResult.data.id,
+      tenant_role_id: tenantRoleResult.data.id,
+      assigned_by_user_id: auth.context.user.id,
+    });
+
+    if (assignRole.error) {
+      return apiError("USER_ROLE_ASSIGN_FAILED", assignRole.error.message, 400);
+    }
+  }
+
+  if (fullName) {
+    await supabaseAdmin
+      .from("producers")
+      .update({ full_name: fullName })
+      .eq("tenant_id", auth.context.user.tenantId)
+      .eq("user_id", userId);
+
+    await supabaseAdmin
+      .from("mvz_profiles")
+      .update({
+        full_name: fullName,
+        ...(licenseNumber ? { license_number: licenseNumber } : {}),
+      })
+      .eq("tenant_id", auth.context.user.tenantId)
+      .eq("user_id", userId);
+  } else if (nextRole && isMvzViewRole(nextRole) && licenseNumber) {
+    await supabaseAdmin
+      .from("mvz_profiles")
+      .update({ license_number: licenseNumber })
+      .eq("tenant_id", auth.context.user.tenantId)
+      .eq("user_id", userId);
+  }
+
+  await logAuditEvent({
+    request,
+    user: auth.context.user,
+    action: "update",
+    resource: "admin.users",
+    resourceId: userId,
+    payload: {
+      fullName: fullName ?? null,
+      role: nextRole ?? null,
+    },
+  });
+
+  const users = await fetchUsers(auth.context.user.tenantId);
+  const updatedUser = users.find((user) => user.id === userId);
+
+  return apiSuccess({
+    user: updatedUser ?? null,
+  });
+}
+
+export async function DELETE(request: Request) {
+  const auth = await requireAuthorized(request, {
+    roles: ["tenant_admin"],
+    permissions: ["admin.users.delete"],
+    resource: "admin.users",
+  });
+  if (!auth.ok) {
+    return auth.response;
+  }
+
+  let body: DeleteAdminUserBody;
+  try {
+    body = (await request.json()) as DeleteAdminUserBody;
+  } catch {
+    return apiError("INVALID_BODY", "El cuerpo de la solicitud no es JSON valido.");
+  }
+
+  const userId = body.id?.trim();
+  if (!userId) {
+    return apiError("INVALID_PAYLOAD", "Debe enviar id de usuario.");
+  }
+
+  const supabaseAdmin = getSupabaseAdminClient();
+  const membershipResult = await supabaseAdmin
+    .from("tenant_memberships")
+    .select("id")
+    .eq("tenant_id", auth.context.user.tenantId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (membershipResult.error || !membershipResult.data) {
+    return apiError("USER_NOT_FOUND", "No existe usuario en este tenant con ese id.", 404);
+  }
+
+  const profileUpdateResult = await supabaseAdmin
+    .from("profiles")
+    .update({ status: "inactive" })
+    .eq("id", userId);
+
+  if (profileUpdateResult.error) {
+    return apiError("USER_SOFT_DELETE_FAILED", profileUpdateResult.error.message, 400);
+  }
+
+  const membershipUpdateResult = await supabaseAdmin
+    .from("tenant_memberships")
+    .update({ status: "suspended" })
+    .eq("id", membershipResult.data.id);
+
+  if (membershipUpdateResult.error) {
+    return apiError("MEMBERSHIP_SUSPEND_FAILED", membershipUpdateResult.error.message, 400);
+  }
+
+  await supabaseAdmin
+    .from("producers")
+    .update({ status: "inactive" })
+    .eq("tenant_id", auth.context.user.tenantId)
+    .eq("user_id", userId);
+
+  await supabaseAdmin
+    .from("mvz_profiles")
+    .update({ status: "inactive" })
+    .eq("tenant_id", auth.context.user.tenantId)
+    .eq("user_id", userId);
+
+  await logAuditEvent({
+    request,
+    user: auth.context.user,
+    action: "delete",
+    resource: "admin.users",
+    resourceId: userId,
+    payload: {
+      hardDelete: body.hardDelete ?? false,
+      strategy: "soft-delete",
+    },
+  });
+
+  return apiSuccess({ id: userId, status: "suspended" });
 }

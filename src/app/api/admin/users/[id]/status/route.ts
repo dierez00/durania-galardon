@@ -1,6 +1,8 @@
-import { resolveAuthenticatedRequestUser } from "@/server/auth";
+import { requireAuthorized } from "@/server/authz";
 import { getSupabaseAdminClient } from "@/server/auth/supabase";
+import { isAppRole, isMvzViewRole } from "@/shared/lib/auth";
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
+import { logAuditEvent } from "@/server/audit";
 
 interface UpdateStatusBody {
   status?: "active" | "inactive";
@@ -8,17 +10,41 @@ interface UpdateStatusBody {
 
 const VALID_STATUS = new Set(["active", "inactive"]);
 
+type TenantRoleRow = {
+  tenant_role:
+    | {
+        key: string;
+      }
+    | {
+        key: string;
+      }[]
+    | null;
+};
+
+function extractRoleKey(data: TenantRoleRow[] | null): string | null {
+  const row = (data ?? [])[0];
+  if (!row?.tenant_role) {
+    return null;
+  }
+
+  const value = Array.isArray(row.tenant_role)
+    ? row.tenant_role[0]?.key
+    : row.tenant_role.key;
+
+  return value ?? null;
+}
+
 export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await resolveAuthenticatedRequestUser(request);
-  if ("error" in authResult) {
-    return apiError(authResult.error.code, authResult.error.message, authResult.error.status);
-  }
-
-  if (authResult.user.role !== "admin") {
-    return apiError("FORBIDDEN", "Solo administradores pueden actualizar estado de usuarios.", 403);
+  const auth = await requireAuthorized(request, {
+    roles: ["tenant_admin"],
+    permissions: ["admin.users.update"],
+    resource: "admin.users.status",
+  });
+  if (!auth.ok) {
+    return auth.response;
   }
 
   const { id } = await context.params;
@@ -39,38 +65,27 @@ export async function PATCH(
   }
 
   const supabaseAdmin = getSupabaseAdminClient();
-  const profileResult = await supabaseAdmin
-    .from("profiles")
-    .select("id,user_roles(role:roles(key))")
-    .eq("id", id)
-    .single();
+  const membershipResult = await supabaseAdmin
+    .from("tenant_memberships")
+    .select("id")
+    .eq("tenant_id", auth.context.user.tenantId)
+    .eq("user_id", id)
+    .maybeSingle();
 
-  if (profileResult.error || !profileResult.data) {
-    return apiError("USER_NOT_FOUND", "No existe usuario con ese id.", 404);
+  if (membershipResult.error || !membershipResult.data) {
+    return apiError("USER_NOT_FOUND", "No existe usuario en este tenant con ese id.", 404);
   }
 
-  const roleKey = ((profileResult.data.user_roles ?? []) as Array<{
-    role:
-      | Array<{
-          key: string;
-        }>
-      | {
-          key: string;
-        }
-      | null;
-  }>)
-    .flatMap((item) => {
-      if (!item.role) {
-        return [];
-      }
+  const roleResult = await supabaseAdmin
+    .from("tenant_user_roles")
+    .select("tenant_role:tenant_roles(key)")
+    .eq("membership_id", membershipResult.data.id);
 
-      if (Array.isArray(item.role)) {
-        return item.role.map((role) => role.key);
-      }
+  if (roleResult.error) {
+    return apiError("ROLE_QUERY_FAILED", roleResult.error.message, 500);
+  }
 
-      return [item.role.key];
-    })
-    [0] ?? null;
+  const roleKey = extractRoleKey((roleResult.data ?? []) as TenantRoleRow[]);
 
   const updateProfileResult = await supabaseAdmin
     .from("profiles")
@@ -80,10 +95,20 @@ export async function PATCH(
     return apiError("PROFILE_STATUS_UPDATE_FAILED", updateProfileResult.error.message, 400);
   }
 
+  const updateMembershipResult = await supabaseAdmin
+    .from("tenant_memberships")
+    .update({ status: status === "active" ? "active" : "inactive" })
+    .eq("id", membershipResult.data.id);
+
+  if (updateMembershipResult.error) {
+    return apiError("MEMBERSHIP_STATUS_UPDATE_FAILED", updateMembershipResult.error.message, 400);
+  }
+
   if (roleKey === "producer") {
     const updateProducer = await supabaseAdmin
       .from("producers")
       .update({ status })
+      .eq("tenant_id", auth.context.user.tenantId)
       .eq("user_id", id);
 
     if (updateProducer.error) {
@@ -91,16 +116,26 @@ export async function PATCH(
     }
   }
 
-  if (roleKey === "mvz") {
+  if (roleKey && isAppRole(roleKey) && isMvzViewRole(roleKey)) {
     const updateMvz = await supabaseAdmin
       .from("mvz_profiles")
       .update({ status })
+      .eq("tenant_id", auth.context.user.tenantId)
       .eq("user_id", id);
 
     if (updateMvz.error) {
       return apiError("MVZ_STATUS_UPDATE_FAILED", updateMvz.error.message, 400);
     }
   }
+
+  await logAuditEvent({
+    request,
+    user: auth.context.user,
+    action: "status_change",
+    resource: "admin.users",
+    resourceId: id,
+    payload: { status, roleKey: roleKey ?? null },
+  });
 
   return apiSuccess({
     id,

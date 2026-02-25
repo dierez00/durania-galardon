@@ -1,6 +1,7 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import {
   resolveRedirectByRole,
+  resolveTenantContextFromRequest,
   resolveSingleRoleForUser,
 } from "@/server/auth";
 import { createSupabaseAnonServerClient } from "@/server/auth/supabase";
@@ -38,7 +39,12 @@ export async function POST(request: Request) {
     return apiError("INVALID_CREDENTIALS", "Correo o contrasena invalidos.", 401);
   }
 
-  const roleResult = await resolveSingleRoleForUser(data.user.id);
+  const tenantResult = await resolveTenantContextFromRequest(request);
+  if ("error" in tenantResult) {
+    return apiError(tenantResult.error.code, tenantResult.error.message, tenantResult.error.status);
+  }
+
+  const roleResult = await resolveSingleRoleForUser(data.user.id, tenantResult.tenant.tenantId);
   if (!roleResult.role || roleResult.error) {
     return apiError(
       roleResult.error?.code ?? "ROLE_NOT_FOUND",
@@ -48,8 +54,10 @@ export async function POST(request: Request) {
   }
 
   return apiSuccess({
-    role: roleResult.role,
+    roleKey: roleResult.role,
     redirectTo: resolveRedirectByRole(roleResult.role),
+    tenantId: tenantResult.tenant.tenantId,
+    tenantSlug: tenantResult.tenant.tenantSlug,
     session: {
       accessToken: data.session.access_token,
       refreshToken: data.session.refresh_token,

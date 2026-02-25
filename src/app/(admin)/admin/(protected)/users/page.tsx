@@ -22,15 +22,17 @@ import {
   SelectValue,
 } from "@/shared/ui/select";
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase-browser";
+import type { AppRole } from "@/shared/lib/auth";
 
-type RoleKey = "admin" | "mvz" | "producer";
 type UserStatus = "active" | "inactive" | "blocked";
+type MembershipStatus = "active" | "inactive" | "suspended";
 
 interface AdminUser {
   id: string;
   email: string;
   status: UserStatus;
-  role: RoleKey | null;
+  membershipStatus: MembershipStatus;
+  role: AppRole | null;
   roleLabel: string;
   fullName: string;
   licenseNumber: string | null;
@@ -65,9 +67,11 @@ export default function AdminUsersPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [role, setRole] = useState<RoleKey>("producer");
+  const [role, setRole] = useState<AppRole>("producer");
   const [licenseNumber, setLicenseNumber] = useState("");
   const [creating, setCreating] = useState(false);
+  const [changingRoleFor, setChangingRoleFor] = useState<string | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   const getAccessToken = useCallback(async () => {
     const supabase = getSupabaseBrowserClient();
@@ -132,7 +136,10 @@ export default function AdminUsersPage() {
           password,
           fullName,
           role,
-          licenseNumber: role === "mvz" ? licenseNumber : undefined,
+          licenseNumber:
+            role === "mvz_government" || role === "mvz_internal"
+              ? licenseNumber
+              : undefined,
         }),
       });
 
@@ -185,12 +192,89 @@ export default function AdminUsersPage() {
     }
   };
 
+  const changeRole = async (user: AdminUser, nextRole: AppRole) => {
+    if (user.role === nextRole) {
+      return;
+    }
+
+    setChangingRoleFor(user.id);
+    try {
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        setErrorMessage("No existe sesion activa.");
+        return;
+      }
+
+      const response = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          id: user.id,
+          role: nextRole,
+          fullName: user.fullName,
+          ...(nextRole === "mvz_government" || nextRole === "mvz_internal"
+            ? { licenseNumber: user.licenseNumber ?? "MVZ-SIN-LIC" }
+            : {}),
+        }),
+      });
+
+      const body = (await response.json()) as CreateUserApiResponse;
+      if (!response.ok || !body.ok) {
+        setErrorMessage(body.error?.message ?? "No fue posible cambiar el rol.");
+        return;
+      }
+
+      await loadUsers();
+    } catch {
+      setErrorMessage("Error de red al cambiar rol.");
+    } finally {
+      setChangingRoleFor(null);
+    }
+  };
+
+  const removeUser = async (user: AdminUser) => {
+    setDeletingUserId(user.id);
+    try {
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        setErrorMessage("No existe sesion activa.");
+        return;
+      }
+
+      const response = await fetch("/api/admin/users", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          id: user.id,
+        }),
+      });
+
+      const body = (await response.json()) as CreateUserApiResponse;
+      if (!response.ok || !body.ok) {
+        setErrorMessage(body.error?.message ?? "No fue posible eliminar/suspender usuario.");
+        return;
+      }
+
+      await loadUsers();
+    } catch {
+      setErrorMessage("Error de red al eliminar usuario.");
+    } finally {
+      setDeletingUserId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Gestion de usuarios</h1>
         <p className="text-sm text-muted-foreground">
-          Alta de usuarios (admin, MVZ, productor) y gestion basica de estado.
+          Alta de usuarios por tenant (tenant_admin, producer, employee, mvz_*).
         </p>
       </div>
 
@@ -231,20 +315,22 @@ export default function AdminUsersPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="role">Rol</Label>
-              <Select value={role} onValueChange={(value) => setRole(value as RoleKey)}>
+              <Select value={role} onValueChange={(value) => setRole(value as AppRole)}>
                 <SelectTrigger id="role">
                   <SelectValue placeholder="Selecciona rol" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">Administrador</SelectItem>
-                  <SelectItem value="mvz">MVZ</SelectItem>
+                  <SelectItem value="tenant_admin">Tenant admin</SelectItem>
                   <SelectItem value="producer">Productor</SelectItem>
+                  <SelectItem value="employee">Empleado</SelectItem>
+                  <SelectItem value="mvz_government">MVZ gobierno</SelectItem>
+                  <SelectItem value="mvz_internal">MVZ interno</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          {role === "mvz" ? (
+          {role === "mvz_government" || role === "mvz_internal" ? (
             <div className="space-y-2">
               <Label htmlFor="licenseNumber">Cedula / licencia MVZ</Label>
               <Input
@@ -258,7 +344,13 @@ export default function AdminUsersPage() {
 
           <Button
             onClick={createUser}
-            disabled={creating || !email || !password || !fullName || (role === "mvz" && !licenseNumber)}
+            disabled={
+              creating ||
+              !email ||
+              !password ||
+              !fullName ||
+              ((role === "mvz_government" || role === "mvz_internal") && !licenseNumber)
+            }
           >
             {creating ? "Creando..." : "Crear usuario"}
           </Button>
@@ -286,6 +378,7 @@ export default function AdminUsersPage() {
                   <TableHead>Correo</TableHead>
                   <TableHead>Rol</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead>Membresia</TableHead>
                   <TableHead>Creado</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
@@ -293,7 +386,7 @@ export default function AdminUsersPage() {
               <TableBody>
                 {users.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center text-sm text-muted-foreground">
                       No hay usuarios registrados.
                     </TableCell>
                   </TableRow>
@@ -302,7 +395,24 @@ export default function AdminUsersPage() {
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">{user.fullName}</TableCell>
                       <TableCell>{user.email}</TableCell>
-                      <TableCell>{user.roleLabel}</TableCell>
+                      <TableCell>
+                        <Select
+                          value={user.role ?? "producer"}
+                          onValueChange={(value) => void changeRole(user, value as AppRole)}
+                          disabled={changingRoleFor === user.id}
+                        >
+                          <SelectTrigger className="h-8 w-[170px]">
+                            <SelectValue placeholder="Rol" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="tenant_admin">Tenant admin</SelectItem>
+                            <SelectItem value="producer">Productor</SelectItem>
+                            <SelectItem value="employee">Empleado</SelectItem>
+                            <SelectItem value="mvz_government">MVZ gobierno</SelectItem>
+                            <SelectItem value="mvz_internal">MVZ interno</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
                       <TableCell>
                         <Badge
                           className={
@@ -314,11 +424,32 @@ export default function AdminUsersPage() {
                           {user.status}
                         </Badge>
                       </TableCell>
+                      <TableCell>
+                        <Badge
+                          className={
+                            user.membershipStatus === "active"
+                              ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-100"
+                          }
+                        >
+                          {user.membershipStatus}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{new Date(user.createdAt).toLocaleDateString("es-MX")}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="outline" size="sm" onClick={() => toggleStatus(user)}>
-                          {user.status === "active" ? "Inactivar" : "Activar"}
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="outline" size="sm" onClick={() => toggleStatus(user)}>
+                            {user.status === "active" ? "Inactivar" : "Activar"}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={deletingUserId === user.id}
+                            onClick={() => void removeUser(user)}
+                          >
+                            Eliminar
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

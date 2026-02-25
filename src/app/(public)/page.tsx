@@ -94,6 +94,13 @@ export default function LandingPage() {
   const [serviceId, setServiceId] = useState<string>("");
   const [dateValue, setDateValue] = useState<string>("");
   const [timeValue, setTimeValue] = useState<string>("");
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [requestStatus, setRequestStatus] = useState<"idle" | "saved" | "error">("idle");
+  const [requestMessage, setRequestMessage] = useState("");
   const [folio] = useState(() => `DUR-${Date.now().toString().slice(-6)}`);
 
   const dateOptions = useMemo(() => getNextDates(10), []);
@@ -101,7 +108,8 @@ export default function LandingPage() {
   const selectedDate = dateOptions.find((item) => item.toISOString().slice(0, 10) === dateValue) ?? null;
   const canGoStep2 = Boolean(selectedService);
   const canGoStep3 = Boolean(selectedDate && timeValue);
-  const canDownload = Boolean(selectedService && selectedDate && timeValue);
+  const canConfirm = Boolean(selectedService && selectedDate && timeValue && fullName);
+  const canDownload = Boolean(selectedService && selectedDate && timeValue && requestStatus === "saved");
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-lime-50">
@@ -117,7 +125,7 @@ export default function LandingPage() {
               </h1>
               <p className="max-w-2xl text-sm text-emerald-800/80 md:text-base">
                 Flujo demostrativo de agendacion publica para productores y MVZ.
-                Este MVP usa datos hardcodeados y no guarda informacion en base de datos.
+                Este MVP usa disponibilidad hardcodeada y registra la solicitud en CRM de citas.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -259,9 +267,117 @@ export default function LandingPage() {
                     <p><strong>Hora:</strong> {timeValue || "-"}</p>
                   </div>
 
+                  <div className="grid gap-3 rounded-xl border p-4 text-sm md:grid-cols-2">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Nombre completo</label>
+                      <input
+                        value={fullName}
+                        onChange={(event) => setFullName(event.target.value)}
+                        className="w-full rounded-md border px-3 py-2"
+                        placeholder="Nombre del solicitante"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Telefono</label>
+                      <input
+                        value={phone}
+                        onChange={(event) => setPhone(event.target.value)}
+                        className="w-full rounded-md border px-3 py-2"
+                        placeholder="10 digitos"
+                      />
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <label className="text-xs font-medium text-muted-foreground">Correo</label>
+                      <input
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                        className="w-full rounded-md border px-3 py-2"
+                        placeholder="usuario@correo.com"
+                      />
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <label className="text-xs font-medium text-muted-foreground">Notas</label>
+                      <textarea
+                        value={notes}
+                        onChange={(event) => setNotes(event.target.value)}
+                        className="w-full rounded-md border px-3 py-2"
+                        rows={3}
+                        placeholder="Detalle adicional para la solicitud"
+                      />
+                    </div>
+                  </div>
+
+                  {requestMessage ? (
+                    <p
+                      className={`rounded-md p-2 text-sm ${
+                        requestStatus === "saved"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {requestMessage}
+                    </p>
+                  ) : null}
+
                   <div className="flex flex-wrap gap-2">
                     <Button variant="outline" onClick={() => setStep(2)}>
                       Editar
+                    </Button>
+                    <Button
+                      onClick={async () => {
+                        if (!selectedService || !selectedDate || !timeValue || !fullName) {
+                          return;
+                        }
+
+                        setSubmitting(true);
+                        setRequestStatus("idle");
+                        setRequestMessage("");
+
+                        try {
+                          const response = await fetch("/api/public/appointments", {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                              fullName,
+                              phone,
+                              email,
+                              requestedService: selectedService.name,
+                              requestedDate: selectedDate.toISOString().slice(0, 10),
+                              requestedTime: timeValue,
+                              notes,
+                            }),
+                          });
+
+                          const body = (await response.json()) as {
+                            ok: boolean;
+                            data?: { appointment: { id: string } };
+                            error?: { message: string };
+                          };
+
+                          if (!response.ok || !body.ok) {
+                            setRequestStatus("error");
+                            setRequestMessage(
+                              body.error?.message ?? "No fue posible registrar la cita."
+                            );
+                            return;
+                          }
+
+                          setRequestStatus("saved");
+                          setRequestMessage(
+                            `Solicitud registrada. Folio CRM: ${body.data?.appointment.id ?? folio}`
+                          );
+                        } catch {
+                          setRequestStatus("error");
+                          setRequestMessage("Error de red al registrar la cita.");
+                        } finally {
+                          setSubmitting(false);
+                        }
+                      }}
+                      disabled={!canConfirm || submitting}
+                    >
+                      {submitting ? "Registrando..." : "Confirmar cita"}
                     </Button>
                     <Button
                       onClick={() => {
@@ -314,8 +430,8 @@ export default function LandingPage() {
               <Separator />
 
               <p className="text-muted-foreground">
-                Esta seccion es publica y demostrativa. En una siguiente fase se conectara a persistencia real y
-                disponibilidad por MVZ/UPP.
+                Esta seccion es publica y demostrativa. La solicitud se registra en CRM y la disponibilidad por
+                MVZ/UPP sigue hardcodeada en esta fase.
               </p>
             </CardContent>
           </Card>

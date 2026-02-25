@@ -1,17 +1,53 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "@/shared/ui/layout/Sidebar";
 import Topbar from "@/shared/ui/layout/Topbar";
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase-browser";
 import { resolveClientRole } from "@/shared/lib/auth-client";
+import {
+  ROLE_DEFAULT_PERMISSIONS,
+  isMvzViewRole,
+  isProducerViewRole,
+  isTenantAdminRole,
+  type PermissionKey,
+} from "@/shared/lib/auth";
+
+const producerRoutePermissions: Array<{ prefix: string; permission: PermissionKey }> = [
+  { prefix: "/producer/dashboard", permission: "producer.dashboard.read" },
+  { prefix: "/producer/ranchos", permission: "producer.upp.read" },
+  { prefix: "/producer/bovinos", permission: "producer.bovinos.read" },
+  { prefix: "/producer/pruebas", permission: "producer.bovinos.read" },
+  { prefix: "/producer/movilizacion", permission: "producer.movements.read" },
+  { prefix: "/producer/exportaciones", permission: "producer.exports.read" },
+  { prefix: "/producer/notificaciones", permission: "producer.notifications.read" },
+  { prefix: "/producer/perfil", permission: "producer.profile.read" },
+];
+
+const mvzRoutePermissions: Array<{ prefix: string; permission: PermissionKey }> = [
+  { prefix: "/mvz/dashboard", permission: "mvz.dashboard.read" },
+  { prefix: "/mvz/asignaciones", permission: "mvz.assignments.read" },
+  { prefix: "/mvz/bovinos", permission: "mvz.bovinos.read" },
+  { prefix: "/mvz/pruebas", permission: "mvz.tests.read" },
+  { prefix: "/mvz/cuarentenas", permission: "mvz.quarantines.read" },
+  { prefix: "/mvz/exportaciones", permission: "mvz.exports.read" },
+  { prefix: "/mvz/notificaciones", permission: "mvz.notifications.read" },
+  { prefix: "/mvz/perfil", permission: "mvz.dashboard.read" },
+];
+
+function resolvePermissionForPath(pathname: string, rolePath: "producer" | "mvz"): PermissionKey | null {
+  const source = rolePath === "producer" ? producerRoutePermissions : mvzRoutePermissions;
+  const match = source.find((entry) => pathname === entry.prefix || pathname.startsWith(`${entry.prefix}/`));
+  return match?.permission ?? null;
+}
 
 export default function TenantLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
   const router = useRouter();
   const [ready, setReady] = useState(false);
 
@@ -32,8 +68,47 @@ export default function TenantLayout({
         return;
       }
 
-      if (roleResult.role === "admin") {
+      if (isTenantAdminRole(roleResult.role)) {
         router.replace("/admin/panel");
+        return;
+      }
+
+      if (isProducerViewRole(roleResult.role) && !pathname.startsWith("/producer")) {
+        router.replace("/producer/dashboard");
+        return;
+      }
+
+      if (isMvzViewRole(roleResult.role) && !pathname.startsWith("/mvz")) {
+        router.replace("/mvz/dashboard");
+        return;
+      }
+
+      const permissionsFallback = ROLE_DEFAULT_PERMISSIONS[roleResult.role] ?? [];
+      const rolePath = isProducerViewRole(roleResult.role) ? "producer" : "mvz";
+      const requiredPermission = resolvePermissionForPath(pathname, rolePath);
+
+      if (!requiredPermission) {
+        router.replace(isProducerViewRole(roleResult.role) ? "/producer/dashboard" : "/mvz/dashboard");
+        return;
+      }
+
+      let permissions = permissionsFallback;
+      try {
+        const authMeResponse = await fetch("/api/auth/me", {
+          headers: {
+            Authorization: `Bearer ${data.session.access_token}`,
+          },
+        });
+        const authMeBody = await authMeResponse.json();
+        if (authMeResponse.ok && authMeBody.ok && Array.isArray(authMeBody.data?.permissions)) {
+          permissions = authMeBody.data.permissions as PermissionKey[];
+        }
+      } catch {
+        permissions = permissionsFallback;
+      }
+
+      if (!permissions.includes(requiredPermission)) {
+        router.replace(isProducerViewRole(roleResult.role) ? "/producer/dashboard" : "/mvz/dashboard");
         return;
       }
 
@@ -41,7 +116,7 @@ export default function TenantLayout({
     };
 
     void run();
-  }, [router]);
+  }, [pathname, router]);
 
   if (!ready) {
     return (

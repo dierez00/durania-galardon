@@ -6,11 +6,21 @@ import { useEffect, useState } from "react";
 import { Button } from "@/shared/ui/button";
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase-browser";
 import { resolveClientRole } from "@/shared/lib/auth-client";
+import { redirectPathForRole } from "@/shared/lib/auth";
 import { cn } from "@/shared/lib/utils";
 
 const navigation = [
   { href: "/admin/panel", label: "Panel" },
   { href: "/admin/users", label: "Usuarios" },
+  { href: "/admin/producers", label: "Productores" },
+  { href: "/admin/mvz", label: "MVZ" },
+  { href: "/admin/upps", label: "UPP" },
+  { href: "/admin/quarantines", label: "Cuarentenas" },
+  { href: "/admin/exports", label: "Exportaciones" },
+  { href: "/admin/normative", label: "Normativa" },
+  { href: "/admin/audit", label: "Auditoria" },
+  { href: "/admin/reports", label: "Reportes" },
+  { href: "/admin/settings", label: "IAM" },
 ];
 
 export default function AdminProtectedLayout({
@@ -39,8 +49,8 @@ export default function AdminProtectedLayout({
         return;
       }
 
-      if (roleResult.role !== "admin") {
-        router.replace("/dashboard");
+      if (roleResult.role !== "tenant_admin") {
+        router.replace(redirectPathForRole(roleResult.role));
         return;
       }
 

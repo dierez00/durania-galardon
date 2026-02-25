@@ -37,8 +37,8 @@ export class SubdomainTenantResolver implements ITenantResolver {
   resolve(request: Request): TenantContext | null {
     const forwardedHost = request.headers.get("x-forwarded-host");
     const host = request.headers.get("host");
-    const tenantHeader = request.headers.get("x-tenant-slug");
-    const fallbackTenant = process.env.DEFAULT_TENANT_SLUG ?? null;
+    const tenantHeader = request.headers.get("x-tenant-slug")?.trim().toLowerCase();
+    const fallbackTenant = (process.env.DEFAULT_TENANT_SLUG ?? "default-tenant").trim().toLowerCase();
 
     const hostname = stripPort(forwardedHost || host || "");
     const subdomainSlug = extractSubdomain(hostname);
@@ -56,7 +56,7 @@ export class SubdomainTenantResolver implements ITenantResolver {
       };
     }
 
-    if (hostname && isLocalRequest(hostname) && fallbackTenant && TENANT_SLUG_REGEX.test(fallbackTenant)) {
+    if (hostname && isLocalRequest(hostname) && TENANT_SLUG_REGEX.test(fallbackTenant)) {
       return {
         tenantSlug: fallbackTenant,
         source: "local",
