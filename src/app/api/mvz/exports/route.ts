@@ -32,7 +32,6 @@ export async function GET(request: Request) {
     .select(
       "id,upp_id,status,compliance_60_rule,tb_br_validated,blue_tag_assigned,blocked_reason,created_at,updated_at"
     )
-    .eq("tenant_id", auth.context.user.tenantId)
     .in("upp_id", accessibleUppIds)
     .order("created_at", { ascending: false });
 
@@ -69,7 +68,6 @@ export async function PATCH(request: Request) {
   const lookup = await supabaseAdmin
     .from("export_requests")
     .select("id,upp_id")
-    .eq("tenant_id", auth.context.user.tenantId)
     .eq("id", id)
     .maybeSingle();
 
@@ -103,7 +101,6 @@ export async function PATCH(request: Request) {
   const updateResult = await supabaseAdmin
     .from("export_requests")
     .update(updatePayload)
-    .eq("tenant_id", auth.context.user.tenantId)
     .eq("id", id)
     .select(
       "id,upp_id,status,compliance_60_rule,tb_br_validated,blue_tag_assigned,blocked_reason,created_at,updated_at"

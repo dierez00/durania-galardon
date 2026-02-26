@@ -44,7 +44,6 @@ export async function GET(request: Request) {
   const testsResult = await supabaseAdmin
     .from("field_tests")
     .select("id,animal_id,upp_id,mvz_profile_id,test_type_id,sample_date,result,valid_until,captured_lat,captured_lng,created_at")
-    .eq("tenant_id", auth.context.user.tenantId)
     .in("upp_id", accessibleUppIds)
     .order("created_at", { ascending: false });
 
@@ -103,10 +102,20 @@ export async function POST(request: Request) {
     return apiError("TEST_TYPE_NOT_FOUND", "No existe test_type para el key enviado.", 404);
   }
 
+  const uppResult = await supabaseAdmin
+    .from("upps")
+    .select("tenant_id")
+    .eq("id", uppId)
+    .maybeSingle();
+
+  if (uppResult.error || !uppResult.data) {
+    return apiError("UPP_NOT_FOUND", "No existe UPP para registrar la prueba.", 404);
+  }
+
   const insertResult = await supabaseAdmin
     .from("field_tests")
     .insert({
-      tenant_id: auth.context.user.tenantId,
+      tenant_id: uppResult.data.tenant_id,
       animal_id: animalId,
       upp_id: uppId,
       mvz_profile_id: mvzProfileId,
@@ -132,7 +141,6 @@ export async function POST(request: Request) {
     await supabaseAdmin
       .from("animals")
       .update({ status: "blocked" })
-      .eq("tenant_id", auth.context.user.tenantId)
       .eq("id", animalId);
   }
 

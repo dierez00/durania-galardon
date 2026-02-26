@@ -1,25 +1,41 @@
-# API routes
+# API endpoints
 
-Use `/api/<module>` for handlers. Keep handlers thin and delegate to domain/application services.
+## Auth/Tenant
 
-Current auth/admin routes:
-
+- `GET /api/auth/me`
 - `POST /api/auth/login`
 - `POST /api/auth/logout`
-- `GET /api/admin/users`
-- `POST /api/admin/users`
-- `PATCH /api/admin/users/:id/status`
+- `GET /api/tenant/resolve`
 
-Tenant IAM and CRM routes:
+## Admin
 
-- `GET /api/tenant/iam/memberships`
-- `POST /api/tenant/iam/memberships`
-- `GET /api/tenant/iam/roles`
-- `POST /api/tenant/iam/roles`
-- `PATCH /api/tenant/iam/roles`
-- `PUT /api/tenant/iam/roles/:id/permissions`
-- `POST /api/tenant/upp-access`
-- `POST /api/tenant/mvz-assignments`
-- `GET /api/tenant/appointments`
-- `PATCH /api/tenant/appointments`
+- `GET /api/admin/dashboard`
+- `GET|POST|PATCH /api/admin/producers`
+- `GET|POST|PATCH /api/admin/mvz`
+- `GET|POST|PATCH /api/admin/quarantines`
+- `GET|POST|PATCH /api/admin/exports`
+- `GET|POST|PATCH /api/admin/normative`
+- `GET /api/admin/audit`
+- `GET|PATCH /api/admin/appointments`
+
+## Producer
+
+- `GET /api/producer/dashboard`
+- `GET /api/producer/upp`
+- `GET|POST /api/producer/bovinos`
+- `GET|POST /api/producer/movements`
+- `GET|POST /api/producer/exports`
+- `GET|POST|PATCH /api/producer/documents`
+- `GET|POST|PATCH /api/producer/employees`
+
+## MVZ
+
+- `GET /api/mvz/dashboard`
+- `GET /api/mvz/assignments`
+- `GET|POST /api/mvz/tests`
+- `POST /api/mvz/tests/sync`
+- `GET|PATCH /api/mvz/exports`
+
+## Public
+
 - `POST /api/public/appointments`

@@ -1,6 +1,6 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { getSupabaseAdminClient } from "@/server/auth/supabase";
+import { getSupabaseProvisioningClient } from "@/server/auth/supabase";
 import { logAuditEvent } from "@/server/audit";
 
 interface MvzBody {
@@ -21,61 +21,25 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const tenantId = auth.context.user.tenantId;
+  const supabaseAdmin = getSupabaseProvisioningClient();
+  const rowsResult = await supabaseAdmin
+    .from("v_mvz_admin")
+    .select("mvz_profile_id,full_name,license_number,mvz_status,active_assignments,tests_last_year,registered_at")
+    .order("registered_at", { ascending: false });
 
-  const mvzResult = await supabaseAdmin
-    .from("mvz_profiles")
-    .select("id,user_id,full_name,license_number,status,created_at")
-    .eq("tenant_id", tenantId)
-    .order("created_at", { ascending: false });
-
-  if (mvzResult.error) {
-    return apiError("ADMIN_MVZ_QUERY_FAILED", mvzResult.error.message, 500);
-  }
-
-  const mvzRows = mvzResult.data ?? [];
-  const mvzIds = mvzRows.map((row) => row.id);
-
-  let assignmentsByMvz = new Map<string, number>();
-  let testsByMvz = new Map<string, number>();
-
-  if (mvzIds.length > 0) {
-    const [assignmentsResult, testsResult] = await Promise.all([
-      supabaseAdmin
-        .from("mvz_upp_assignments")
-        .select("mvz_profile_id,status")
-        .eq("tenant_id", tenantId)
-        .in("mvz_profile_id", mvzIds),
-      supabaseAdmin
-        .from("field_tests")
-        .select("mvz_profile_id")
-        .eq("tenant_id", tenantId)
-        .in("mvz_profile_id", mvzIds),
-    ]);
-
-    if (!assignmentsResult.error) {
-      assignmentsByMvz = (assignmentsResult.data ?? []).reduce((acc, row) => {
-        if (row.status === "active") {
-          acc.set(row.mvz_profile_id, (acc.get(row.mvz_profile_id) ?? 0) + 1);
-        }
-        return acc;
-      }, new Map<string, number>());
-    }
-
-    if (!testsResult.error) {
-      testsByMvz = (testsResult.data ?? []).reduce((acc, row) => {
-        acc.set(row.mvz_profile_id, (acc.get(row.mvz_profile_id) ?? 0) + 1);
-        return acc;
-      }, new Map<string, number>());
-    }
+  if (rowsResult.error) {
+    return apiError("ADMIN_MVZ_QUERY_FAILED", rowsResult.error.message, 500);
   }
 
   return apiSuccess({
-    mvzProfiles: mvzRows.map((mvz) => ({
-      ...mvz,
-      assignedUpps: assignmentsByMvz.get(mvz.id) ?? 0,
-      registeredTests: testsByMvz.get(mvz.id) ?? 0,
+    mvzProfiles: (rowsResult.data ?? []).map((row) => ({
+      id: row.mvz_profile_id,
+      full_name: row.full_name,
+      license_number: row.license_number,
+      status: row.mvz_status,
+      assignedUpps: row.active_assignments ?? 0,
+      registeredTests: row.tests_last_year ?? 0,
+      created_at: row.registered_at,
     })),
   });
 }
@@ -105,17 +69,17 @@ export async function POST(request: Request) {
     return apiError("INVALID_PAYLOAD", "Debe enviar userId, fullName y licenseNumber.");
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
+  const supabaseAdmin = getSupabaseProvisioningClient();
   const createResult = await supabaseAdmin
     .from("mvz_profiles")
     .insert({
-      tenant_id: auth.context.user.tenantId,
+      owner_tenant_id: auth.context.user.tenantId,
       user_id: userId,
       full_name: fullName,
       license_number: licenseNumber,
       status: "active",
     })
-    .select("id,user_id,full_name,license_number,status,created_at")
+    .select("id,user_id,owner_tenant_id,full_name,license_number,status,created_at")
     .single();
 
   if (createResult.error || !createResult.data) {
@@ -167,18 +131,20 @@ export async function PATCH(request: Request) {
   if (body.fullName?.trim()) {
     updatePayload.full_name = body.fullName.trim();
   }
+  if (body.licenseNumber?.trim()) {
+    updatePayload.license_number = body.licenseNumber.trim();
+  }
 
   if (Object.keys(updatePayload).length === 0) {
     return apiError("INVALID_PAYLOAD", "Debe enviar status o fullName para actualizar.");
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
+  const supabaseAdmin = getSupabaseProvisioningClient();
   const updateResult = await supabaseAdmin
     .from("mvz_profiles")
     .update(updatePayload)
-    .eq("tenant_id", auth.context.user.tenantId)
     .eq("id", id)
-    .select("id,user_id,full_name,license_number,status,created_at")
+    .select("id,user_id,owner_tenant_id,full_name,license_number,status,created_at")
     .maybeSingle();
 
   if (updateResult.error) {
@@ -195,10 +161,7 @@ export async function PATCH(request: Request) {
     action: body.status ? "status_change" : "update",
     resource: "admin.mvz",
     resourceId: id,
-    payload: {
-      status: body.status ?? null,
-      fullName: body.fullName?.trim() ?? null,
-    },
+    payload: updatePayload,
   });
 
   return apiSuccess({ mvzProfile: updateResult.data });

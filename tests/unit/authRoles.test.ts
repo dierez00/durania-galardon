@@ -12,7 +12,7 @@ describe("shared auth role helpers", () => {
   });
 
   it("returns redirect route by role", () => {
-    expect(redirectPathForRole("tenant_admin")).toBe("/admin/panel");
+    expect(redirectPathForRole("tenant_admin")).toBe("/admin");
     expect(redirectPathForRole("mvz_government")).toBe("/mvz/dashboard");
     expect(redirectPathForRole("mvz_internal")).toBe("/mvz/dashboard");
     expect(redirectPathForRole("producer")).toBe("/producer/dashboard");
@@ -22,7 +22,7 @@ describe("shared auth role helpers", () => {
   it("validates permission keys", () => {
     expect(isPermissionKey("admin.dashboard.read")).toBe(true);
     expect(isPermissionKey("mvz.tests.sync")).toBe(true);
-    expect(isPermissionKey("producer.profile.write")).toBe(true);
+    expect(isPermissionKey("producer.documents.write")).toBe(true);
     expect(isPermissionKey("admin.superpower")).toBe(false);
   });
 });

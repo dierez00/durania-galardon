@@ -60,7 +60,6 @@ export async function POST(request: Request) {
     const existingSync = await supabaseAdmin
       .from("field_test_sync_events")
       .select("field_test_id")
-      .eq("tenant_id", auth.context.user.tenantId)
       .eq("mvz_user_id", auth.context.user.id)
       .eq("client_mutation_id", clientMutationId)
       .maybeSingle();
@@ -81,10 +80,23 @@ export async function POST(request: Request) {
       continue;
     }
 
+    const uppResult = await supabaseAdmin
+      .from("upps")
+      .select("tenant_id")
+      .eq("id", uppId)
+      .maybeSingle();
+
+    if (uppResult.error || !uppResult.data) {
+      skipped.push({ clientMutationId, reason: "UPP_NOT_FOUND" });
+      continue;
+    }
+
+    const targetTenantId = uppResult.data.tenant_id;
+
     const insertFieldTest = await supabaseAdmin
       .from("field_tests")
       .insert({
-        tenant_id: auth.context.user.tenantId,
+        tenant_id: targetTenantId,
         animal_id: animalId,
         upp_id: uppId,
         mvz_profile_id: mvzProfileId,
@@ -107,12 +119,11 @@ export async function POST(request: Request) {
       await supabaseAdmin
         .from("animals")
         .update({ status: "blocked" })
-        .eq("tenant_id", auth.context.user.tenantId)
         .eq("id", animalId);
     }
 
     const syncInsert = await supabaseAdmin.from("field_test_sync_events").insert({
-      tenant_id: auth.context.user.tenantId,
+      tenant_id: targetTenantId,
       mvz_user_id: auth.context.user.id,
       client_mutation_id: clientMutationId,
       field_test_id: insertFieldTest.data.id,

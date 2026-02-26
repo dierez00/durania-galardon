@@ -15,36 +15,37 @@ import {
 } from "@/shared/ui/table";
 import { getAccessToken } from "@/shared/lib/auth-session";
 
-interface BovinoRow {
+interface DocumentRow {
   id: string;
-  upp_id: string;
-  siniiga_tag: string;
-  sex: "M" | "F";
-  birth_date: string | null;
+  document_type_id: string;
+  file_storage_key: string;
   status: string;
+  is_current: boolean;
+  expiry_date: string | null;
+  uploaded_at: string;
 }
 
-export default function ProducerBovinosPage() {
-  const [rows, setRows] = useState<BovinoRow[]>([]);
+export default function ProducerDocumentosPage() {
+  const [rows, setRows] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
-  const [uppId, setUppId] = useState("");
-  const [siniigaTag, setSiniigaTag] = useState("");
-  const [sex, setSex] = useState<"M" | "F">("M");
-  const [birthDate, setBirthDate] = useState("");
+  const [documentTypeKey, setDocumentTypeKey] = useState("ine");
+  const [fileStorageKey, setFileStorageKey] = useState("");
+  const [fileHash, setFileHash] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
 
   const loadRows = useCallback(async () => {
     setLoading(true);
     setErrorMessage("");
-
     const accessToken = await getAccessToken();
+
     if (!accessToken) {
       setErrorMessage("No existe sesion activa.");
       setLoading(false);
       return;
     }
 
-    const response = await fetch("/api/producer/bovinos", {
+    const response = await fetch("/api/producer/documents", {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
@@ -52,12 +53,12 @@ export default function ProducerBovinosPage() {
 
     const body = await response.json();
     if (!response.ok || !body.ok) {
-      setErrorMessage(body.error?.message ?? "No fue posible cargar bovinos.");
+      setErrorMessage(body.error?.message ?? "No fue posible cargar documentos.");
       setLoading(false);
       return;
     }
 
-    setRows(body.data.bovinos ?? []);
+    setRows(body.data.documents ?? []);
     setLoading(false);
   }, []);
 
@@ -65,80 +66,75 @@ export default function ProducerBovinosPage() {
     void loadRows();
   }, [loadRows]);
 
-  const createBovino = async () => {
+  const createDocument = async () => {
     const accessToken = await getAccessToken();
     if (!accessToken) {
       setErrorMessage("No existe sesion activa.");
       return;
     }
 
-    const response = await fetch("/api/producer/bovinos", {
+    const response = await fetch("/api/producer/documents", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
-        uppId,
-        siniigaTag,
-        sex,
-        birthDate: birthDate || undefined,
+        documentTypeKey,
+        fileStorageKey,
+        fileHash,
+        expiryDate: expiryDate || undefined,
       }),
     });
 
     const body = await response.json();
     if (!response.ok || !body.ok) {
-      setErrorMessage(body.error?.message ?? "No fue posible registrar bovino.");
+      setErrorMessage(body.error?.message ?? "No fue posible registrar documento.");
       return;
     }
 
-    setUppId("");
-    setSiniigaTag("");
-    setBirthDate("");
+    setFileStorageKey("");
+    setFileHash("");
+    setExpiryDate("");
     await loadRows();
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Bovinos</h1>
-        <p className="text-sm text-muted-foreground">Registro de animales por UPP con estatus sanitario.</p>
+        <h1 className="text-2xl font-bold">Documentos</h1>
+        <p className="text-sm text-muted-foreground">Carga y seguimiento documental del productor.</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Registrar bovino</CardTitle>
+          <CardTitle>Subir documento</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-4">
           <div className="space-y-2">
-            <Label htmlFor="uppId">UPP ID</Label>
-            <Input id="uppId" value={uppId} onChange={(event) => setUppId(event.target.value)} />
+            <Label htmlFor="docType">Tipo (key)</Label>
+            <Input id="docType" value={documentTypeKey} onChange={(event) => setDocumentTypeKey(event.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="tag">Arete SINIIGA</Label>
-            <Input id="tag" value={siniigaTag} onChange={(event) => setSiniigaTag(event.target.value)} />
+            <Label htmlFor="storageKey">Storage key</Label>
+            <Input id="storageKey" value={fileStorageKey} onChange={(event) => setFileStorageKey(event.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="sex">Sexo (M/F)</Label>
+            <Label htmlFor="hash">Hash</Label>
+            <Input id="hash" value={fileHash} onChange={(event) => setFileHash(event.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="expiryDate">Vigencia</Label>
             <Input
-              id="sex"
-              value={sex}
-              maxLength={1}
-              onChange={(event) => setSex(event.target.value.toUpperCase() === "F" ? "F" : "M")}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="birthDate">Fecha nacimiento</Label>
-            <Input
-              id="birthDate"
+              id="expiryDate"
               type="date"
-              value={birthDate}
-              onChange={(event) => setBirthDate(event.target.value)}
+              value={expiryDate}
+              onChange={(event) => setExpiryDate(event.target.value)}
             />
           </div>
           <div>
-            <Button onClick={createBovino} disabled={!uppId.trim() || !siniigaTag.trim()}>
-              Registrar
+            <Button onClick={createDocument} disabled={!documentTypeKey.trim() || !fileStorageKey.trim() || !fileHash.trim()}>
+              Subir
             </Button>
           </div>
         </CardContent>
@@ -146,7 +142,7 @@ export default function ProducerBovinosPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Listado de bovinos</CardTitle>
+          <CardTitle>Documentos registrados</CardTitle>
         </CardHeader>
         <CardContent>
           {errorMessage ? <p className="mb-3 text-sm text-destructive">{errorMessage}</p> : null}
@@ -156,21 +152,21 @@ export default function ProducerBovinosPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Arete</TableHead>
-                  <TableHead>UPP</TableHead>
-                  <TableHead>Sexo</TableHead>
-                  <TableHead>Nacimiento</TableHead>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Tipo</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead>Actual</TableHead>
+                  <TableHead>Vigencia</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell className="font-medium">{row.siniiga_tag}</TableCell>
-                    <TableCell>{row.upp_id}</TableCell>
-                    <TableCell>{row.sex}</TableCell>
-                    <TableCell>{row.birth_date ?? "-"}</TableCell>
+                    <TableCell className="font-mono text-xs">{row.id.slice(0, 8)}</TableCell>
+                    <TableCell>{row.document_type_id}</TableCell>
                     <TableCell>{row.status}</TableCell>
+                    <TableCell>{row.is_current ? "SI" : "NO"}</TableCell>
+                    <TableCell>{row.expiry_date ?? "-"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

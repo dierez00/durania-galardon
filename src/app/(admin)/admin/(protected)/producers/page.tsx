@@ -32,6 +32,8 @@ export default function AdminProducersPage() {
   const [producers, setProducers] = useState<ProducerItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [curp, setCurp] = useState("");
 
@@ -80,7 +82,7 @@ export default function AdminProducersPage() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ fullName, curp }),
+      body: JSON.stringify({ email, password, fullName, curp }),
     });
 
     const body = await response.json();
@@ -89,6 +91,8 @@ export default function AdminProducersPage() {
       return;
     }
 
+    setEmail("");
+    setPassword("");
     setFullName("");
     setCurp("");
     await loadProducers();
@@ -105,7 +109,20 @@ export default function AdminProducersPage() {
         <CardHeader>
           <CardTitle>Alta de productor</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
+        <CardContent className="grid gap-4 md:grid-cols-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Correo</Label>
+            <Input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Contrasena</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </div>
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="fullName">Nombre completo</Label>
             <Input id="fullName" value={fullName} onChange={(event) => setFullName(event.target.value)} />
@@ -115,7 +132,7 @@ export default function AdminProducersPage() {
             <Input id="curp" value={curp} onChange={(event) => setCurp(event.target.value)} />
           </div>
           <div>
-            <Button onClick={createProducer} disabled={!fullName.trim()}>
+            <Button onClick={createProducer} disabled={!email.trim() || !password.trim() || !fullName.trim()}>
               Crear productor
             </Button>
           </div>

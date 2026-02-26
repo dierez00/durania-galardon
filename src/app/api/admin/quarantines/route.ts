@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     .select(
       "id,upp_id,status,quarantine_type,title,reason,geojson,started_at,released_at,epidemiological_note,created_at"
     )
-    .eq("tenant_id", auth.context.user.tenantId)
+    .eq("declared_by_tenant_id", auth.context.user.tenantId)
     .order("created_at", { ascending: false });
 
   if (rowsResult.error) {
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
   const createResult = await supabaseAdmin
     .from("state_quarantines")
     .insert({
-      tenant_id: auth.context.user.tenantId,
+      declared_by_tenant_id: auth.context.user.tenantId,
       upp_id: body.uppId?.trim() || null,
       status: "active",
       quarantine_type: body.quarantineType ?? "state",
@@ -150,7 +150,7 @@ export async function PATCH(request: Request) {
   const updateResult = await supabaseAdmin
     .from("state_quarantines")
     .update(updatePayload)
-    .eq("tenant_id", auth.context.user.tenantId)
+    .eq("declared_by_tenant_id", auth.context.user.tenantId)
     .eq("id", id)
     .select(
       "id,upp_id,status,quarantine_type,title,reason,geojson,started_at,released_at,epidemiological_note,created_at"

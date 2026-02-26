@@ -10,17 +10,14 @@ import { redirectPathForRole } from "@/shared/lib/auth";
 import { cn } from "@/shared/lib/utils";
 
 const navigation = [
-  { href: "/admin/panel", label: "Panel" },
-  { href: "/admin/users", label: "Usuarios" },
+  { href: "/admin", label: "Panel" },
   { href: "/admin/producers", label: "Productores" },
   { href: "/admin/mvz", label: "MVZ" },
-  { href: "/admin/upps", label: "UPP" },
   { href: "/admin/quarantines", label: "Cuarentenas" },
   { href: "/admin/exports", label: "Exportaciones" },
   { href: "/admin/normative", label: "Normativa" },
   { href: "/admin/audit", label: "Auditoria" },
-  { href: "/admin/reports", label: "Reportes" },
-  { href: "/admin/settings", label: "IAM" },
+  { href: "/admin/appointments", label: "Citas" },
 ];
 
 export default function AdminProtectedLayout({
@@ -81,18 +78,27 @@ export default function AdminProtectedLayout({
 
           <nav className="flex items-center gap-2">
             {navigation.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-sm transition-colors",
-                  pathname === item.href
-                    ? "bg-neutral-900 text-white"
-                    : "text-neutral-600 hover:bg-neutral-100"
-                )}
-              >
-                {item.label}
-              </Link>
+              (() => {
+                const isRootAdminItem = item.href === "/admin";
+                const isActive = isRootAdminItem
+                  ? pathname === "/admin"
+                  : pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "rounded-md px-3 py-1.5 text-sm transition-colors",
+                      isActive
+                        ? "bg-neutral-900 text-white"
+                        : "text-neutral-600 hover:bg-neutral-100"
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })()
             ))}
           </nav>
 

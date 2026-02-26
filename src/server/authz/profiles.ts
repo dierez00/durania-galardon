@@ -6,7 +6,7 @@ export async function resolveMvzProfileId(user: AuthenticatedRequestUser): Promi
   const result = await supabaseAdmin
     .from("mvz_profiles")
     .select("id")
-    .eq("tenant_id", user.tenantId)
+    .eq("owner_tenant_id", user.tenantId)
     .eq("user_id", user.id)
     .eq("status", "active")
     .maybeSingle();
@@ -23,7 +23,7 @@ export async function resolveProducerId(user: AuthenticatedRequestUser): Promise
   const result = await supabaseAdmin
     .from("producers")
     .select("id")
-    .eq("tenant_id", user.tenantId)
+    .eq("owner_tenant_id", user.tenantId)
     .eq("user_id", user.id)
     .maybeSingle();
 

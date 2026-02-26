@@ -14,7 +14,6 @@ export async function GET(request: Request) {
   }
 
   const user = auth.context.user;
-  const tenantId = user.tenantId;
   const supabaseAdmin = getSupabaseAdminClient();
 
   const mvzProfileId = await resolveMvzProfileId(user);
@@ -22,39 +21,19 @@ export async function GET(request: Request) {
     return apiError("MVZ_PROFILE_NOT_FOUND", "No existe perfil MVZ activo para el usuario.", 403);
   }
 
-  let query = supabaseAdmin
-    .from("mvz_upp_assignments")
-    .select("id,upp_id,status,assigned_at,unassigned_at")
-    .eq("tenant_id", tenantId)
+  const assignmentsResult = await supabaseAdmin
+    .from("v_mvz_assignments")
+    .select(
+      "assignment_id,upp_id,upp_name,upp_code,upp_status,location_lat,location_lng,herd_limit,producer_id,producer_name,active_animals,tb_last_date,tb_last_result,tb_valid_until,tb_status,br_last_date,br_last_result,br_valid_until,br_status,sanitary_alert,assigned_at"
+    )
+    .eq("mvz_profile_id", mvzProfileId)
     .order("assigned_at", { ascending: false });
 
-  query = query.eq("mvz_profile_id", mvzProfileId);
-
-  const assignmentsResult = await query;
   if (assignmentsResult.error) {
     return apiError("MVZ_ASSIGNMENTS_QUERY_FAILED", assignmentsResult.error.message, 500);
   }
 
-  const assignments = assignmentsResult.data ?? [];
-  const uppIds = assignments.map((row) => row.upp_id);
-
-  let uppById = new Map<string, { name: string; address_text: string | null }>();
-  if (uppIds.length > 0) {
-    const uppsResult = await supabaseAdmin
-      .from("upps")
-      .select("id,name,address_text")
-      .eq("tenant_id", tenantId)
-      .in("id", uppIds);
-
-    if (!uppsResult.error) {
-      uppById = new Map((uppsResult.data ?? []).map((upp) => [upp.id, { name: upp.name, address_text: upp.address_text }]));
-    }
-  }
-
   return apiSuccess({
-    assignments: assignments.map((item) => ({
-      ...item,
-      upp: uppById.get(item.upp_id) ?? null,
-    })),
+    assignments: assignmentsResult.data ?? [],
   });
 }

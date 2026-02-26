@@ -150,7 +150,7 @@ export async function hasUppScopeAccess(
     const producerResult = await supabaseAdmin
       .from("producers")
       .select("id")
-      .eq("tenant_id", user.tenantId)
+      .eq("owner_tenant_id", user.tenantId)
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle();
@@ -174,7 +174,7 @@ export async function hasUppScopeAccess(
     const mvzResult = await supabaseAdmin
       .from("mvz_profiles")
       .select("id")
-      .eq("tenant_id", user.tenantId)
+      .eq("owner_tenant_id", user.tenantId)
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle();
@@ -183,7 +183,6 @@ export async function hasUppScopeAccess(
       const assignmentResult = await supabaseAdmin
         .from("mvz_upp_assignments")
         .select("id")
-        .eq("tenant_id", user.tenantId)
         .eq("mvz_profile_id", mvzResult.data.id)
         .eq("upp_id", uppId)
         .eq("status", "active")
@@ -237,7 +236,7 @@ export async function resolveAccessibleUppIds(
     const producerResult = await supabaseAdmin
       .from("producers")
       .select("id")
-      .eq("tenant_id", user.tenantId)
+      .eq("owner_tenant_id", user.tenantId)
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle();
@@ -259,7 +258,7 @@ export async function resolveAccessibleUppIds(
     const mvzProfileResult = await supabaseAdmin
       .from("mvz_profiles")
       .select("id")
-      .eq("tenant_id", user.tenantId)
+      .eq("owner_tenant_id", user.tenantId)
       .eq("user_id", user.id)
       .eq("status", "active")
       .maybeSingle();
@@ -268,7 +267,6 @@ export async function resolveAccessibleUppIds(
       const mvzAssignmentsResult = await supabaseAdmin
         .from("mvz_upp_assignments")
         .select("upp_id")
-        .eq("tenant_id", user.tenantId)
         .eq("mvz_profile_id", mvzProfileResult.data.id)
         .eq("status", "active");
 

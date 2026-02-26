@@ -18,22 +18,17 @@ const producerRoutePermissions: Array<{ prefix: string; permission: PermissionKe
   { prefix: "/producer/dashboard", permission: "producer.dashboard.read" },
   { prefix: "/producer/ranchos", permission: "producer.upp.read" },
   { prefix: "/producer/bovinos", permission: "producer.bovinos.read" },
-  { prefix: "/producer/pruebas", permission: "producer.bovinos.read" },
   { prefix: "/producer/movilizacion", permission: "producer.movements.read" },
   { prefix: "/producer/exportaciones", permission: "producer.exports.read" },
-  { prefix: "/producer/notificaciones", permission: "producer.notifications.read" },
-  { prefix: "/producer/perfil", permission: "producer.profile.read" },
+  { prefix: "/producer/documentos", permission: "producer.documents.read" },
+  { prefix: "/producer/empleados", permission: "producer.employees.read" },
 ];
 
 const mvzRoutePermissions: Array<{ prefix: string; permission: PermissionKey }> = [
   { prefix: "/mvz/dashboard", permission: "mvz.dashboard.read" },
   { prefix: "/mvz/asignaciones", permission: "mvz.assignments.read" },
-  { prefix: "/mvz/bovinos", permission: "mvz.bovinos.read" },
   { prefix: "/mvz/pruebas", permission: "mvz.tests.read" },
-  { prefix: "/mvz/cuarentenas", permission: "mvz.quarantines.read" },
   { prefix: "/mvz/exportaciones", permission: "mvz.exports.read" },
-  { prefix: "/mvz/notificaciones", permission: "mvz.notifications.read" },
-  { prefix: "/mvz/perfil", permission: "mvz.dashboard.read" },
 ];
 
 function resolvePermissionForPath(pathname: string, rolePath: "producer" | "mvz"): PermissionKey | null {
@@ -69,7 +64,7 @@ export default function TenantLayout({
       }
 
       if (isTenantAdminRole(roleResult.role)) {
-        router.replace("/admin/panel");
+        router.replace("/admin");
         return;
       }
 

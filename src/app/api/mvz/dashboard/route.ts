@@ -14,61 +14,37 @@ export async function GET(request: Request) {
   }
 
   const user = auth.context.user;
-  const tenantId = user.tenantId;
   const supabaseAdmin = getSupabaseAdminClient();
-  const accessibleUppIds = await auth.context.getAccessibleUppIds();
-
-  if (accessibleUppIds.length === 0) {
-    return apiSuccess({
-      kpis: {
-        pendingTests: 0,
-        activeReactors: 0,
-        activeQuarantines: 0,
-        assignedRouteUpps: 0,
-      },
-    });
-  }
 
   const mvzProfileId = await resolveMvzProfileId(user);
   if (!mvzProfileId) {
     return apiError("MVZ_PROFILE_NOT_FOUND", "No existe perfil MVZ activo para el usuario.", 403);
   }
 
-  const [testsResult, quarantinesResult, assignmentsResult] = await Promise.all([
-    supabaseAdmin
-      .from("field_tests")
-      .select("id,result")
-      .eq("tenant_id", tenantId)
-      .in("upp_id", accessibleUppIds),
-    supabaseAdmin
-      .from("state_quarantines")
-      .select("id")
-      .eq("tenant_id", tenantId)
-      .in("upp_id", accessibleUppIds)
-      .eq("status", "active"),
-    supabaseAdmin
-      .from("mvz_upp_assignments")
-      .select("id")
-      .eq("tenant_id", tenantId)
-      .eq("mvz_profile_id", mvzProfileId)
-      .eq("status", "active"),
-  ]);
+  const assignmentsResult = await supabaseAdmin
+    .from("v_mvz_assignments")
+    .select("assignment_id,sanitary_alert,tb_last_result,br_last_result")
+    .eq("mvz_profile_id", mvzProfileId);
 
-  if (testsResult.error || quarantinesResult.error || assignmentsResult.error) {
+  if (assignmentsResult.error) {
     return apiError("MVZ_DASHBOARD_QUERY_FAILED", "No fue posible cargar dashboard clinico.", 500, {
-      tests: testsResult.error?.message,
-      quarantines: quarantinesResult.error?.message,
       assignments: assignmentsResult.error?.message,
     });
   }
 
-  const tests = testsResult.data ?? [];
+  const assignments = assignmentsResult.data ?? [];
+  const activeReactors = assignments.filter(
+    (row) => row.tb_last_result === "positive" || row.br_last_result === "positive"
+  ).length;
+  const activeQuarantines = assignments.filter((row) => row.sanitary_alert === "cuarentena").length;
+  const pendingTests = assignments.filter((row) => row.sanitary_alert === "sin_pruebas").length;
+
   return apiSuccess({
     kpis: {
-      pendingTests: tests.filter((row) => row.result === "inconclusive").length,
-      activeReactors: tests.filter((row) => row.result === "positive").length,
-      activeQuarantines: (quarantinesResult.data ?? []).length,
-      assignedRouteUpps: (assignmentsResult.data ?? []).length,
+      pendingTests,
+      activeReactors,
+      activeQuarantines,
+      assignedRouteUpps: assignments.length,
     },
   });
 }

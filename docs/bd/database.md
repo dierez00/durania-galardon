@@ -1,0 +1,977 @@
+# DURANIA MVP PRO — Documentación de Base de Datos
+
+> **Stack:** Supabase / PostgreSQL · **Versión:** v5  
+> Referencia técnica para desarrolladores del proyecto.
+
+---
+
+## Tabla de Contenidos
+
+1. [Arquitectura General](#1-arquitectura-general)
+2. [Tablas](#2-tablas)
+   - [2.1 Identidad](#21-identidad)
+   - [2.2 IAM por Tenant](#22-iam-por-tenant)
+   - [2.3 Productores y UPPs](#23-productores-y-upps)
+   - [2.4 MVZ Global](#24-mvz-global)
+   - [2.5 Documentos](#25-documentos)
+   - [2.6 Animales](#26-animales)
+   - [2.7 Pruebas Sanitarias](#27-pruebas-sanitarias)
+   - [2.8 Módulos Operativos](#28-módulos-operativos)
+   - [2.9 CRM y Notificaciones](#29-crm-y-notificaciones)
+3. [Índices](#3-índices)
+4. [Vistas](#4-vistas)
+5. [Funciones Helper RLS](#5-funciones-helper-rls)
+6. [Operaciones Frecuentes](#6-operaciones-frecuentes)
+7. [Resumen de Accesos RLS](#7-resumen-de-accesos-rls)
+
+---
+
+## 1. Arquitectura General
+
+La base de datos está diseñada sobre un modelo **multi-tenant con tres tipos de entorno**. Cada entorno corresponde a un panel de usuario en la aplicación y define qué datos puede ver y manipular cada usuario autenticado.
+
+### Tipos de Tenant
+
+| Tipo | Panel | Descripción | Instancias |
+|---|---|---|---|
+| `government` | Panel Administrador | Gobierno del estado. Gestiona productores, MVZ, ranchos y normativa. | 1 (global) |
+| `producer` | Panel Productor | Un tenant por cada productor. Contiene sus ranchos (UPPs), animales y empleados. | N (uno por productor) |
+| `mvz` | Panel MVZ | Un tenant por cada MVZ externo. Accede a ranchos asignados para auditorías. | N (uno por MVZ) |
+
+### Modelo de Roles por Tipo de Tenant
+
+| Tenant | `role_key` | Descripción |
+|---|---|---|
+| `government` | `tenant_admin` | Acceso total al panel de gobierno |
+| `producer` | `tenant_admin` | Administrador del rancho (mismo acceso que `producer`) |
+| `producer` | `producer` | Dueño del rancho, acceso completo a sus UPPs |
+| `producer` | `employee` | Empleado operativo del rancho |
+| `producer` | `mvz_internal` | MVZ contratado por el productor, acceso a pruebas sanitarias |
+| `mvz` | `tenant_admin` | Administrador del perfil MVZ |
+| `mvz` | `mvz_government` | Auditor externo, accede a ranchos asignados por gobierno |
+
+### Cadena de Acceso IAM
+
+```
+auth.users (Supabase Auth)
+    ↓
+profiles                  ← extensión pública de auth.users
+    ↓
+tenant_memberships        ← el usuario pertenece a un tenant
+    ↓
+tenant_user_roles         ← se le asigna un rol dentro del tenant
+    ↓
+tenant_roles              ← tenant_admin | producer | employee | mvz_*
+    ↓
+tenant_role_permissions   ← cada rol tiene permisos atómicos
+    ↓
+permissions               ← admin.* | mvz.* | producer.*
+```
+
+### Flujo de Login y Routing
+
+Al autenticar un usuario, llamar `auth_get_panel_type()` para saber a qué panel redirigir:
+
+```sql
+SELECT public.auth_get_panel_type();
+-- 'government' → /admin
+-- 'producer'   → /producer
+-- 'mvz'        → /mvz
+```
+
+---
+
+## 2. Tablas
+
+### 2.1 Identidad
+
+#### `profiles`
+
+Extiende `auth.users` de Supabase con metadatos de la aplicación. **Se crea automáticamente** vía trigger al registrar un usuario en Supabase Auth. Toda FK de la app apunta a `profiles(id)`, nunca directamente a `auth.users`.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK · FK → `auth.users(id)` |
+| `status` | `TEXT` | `'active'` \| `'inactive'` \| `'blocked'` |
+| `created_at` | `TIMESTAMPTZ` | Fecha de creación |
+
+> ⚠️ El trigger `on_auth_user_created` crea el perfil automáticamente. No insertar manualmente.
+
+---
+
+#### `tenants`
+
+Representa un entorno aislado de datos. El campo `type` determina el panel y las políticas RLS que aplican.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `type` | `TEXT` | `'government'` \| `'producer'` \| `'mvz'` |
+| `slug` | `TEXT` | Identificador único legible. Ej: `gobierno-durango` |
+| `name` | `TEXT` | Nombre del tenant |
+| `status` | `TEXT` | `'active'` \| `'inactive'` \| `'blocked'` |
+| `created_by_user_id` | `UUID` | FK → `profiles(id)` · Nullable |
+| `created_at` | `TIMESTAMPTZ` | — |
+
+---
+
+### 2.2 IAM por Tenant
+
+El sistema de permisos está **completamente basado en tenant**. No existen roles globales.
+
+#### `permissions`
+
+Catálogo global de permisos atómicos. Compartidos por todos los tenants. Formato: `modulo.recurso.accion`.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `key` | `TEXT` | Unique. Ej: `'admin.producers.write'`, `'mvz.tests.sync'` |
+| `description` | `TEXT` | Descripción legible |
+| `module` | `TEXT` | `'admin'` \| `'mvz'` \| `'producer'` |
+
+<details>
+<summary>Ver lista completa de permisos</summary>
+
+**Módulo `admin`**
+- `admin.dashboard.read` — Ver dashboard estatal
+- `admin.users.read` / `.create` / `.update` / `.delete` / `.roles`
+- `admin.producers.read` / `.write`
+- `admin.mvz.read` / `.write`
+- `admin.upps.read` / `.write`
+- `admin.quarantines.read` / `.write`
+- `admin.exports.read` / `.write`
+- `admin.normative.read` / `.write`
+- `admin.audit.read`
+- `admin.reports.export`
+- `admin.appointments.read` / `.write`
+
+**Módulo `mvz`**
+- `mvz.dashboard.read`
+- `mvz.assignments.read`
+- `mvz.bovinos.read`
+- `mvz.tests.read` / `.write` / `.sync`
+- `mvz.quarantines.read` / `.write`
+- `mvz.exports.read` / `.write`
+- `mvz.notifications.read`
+
+**Módulo `producer`**
+- `producer.dashboard.read`
+- `producer.upp.read` / `.write`
+- `producer.bovinos.read` / `.write`
+- `producer.movements.read` / `.write`
+- `producer.exports.read` / `.write`
+- `producer.documents.read` / `.write`
+- `producer.notifications.read`
+- `producer.profile.read` / `.write`
+- `producer.employees.read` / `.write`
+
+</details>
+
+---
+
+#### `tenant_memberships`
+
+Vincula un usuario a un tenant. Un usuario puede tener membresías en múltiples tenants.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `tenant_id` | `UUID` | FK → `tenants(id)` |
+| `user_id` | `UUID` | FK → `profiles(id)` |
+| `status` | `TEXT` | `'active'` \| `'inactive'` \| `'suspended'` |
+| `invited_by_user_id` | `UUID` | FK → `profiles(id)` · Nullable |
+| `joined_at` | `TIMESTAMPTZ` | — |
+
+**Constraint:** `UNIQUE(tenant_id, user_id)`
+
+---
+
+#### `tenant_roles`
+
+Roles disponibles dentro de un tenant. Los roles de sistema (`is_system = true`) se crean con el seed de roles.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `tenant_id` | `UUID` | FK → `tenants(id)` |
+| `key` | `TEXT` | `tenant_admin` \| `producer` \| `employee` \| `mvz_internal` \| `mvz_government` |
+| `name` | `TEXT` | Nombre legible |
+| `is_system` | `BOOLEAN` | `TRUE` si fue creado por el seed. No eliminar. |
+| `priority` | `INTEGER` | Orden de prioridad (menor = más privilegio) |
+
+**Constraint:** `UNIQUE(tenant_id, key)`
+
+---
+
+#### `tenant_role_permissions`
+
+Asigna permisos atómicos a un rol.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `tenant_role_id` | `UUID` | FK → `tenant_roles(id)` · PK compuesta |
+| `permission_id` | `UUID` | FK → `permissions(id)` · PK compuesta |
+| `granted_at` | `TIMESTAMPTZ` | — |
+
+---
+
+#### `tenant_user_roles`
+
+Asigna roles a un miembro. Un usuario puede tener múltiples roles en el mismo tenant.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `membership_id` | `UUID` | FK → `tenant_memberships(id)` · PK compuesta |
+| `tenant_role_id` | `UUID` | FK → `tenant_roles(id)` · PK compuesta |
+| `assigned_by_user_id` | `UUID` | FK → `profiles(id)` · Nullable |
+| `assigned_at` | `TIMESTAMPTZ` | — |
+
+---
+
+### 2.3 Productores y UPPs
+
+#### `producers`
+
+Datos personales del productor. Cada productor tiene un tenant propio (`owner_tenant_id`) donde viven sus ranchos y empleados.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `owner_tenant_id` | `UUID` | FK → `tenants(id)` · Tenant propio del productor (`type = 'producer'`) |
+| `user_id` | `UUID` | FK → `profiles(id)` · Nullable (puede no tener cuenta aún) |
+| `curp` | `TEXT` | Unique · Nullable |
+| `full_name` | `TEXT` | — |
+| `status` | `TEXT` | `'active'` \| `'inactive'` |
+| `created_at` | `TIMESTAMPTZ` | — |
+
+> ⚠️ Relación `owner_tenant_id` es 1:1. Solo puede existir un productor por tenant de tipo `producer` (índice único `producers_owner_tenant_unique`).
+
+---
+
+#### `upps`
+
+Unidades de Producción Pecuaria (ranchos). Pertenecen al tenant del productor. El gobierno puede crearlos pero viven en el tenant del productor.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `tenant_id` | `UUID` | FK → `tenants(id)` · Siempre el tenant del productor |
+| `producer_id` | `UUID` | FK → `producers(id)` |
+| `upp_code` | `TEXT` | Código oficial. Unique · Nullable |
+| `name` | `TEXT` | Nombre del rancho |
+| `address_text` | `TEXT` | Dirección en texto libre |
+| `location_lat` | `NUMERIC` | Latitud GPS |
+| `location_lng` | `NUMERIC` | Longitud GPS |
+| `hectares_total` | `NUMERIC` | Superficie en hectáreas · Nullable |
+| `herd_limit` | `INTEGER` | Límite máximo de cabezas · Nullable |
+| `status` | `TEXT` | `'active'` \| `'quarantined'` \| `'suspended'` |
+| `created_at` | `TIMESTAMPTZ` | — |
+
+---
+
+#### `user_upp_access`
+
+Acceso granular de empleados y `mvz_internal` a UPPs específicas dentro del tenant del productor.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `tenant_id` | `UUID` | FK → `tenants(id)` |
+| `user_id` | `UUID` | FK → `profiles(id)` |
+| `upp_id` | `UUID` | FK → `upps(id)` |
+| `access_level` | `TEXT` | `'owner'` \| `'editor'` \| `'viewer'` |
+| `status` | `TEXT` | `'active'` \| `'inactive'` |
+| `granted_by_user_id` | `UUID` | FK → `profiles(id)` · Nullable |
+| `granted_at` | `TIMESTAMPTZ` | — |
+
+**Constraint:** `UNIQUE(user_id, upp_id)`
+
+---
+
+### 2.4 MVZ Global
+
+#### `mvz_profiles`
+
+Datos profesionales del MVZ externo. Cada MVZ tiene su propio tenant (`owner_tenant_id`). Puede auditar UPPs de distintos tenants de productores.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `owner_tenant_id` | `UUID` | FK → `tenants(id)` · Tenant propio del MVZ (`type = 'mvz'`) |
+| `user_id` | `UUID` | FK → `profiles(id)` · Unique |
+| `full_name` | `TEXT` | — |
+| `license_number` | `TEXT` | Número de cédula. Unique |
+| `status` | `TEXT` | `'active'` \| `'inactive'` |
+| `created_at` | `TIMESTAMPTZ` | — |
+
+---
+
+#### `mvz_upp_assignments`
+
+Asigna un MVZ global a UPPs para auditorías. **Esta tabla es cross-tenant por diseño**: el MVZ pertenece a un tenant `mvz` pero las UPPs pertenecen a tenants de productores.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `mvz_profile_id` | `UUID` | FK → `mvz_profiles(id)` |
+| `upp_id` | `UUID` | FK → `upps(id)` · Puede ser de cualquier tenant `producer` |
+| `status` | `TEXT` | `'active'` \| `'inactive'` |
+| `assigned_by_user_id` | `UUID` | FK → `profiles(id)` · Debe ser usuario del tenant `government` |
+| `assigned_at` | `TIMESTAMPTZ` | — |
+| `unassigned_at` | `TIMESTAMPTZ` | Nullable |
+
+**Constraint:** `UNIQUE(mvz_profile_id, upp_id)`
+
+> ⚠️ No tiene `tenant_id`. Es explícitamente cross-tenant. El acceso se controla por `auth_mvz_assigned_to_upp()`.
+
+---
+
+### 2.5 Documentos
+
+#### `document_types`
+
+Catálogo global de tipos de documento. Lectura pública.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `key` | `TEXT` | Unique. Ej: `'ine'`, `'curp'`, `'deed'` |
+| `name` | `TEXT` | — |
+| `requires_expiry` | `BOOLEAN` | Si `TRUE`, debe tener fecha de vencimiento |
+| `requires_identity_match` | `BOOLEAN` | Si `TRUE`, el OCR valida coincidencia con identidad del productor |
+
+---
+
+#### `producer_documents`
+
+Documentos del productor. Solo puede haber **un documento activo** (`is_current = true`) por tipo por productor (índice parcial único).
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `tenant_id` | `UUID` | FK → `tenants(id)` |
+| `producer_id` | `UUID` | FK → `producers(id)` |
+| `document_type_id` | `UUID` | FK → `document_types(id)` |
+| `file_storage_key` | `TEXT` | Key del archivo en Supabase Storage |
+| `file_hash` | `TEXT` | Hash del archivo para verificar integridad |
+| `status` | `TEXT` | `'pending'` \| `'validated'` \| `'expired'` \| `'rejected'` |
+| `is_current` | `BOOLEAN` | `TRUE` si es el documento vigente de su tipo |
+| `expiry_date` | `DATE` | Nullable |
+| `extracted_fields` | `JSONB` | Campos extraídos por OCR |
+| `ocr_confidence` | `NUMERIC` | Confianza del OCR (0–1) · Nullable |
+| `ocr_engine_version` | `TEXT` | Nullable |
+
+**Índice único parcial:** `UNIQUE(producer_id, document_type_id) WHERE is_current = TRUE`
+
+---
+
+### 2.6 Animales
+
+#### `animals`
+
+Registro de bovinos por UPP. El `siniiga_tag` es único en todo el sistema.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `tenant_id` | `UUID` | FK → `tenants(id)` |
+| `upp_id` | `UUID` | FK → `upps(id)` |
+| `siniiga_tag` | `TEXT` | Arete SINIIGA. Unique |
+| `sex` | `TEXT` | `'M'` \| `'F'` |
+| `birth_date` | `DATE` | Nullable |
+| `status` | `TEXT` | `'active'` \| `'blocked'` \| `'in_transit'` \| `'inactive'` |
+| `mother_animal_id` | `UUID` | FK → `animals(id)` · Auto-referencia · Nullable |
+| `created_at` | `TIMESTAMPTZ` | — |
+
+---
+
+### 2.7 Pruebas Sanitarias
+
+#### `test_types`
+
+Catálogo de tipos de prueba sanitaria. Lectura pública.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `key` | `TEXT` | `'tb'` (Tuberculosis) \| `'br'` (Brucelosis) |
+| `name` | `TEXT` | — |
+| `validity_days` | `INTEGER` | Días de vigencia desde la fecha de muestra |
+
+---
+
+#### `field_tests`
+
+Pruebas sanitarias realizadas en campo. Solo el MVZ asignado puede crearlas.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `tenant_id` | `UUID` | FK → `tenants(id)` · Tenant del productor dueño del rancho |
+| `animal_id` | `UUID` | FK → `animals(id)` |
+| `upp_id` | `UUID` | FK → `upps(id)` |
+| `mvz_profile_id` | `UUID` | FK → `mvz_profiles(id)` · MVZ que realizó la prueba |
+| `test_type_id` | `UUID` | FK → `test_types(id)` |
+| `sample_date` | `DATE` | Fecha de toma de muestra |
+| `result` | `TEXT` | `'negative'` \| `'positive'` \| `'inconclusive'` |
+| `valid_until` | `DATE` | Nullable |
+| `captured_lat` | `NUMERIC` | Nullable |
+| `captured_lng` | `NUMERIC` | Nullable |
+| `created_at` | `TIMESTAMPTZ` | — |
+
+---
+
+#### `field_test_sync_events`
+
+Registro de sincronizaciones offline del MVZ. Garantiza **idempotencia**: si el MVZ envía el mismo registro dos veces (por reconexión), no se duplica.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `mvz_user_id` | `UUID` | FK → `profiles(id)` |
+| `client_mutation_id` | `TEXT` | ID generado por el cliente. Único por `mvz_user_id` |
+| `field_test_id` | `UUID` | FK → `field_tests(id)` · Nullable (si la sync falló) |
+| `payload_json` | `JSONB` | Payload original del cliente |
+| `synced_at` | `TIMESTAMPTZ` | — |
+
+**Constraint:** `UNIQUE(mvz_user_id, client_mutation_id)`
+
+---
+
+### 2.8 Módulos Operativos
+
+#### `state_quarantines`
+
+Cuarentenas declaradas por el gobierno. Pueden ser estatales (zona geográfica) u operativas (UPP específica).
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `declared_by_tenant_id` | `UUID` | FK → `tenants(id)` · Siempre el tenant `government` |
+| `upp_id` | `UUID` | FK → `upps(id)` · Nullable para cuarentenas estatales |
+| `status` | `TEXT` | `'active'` \| `'released'` \| `'suspended'` |
+| `quarantine_type` | `TEXT` | `'state'` \| `'operational'` |
+| `title` | `TEXT` | — |
+| `reason` | `TEXT` | Nullable |
+| `geojson` | `JSONB` | Área geográfica en GeoJSON · Nullable |
+| `started_at` | `TIMESTAMPTZ` | — |
+| `released_at` | `TIMESTAMPTZ` | Nullable |
+| `epidemiological_note` | `TEXT` | Nullable |
+| `released_by_user_id` | `UUID` | FK → `profiles(id)` · Nullable |
+| `created_by_user_id` | `UUID` | FK → `profiles(id)` · Nullable |
+
+---
+
+#### `export_requests`
+
+Solicitudes de exportación de ganado.
+
+**Flujo de estados:** `requested` → `mvz_validated` → `final_approved`  
+**Flujo de bloqueo:** `requested` → `blocked` / `rejected`
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `tenant_id` | `UUID` | FK → `tenants(id)` · Tenant del productor |
+| `producer_id` | `UUID` | FK → `producers(id)` · Nullable |
+| `upp_id` | `UUID` | FK → `upps(id)` · Nullable |
+| `status` | `TEXT` | `'requested'` \| `'mvz_validated'` \| `'final_approved'` \| `'blocked'` \| `'rejected'` |
+| `compliance_60_rule` | `BOOLEAN` | Cumple regla del 60% · Nullable |
+| `tb_br_validated` | `BOOLEAN` | Pruebas TB/BR validadas · Nullable |
+| `blue_tag_assigned` | `BOOLEAN` | Arete azul asignado · Nullable |
+| `monthly_bucket` | `DATE` | Mes de exportación (truncado al primer día del mes) |
+| `metrics_json` | `JSONB` | Métricas al momento de la solicitud |
+| `blocked_reason` | `TEXT` | Nullable |
+| `validated_by_mvz_user_id` | `UUID` | FK → `profiles(id)` · Nullable |
+| `approved_by_admin_user_id` | `UUID` | FK → `profiles(id)` · Nullable |
+
+---
+
+#### `movement_requests`
+
+Solicitudes de movilización REEMO. El productor las crea, el gobierno las aprueba.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `tenant_id` | `UUID` | FK → `tenants(id)` · Tenant del productor |
+| `producer_id` | `UUID` | FK → `producers(id)` · Nullable |
+| `upp_id` | `UUID` | FK → `upps(id)` · Nullable |
+| `status` | `TEXT` | `'requested'` \| `'approved'` \| `'rejected'` \| `'cancelled'` |
+| `qr_code` | `TEXT` | Código QR de movilización aprobada · Nullable |
+| `route_note` | `TEXT` | Nullable |
+| `incidence_note` | `TEXT` | Nullable |
+| `movement_date` | `DATE` | Nullable |
+
+---
+
+#### `normative_settings`
+
+Configuración normativa por tenant con historial de cambios. Solo puede haber **una configuración activa por clave** (índice parcial único).
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `tenant_id` | `UUID` | FK → `tenants(id)` · Solo el gobierno la gestiona |
+| `key` | `TEXT` | Clave de configuración. Ej: `max_export_heads` |
+| `value_json` | `JSONB` | Valor en formato JSON |
+| `effective_from` | `DATE` | Fecha desde la que aplica |
+| `effective_until` | `DATE` | Nullable |
+| `status` | `TEXT` | `'active'` \| `'inactive'` |
+| `changed_by_user_id` | `UUID` | FK → `profiles(id)` · Nullable |
+
+**Índice único parcial:** `UNIQUE(tenant_id, key) WHERE status = 'active'`
+
+---
+
+### 2.9 CRM y Notificaciones
+
+#### `appointment_requests`
+
+Solicitudes de cita del landing público. Cualquier visitante puede crearlas (política INSERT pública). Solo el gobierno las gestiona.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `tenant_id` | `UUID` | FK → `tenants(id)` · Siempre el tenant `government` |
+| `full_name` | `TEXT` | — |
+| `phone` | `TEXT` | Nullable |
+| `email` | `TEXT` | Nullable |
+| `requested_service` | `TEXT` | — |
+| `requested_date` | `DATE` | Nullable |
+| `requested_time` | `TEXT` | Nullable |
+| `notes` | `TEXT` | Nullable |
+| `status` | `TEXT` | `'requested'` \| `'contacted'` \| `'scheduled'` \| `'discarded'` |
+
+---
+
+#### `notification_events`
+
+Notificaciones de la plataforma. Soporta envío personal (usuario específico) o broadcast (tenant completo, filtrado por rol). El gobierno puede notificar a usuarios de otros tenants.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `sender_tenant_id` | `UUID` | FK → `tenants(id)` · Tenant que genera la notificación |
+| `target_user_id` | `UUID` | FK → `profiles(id)` · Nullable · Target personal |
+| `target_tenant_id` | `UUID` | FK → `tenants(id)` · Nullable · Target broadcast |
+| `target_role_key` | `TEXT` | Nullable · Filtra broadcast por rol dentro de `target_tenant_id` |
+| `category` | `TEXT` | Ej: `sanitary`, `export`, `quarantine` |
+| `title` | `TEXT` | — |
+| `message` | `TEXT` | Nullable |
+| `severity` | `TEXT` | `'info'` \| `'warning'` \| `'critical'` |
+| `related_upp_id` | `UUID` | FK → `upps(id)` · Nullable |
+| `is_read` | `BOOLEAN` | `FALSE` por defecto |
+
+> ⚠️ `CHECK`: al menos uno de `target_user_id` o `target_tenant_id` debe estar definido.
+
+---
+
+#### `audit_logs`
+
+Bitácora de acciones del sistema. Solo el gobierno puede leerla. Las inserciones deben hacerse **únicamente desde funciones `SECURITY DEFINER`** del servidor.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `tenant_id` | `UUID` | FK → `tenants(id)` · Nullable |
+| `actor_user_id` | `UUID` | FK → `profiles(id)` · Nullable |
+| `role_key` | `TEXT` | Rol del actor al momento de la acción |
+| `action` | `TEXT` | Ej: `'create'`, `'update'`, `'delete'`, `'login'` |
+| `resource` | `TEXT` | Tabla o entidad afectada. Ej: `producers`, `field_tests` |
+| `resource_id` | `TEXT` | Nullable |
+| `payload_json` | `JSONB` | Datos relevantes de la acción · Nullable |
+| `ip` | `TEXT` | Nullable |
+| `user_agent` | `TEXT` | Nullable |
+| `created_at` | `TIMESTAMPTZ` | — |
+
+---
+
+## 3. Índices
+
+> No agregar índices adicionales hasta tener datos reales. Identificar queries lentos con `EXPLAIN ANALYZE` en Supabase.
+
+| Índice | Tabla | Columnas | Propósito |
+|---|---|---|---|
+| `idx_tenants_type` | `tenants` | `type` | Routing por tipo de tenant en login |
+| `idx_tenant_memberships_tenant_user` | `tenant_memberships` | `tenant_id, user_id` | Lookup en funciones RLS |
+| `idx_tenant_memberships_user` | `tenant_memberships` | `user_id` | Todos los tenants de un usuario |
+| `idx_tenant_roles_tenant` | `tenant_roles` | `tenant_id` | Roles disponibles en un tenant |
+| `idx_tenant_user_roles_membership` | `tenant_user_roles` | `membership_id` | Roles de una membresía |
+| `idx_producers_owner_tenant` | `producers` | `owner_tenant_id` | Lookup productor por su tenant |
+| `idx_producers_user` | `producers` | `user_id` | Lookup productor por usuario autenticado |
+| `idx_upps_tenant` | `upps` | `tenant_id` | Ranchos de un tenant |
+| `idx_upps_producer` | `upps` | `producer_id` | Ranchos de un productor |
+| `idx_user_upp_access_tenant` | `user_upp_access` | `tenant_id` | Accesos dentro de un tenant |
+| `idx_user_upp_access_user` | `user_upp_access` | `user_id` | Accesos de un usuario |
+| `idx_mvz_profiles_owner_tenant` | `mvz_profiles` | `owner_tenant_id` | Lookup MVZ por su tenant |
+| `idx_mvz_upp_assignments_mvz` | `mvz_upp_assignments` | `mvz_profile_id` | Ranchos asignados a un MVZ |
+| `idx_mvz_upp_assignments_upp` | `mvz_upp_assignments` | `upp_id` | MVZ asignados a un rancho |
+| `idx_producer_documents_tenant` | `producer_documents` | `tenant_id` | Documentos de un tenant |
+| `idx_producer_documents_producer` | `producer_documents` | `producer_id` | Documentos de un productor |
+| `idx_producer_documents_status` | `producer_documents` | `status` | Filtrar por estado |
+| `idx_animals_tenant` | `animals` | `tenant_id` | Animales de un tenant |
+| `idx_animals_upp` | `animals` | `upp_id` | Animales de un rancho |
+| `idx_animals_status` | `animals` | `status` | Filtrar por estado |
+| `idx_field_tests_tenant` | `field_tests` | `tenant_id` | Pruebas de un tenant |
+| `idx_field_tests_animal` | `field_tests` | `animal_id` | Historial de un animal |
+| `idx_field_tests_upp` | `field_tests` | `upp_id` | Pruebas en un rancho |
+| `idx_field_tests_mvz` | `field_tests` | `mvz_profile_id` | Pruebas por MVZ |
+| `idx_field_tests_sample_date` | `field_tests` | `sample_date` | Consultas por rango de fechas |
+| `idx_field_test_sync_events_mvz` | `field_test_sync_events` | `mvz_user_id, synced_at DESC` | Historial de sync |
+| `idx_state_quarantines_declared_by` | `state_quarantines` | `declared_by_tenant_id, status` | Cuarentenas activas |
+| `idx_state_quarantines_upp` | `state_quarantines` | `upp_id` | Cuarentenas de una UPP |
+| `idx_export_requests_tenant_status` | `export_requests` | `tenant_id, status` | Exportaciones por estado |
+| `idx_export_requests_monthly` | `export_requests` | `tenant_id, monthly_bucket` | Exportaciones por mes |
+| `idx_movement_requests_tenant_status` | `movement_requests` | `tenant_id, status` | Movilizaciones por estado |
+| `idx_normative_settings_tenant_key` | `normative_settings` | `tenant_id, key, status` | Configuración vigente |
+| `idx_appointment_requests_tenant_at` | `appointment_requests` | `tenant_id, status, created_at DESC` | CRM por estado y fecha |
+| `idx_notification_events_target_user` | `notification_events` | `target_user_id, created_at DESC` | Notificaciones personales |
+| `idx_notification_events_target_ten` | `notification_events` | `target_tenant_id, created_at DESC` | Notificaciones broadcast |
+| `idx_audit_logs_tenant_at` | `audit_logs` | `tenant_id, created_at DESC` | Bitácora por tenant |
+| `idx_audit_logs_actor` | `audit_logs` | `actor_user_id, created_at DESC` | Acciones de un usuario |
+
+---
+
+## 4. Vistas
+
+Todas las vistas usan `SECURITY INVOKER`, por lo que **RLS se aplica automáticamente** con el contexto del usuario autenticado. No es necesario filtrar manualmente por usuario en el cliente.
+
+---
+
+### `v_user_context`
+
+Contexto completo del usuario autenticado. Usar al iniciar sesión para determinar el panel y cargar el estado inicial.
+
+```sql
+SELECT * FROM v_user_context;
+```
+
+> Si el usuario tiene múltiples roles retorna una fila por cada rol. Usar `ORDER BY role_priority ASC LIMIT 1` para el rol principal.
+
+| Columna | Descripción |
+|---|---|
+| `user_id` | ID del usuario |
+| `user_status` | Estado del perfil |
+| `tenant_id` | ID del tenant |
+| `tenant_type` | `'government'` \| `'producer'` \| `'mvz'` |
+| `tenant_slug` | Ej: `gobierno-durango` |
+| `membership_id` | ID de la membresía activa |
+| `role_key` | Clave del rol asignado |
+| `role_priority` | Prioridad (menor = más privilegio) |
+
+---
+
+### `v_user_permissions`
+
+Todos los permisos activos del usuario. Cargar al iniciar sesión para controlar visibilidad de UI.
+
+```sql
+-- Verificar un permiso específico
+SELECT EXISTS (
+  SELECT 1 FROM v_user_permissions
+  WHERE permission_key = 'admin.producers.write'
+);
+```
+
+| Columna | Descripción |
+|---|---|
+| `tenant_id` | Tenant donde aplica |
+| `tenant_type` | Tipo del tenant |
+| `role_key` | Rol a través del cual se otorga |
+| `permission_key` | Ej: `admin.producers.write` |
+| `permission_module` | `'admin'` \| `'mvz'` \| `'producer'` |
+
+---
+
+### `v_producers_admin`
+
+Panel de gobierno: resumen de productores con métricas de ranchos y estatus documental.
+
+```sql
+-- Productores con problemas documentales
+SELECT full_name, docs_pending, docs_issues
+FROM v_producers_admin
+WHERE docs_issues > 0 OR docs_pending > 0
+ORDER BY docs_issues DESC;
+```
+
+| Columna | Descripción |
+|---|---|
+| `producer_id` | — |
+| `full_name` | — |
+| `producer_tenant_slug` | Slug del tenant del productor |
+| `total_upps` | Total de ranchos |
+| `active_upps` | Ranchos activos |
+| `quarantined_upps` | Ranchos en cuarentena |
+| `total_active_animals` | Animales activos en todos sus ranchos |
+| `docs_validated` | Documentos vigentes validados |
+| `docs_pending` | Documentos pendientes |
+| `docs_issues` | Documentos vencidos o rechazados |
+
+---
+
+### `v_mvz_admin`
+
+Panel de gobierno: MVZ globales con ranchos asignados y actividad de pruebas.
+
+| Columna | Descripción |
+|---|---|
+| `mvz_profile_id` | — |
+| `full_name` | — |
+| `license_number` | Cédula profesional |
+| `active_assignments` | Ranchos actualmente asignados |
+| `total_assignments` | Total histórico |
+| `tests_last_year` | Pruebas en los últimos 365 días |
+| `tests_last_30_days` | Pruebas en los últimos 30 días |
+
+---
+
+### `v_producer_dashboard`
+
+Panel del productor: métricas agregadas de todos sus ranchos. RLS filtra automáticamente al tenant del productor autenticado.
+
+```sql
+SELECT * FROM v_producer_dashboard
+WHERE producer_id = $producer_id;
+```
+
+| Columna | Descripción |
+|---|---|
+| `total_upps` | Total de ranchos |
+| `active_animals` | Animales activos |
+| `animals_in_transit` | En movilización |
+| `positive_tests_90d` | Pruebas positivas en los últimos 90 días |
+| `exports_pending` | Exportaciones pendientes de validación |
+| `exports_approved_this_month` | Exportaciones aprobadas este mes |
+| `movements_pending` | Movilizaciones REEMO pendientes |
+
+---
+
+### `v_mvz_assignments`
+
+Panel del MVZ: ranchos asignados con estatus sanitario. RLS filtra al MVZ autenticado.
+
+```sql
+-- Ranchos con alertas activas
+SELECT upp_name, tb_status, br_status, sanitary_alert
+FROM v_mvz_assignments
+WHERE sanitary_alert != 'ok'
+ORDER BY sanitary_alert;
+```
+
+| Columna | Descripción |
+|---|---|
+| `upp_id` / `upp_name` | Datos del rancho |
+| `producer_name` | Productor dueño |
+| `active_animals` | Animales activos |
+| `tb_last_date` / `tb_valid_until` / `tb_status` | Estado de tuberculosis |
+| `br_last_date` / `br_valid_until` / `br_status` | Estado de brucelosis |
+| `sanitary_alert` | Alerta consolidada del rancho |
+
+**Valores de `sanitary_alert`:**
+
+| Valor | Significado | Color UI |
+|---|---|---|
+| `ok` | Sin alertas, pruebas vigentes y negativas | 🟢 Verde |
+| `por_vencer` | Alguna prueba vence en los próximos 30 días | 🟡 Amarillo |
+| `prueba_vencida` | Alguna prueba está vencida | 🟠 Naranja |
+| `sin_pruebas` | Sin registro de pruebas TB o BR | ⚪ Gris |
+| `positivo` | Alguna prueba resultó positiva | 🔴 Rojo |
+| `cuarentena` | El rancho está en cuarentena activa | 🔴 Rojo oscuro |
+
+---
+
+### `v_animals_sanitary`
+
+Animales con su último resultado de prueba TB y BR. Útil para detalle de rancho en panel productor y MVZ.
+
+```sql
+-- Animales con alertas en un rancho
+SELECT siniiga_tag, sex, tb_status, br_status, sanitary_alert
+FROM v_animals_sanitary
+WHERE upp_id = $upp_id
+  AND sanitary_alert != 'ok'
+ORDER BY sanitary_alert, siniiga_tag;
+```
+
+| Columna | Descripción |
+|---|---|
+| `animal_id` / `siniiga_tag` | Identificación |
+| `sex` | `'M'` \| `'F'` |
+| `animal_status` | Estado del animal |
+| `upp_name` | Rancho al que pertenece |
+| `tb_date` / `tb_result` / `tb_status` | Estado TB |
+| `br_date` / `br_result` / `br_status` | Estado BR |
+| `sanitary_alert` | `ok` \| `por_vencer` \| `prueba_vencida` \| `sin_pruebas` \| `positivo` \| `inactivo` |
+
+---
+
+## 5. Funciones Helper RLS
+
+Todas las funciones son `SECURITY DEFINER` con `SET search_path = public`.
+
+| Función | Parámetros | Retorna | Descripción |
+|---|---|---|---|
+| `auth_get_panel_type()` | — | `TEXT` | Tipo de tenant del usuario. Usar en login para routing. |
+| `auth_in_tenant(p_tenant_id)` | `UUID` | `BOOLEAN` | ¿El usuario es miembro activo del tenant? |
+| `auth_has_tenant_role(p_tenant_id, p_role_key)` | `UUID, TEXT` | `BOOLEAN` | ¿El usuario tiene este rol en el tenant? |
+| `auth_has_tenant_permission(p_tenant_id, p_permission_key)` | `UUID, TEXT` | `BOOLEAN` | ¿El usuario tiene este permiso (vía cualquier rol)? |
+| `auth_has_upp_access(p_upp_id, p_min_level)` | `UUID, TEXT` | `BOOLEAN` | ¿El usuario tiene acceso a la UPP con nivel mínimo? (`'viewer'` por defecto) |
+| `auth_mvz_assigned_to_upp(p_upp_id)` | `UUID` | `BOOLEAN` | ¿El MVZ autenticado tiene este rancho asignado? Función cross-tenant. |
+
+```sql
+-- Routing en login
+SELECT public.auth_get_panel_type() AS panel;
+
+-- Verificar permiso antes de una operación (en Edge Function)
+SELECT public.auth_has_tenant_permission(
+  $tenant_id,
+  'producer.bovinos.write'
+) AS can_write;
+
+-- Verificar acceso a UPP con nivel mínimo editor
+SELECT public.auth_has_upp_access($upp_id, 'editor');
+```
+
+---
+
+## 6. Operaciones Frecuentes
+
+### Alta de Productor (desde gobierno)
+
+```sql
+-- 1. Crear usuario en Supabase Auth → copiar $user_id
+
+-- 2. Crear el tenant del productor
+INSERT INTO public.tenants (type, slug, name)
+VALUES ('producer', 'productor-juan-perez', 'Juan Pérez')
+RETURNING id; -- guardar como $producer_tenant_id
+
+-- 3. Crear el perfil del productor
+INSERT INTO public.producers (owner_tenant_id, user_id, full_name, curp)
+VALUES ($producer_tenant_id, $user_id, 'Juan Pérez', 'PEPJ800101HDFRNN01');
+
+-- 4. Crear membresía
+INSERT INTO public.tenant_memberships (tenant_id, user_id)
+VALUES ($producer_tenant_id, $user_id)
+RETURNING id; -- guardar como $membership_id
+
+-- 5. Ejecutar durania_v5_seed_roles.sql para el nuevo tenant
+
+-- 6. Asignar rol producer
+INSERT INTO public.tenant_user_roles (membership_id, tenant_role_id)
+SELECT $membership_id, id FROM public.tenant_roles
+WHERE tenant_id = $producer_tenant_id AND key = 'producer';
+```
+
+---
+
+### Alta de MVZ Global (desde gobierno)
+
+```sql
+-- 1. Crear usuario en Supabase Auth → $user_id
+
+-- 2. Crear tenant del MVZ
+INSERT INTO public.tenants (type, slug, name)
+VALUES ('mvz', 'mvz-dr-garcia', 'Dr. García')
+RETURNING id; -- $mvz_tenant_id
+
+-- 3. Crear perfil MVZ
+INSERT INTO public.mvz_profiles (owner_tenant_id, user_id, full_name, license_number)
+VALUES ($mvz_tenant_id, $user_id, 'Dr. García', '12345678');
+
+-- 4. Membresía y rol (igual que productor, usando key = 'mvz_government')
+```
+
+---
+
+### Asignar MVZ a un Rancho (desde gobierno)
+
+```sql
+INSERT INTO public.mvz_upp_assignments (mvz_profile_id, upp_id, assigned_by_user_id)
+VALUES ($mvz_profile_id, $upp_id, auth.uid());
+```
+
+---
+
+### Alta de Empleado en un Rancho (desde productor)
+
+```sql
+-- 1. Crear usuario en Supabase Auth → $user_id
+
+-- 2. Crear membresía en el tenant del productor
+INSERT INTO public.tenant_memberships (tenant_id, user_id, invited_by_user_id)
+VALUES ($producer_tenant_id, $user_id, auth.uid())
+RETURNING id; -- $membership_id
+
+-- 3. Asignar rol employee
+INSERT INTO public.tenant_user_roles (membership_id, tenant_role_id)
+SELECT $membership_id, id FROM public.tenant_roles
+WHERE tenant_id = $producer_tenant_id AND key = 'employee';
+
+-- 4. Dar acceso a UPPs específicas (opcional)
+INSERT INTO public.user_upp_access (tenant_id, user_id, upp_id, access_level, granted_by_user_id)
+VALUES ($producer_tenant_id, $user_id, $upp_id, 'editor', auth.uid());
+```
+
+---
+
+### Registrar Prueba Sanitaria (desde MVZ)
+
+```sql
+INSERT INTO public.field_tests
+  (tenant_id, animal_id, upp_id, mvz_profile_id, test_type_id, sample_date, result, valid_until)
+VALUES
+  ($tenant_id, $animal_id, $upp_id, $mvz_profile_id, $test_type_id,
+   CURRENT_DATE, 'negative', CURRENT_DATE + INTERVAL '365 days');
+```
+
+---
+
+### Sync Offline de Prueba (app móvil MVZ)
+
+```sql
+-- Insertar con client_mutation_id para idempotencia
+INSERT INTO public.field_test_sync_events
+  (mvz_user_id, client_mutation_id, payload_json)
+VALUES
+  (auth.uid(), $client_uuid, $payload::jsonb)
+ON CONFLICT (mvz_user_id, client_mutation_id) DO NOTHING
+RETURNING id;
+-- Si retorna vacío, el registro ya existía. No duplicar la field_test.
+```
+
+---
+
+## 7. Resumen de Accesos RLS
+
+| Tabla / Vista | `tenant_admin` (gov) | `tenant_admin` (producer) | `producer` | `employee` | `mvz_government` | `mvz_internal` |
+|---|---|---|---|---|---|---|
+| `tenants` | R/W propio | R propio | R propio | — | R propio | — |
+| `producers` | R/W todos | R propio | R propio | — | — | — |
+| `upps` | R/W todos | R/W propio | R/W propio | R asignadas | R asignadas | R asignadas |
+| `animals` | R/W todos | R/W rancho | R/W rancho | R/W rancho | R asignadas | R/W asignadas |
+| `field_tests` | R/W todos | R rancho | R rancho | R rancho | R/W asignadas | R/W asignadas |
+| `mvz_upp_assignments` | R/W todos | R propio | R propio | — | R propio | — |
+| `producer_documents` | R/W todos | R/W propio | R/W propio | — | — | — |
+| `export_requests` | R/W todos | R/C propio | R/C propio | R/C propio | R/U validar | — |
+| `movement_requests` | R/U aprobar | R/C propio | R/C propio | R/C propio | — | — |
+| `state_quarantines` | R/W todos | R afectan | R afectan | R afectan | R/W operativas | R/W operativas |
+| `notification_events` | R/W todos | R propias | R propias | R propias | R propias | R propias |
+| `appointment_requests` | R/W todos | — | — | — | — | — |
+| `audit_logs` | R todos | — | — | — | — | — |
+| `v_producer_dashboard` | R todos | R propio | R propio | R propio | — | — |
+| `v_mvz_assignments` | R todos | R propio | R propio | — | R propio | R propio |
+| `v_animals_sanitary` | R todos | R propio | R propio | R propio | R asignadas | R asignadas |
+
+**Leyenda:**
+- `R` — Solo lectura
+- `R/W` — Lectura y escritura completa
+- `R/C` — Lectura y creación (no puede modificar ajenos)
+- `R/U` — Lectura y actualización
+- `—` — Sin acceso
+- `propio` — Solo sus propios datos
+- `asignadas` — Solo UPPs/ranchos asignados
+- `todos` — Todos los registros del sistema

@@ -12,37 +12,37 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
-  const tenantId = auth.context.user.tenantId;
   const supabaseAdmin = getSupabaseAdminClient();
 
-  const [uppsResult, fieldTestsResult, exportsResult, quarantinesResult] = await Promise.all([
-    supabaseAdmin.from("upps").select("id,status").eq("tenant_id", tenantId),
-    supabaseAdmin.from("field_tests").select("id,result").eq("tenant_id", tenantId),
+  const [producersResult, mvzResult, exportsResult, quarantinesResult] = await Promise.all([
+    supabaseAdmin.from("v_producers_admin").select("producer_id,total_upps"),
+    supabaseAdmin.from("v_mvz_admin").select("mvz_profile_id,active_assignments"),
     supabaseAdmin
       .from("export_requests")
       .select("id,status,monthly_bucket")
-      .eq("tenant_id", tenantId)
       .order("monthly_bucket", { ascending: true }),
     supabaseAdmin
       .from("state_quarantines")
       .select("id,status")
-      .eq("tenant_id", tenantId)
+      .eq("declared_by_tenant_id", auth.context.user.tenantId)
       .eq("status", "active"),
   ]);
 
-  if (uppsResult.error || fieldTestsResult.error || exportsResult.error || quarantinesResult.error) {
+  if (producersResult.error || mvzResult.error || exportsResult.error || quarantinesResult.error) {
     return apiError("ADMIN_DASHBOARD_QUERY_FAILED", "No fue posible obtener KPIs globales.", 500, {
-      upps: uppsResult.error?.message,
-      fieldTests: fieldTestsResult.error?.message,
+      producers: producersResult.error?.message,
+      mvz: mvzResult.error?.message,
       exports: exportsResult.error?.message,
       quarantines: quarantinesResult.error?.message,
     });
   }
 
-  const upps = uppsResult.data ?? [];
-  const fieldTests = fieldTestsResult.data ?? [];
+  const producerRows = producersResult.data ?? [];
+  const mvzRows = mvzResult.data ?? [];
   const exportRequests = exportsResult.data ?? [];
   const activeQuarantines = quarantinesResult.data ?? [];
+  const totalUpps = producerRows.reduce((sum, row) => sum + (row.total_upps ?? 0), 0);
+  const activeMvzAssignments = mvzRows.reduce((sum, row) => sum + (row.active_assignments ?? 0), 0);
 
   const exportsByMonth = exportRequests.reduce<Record<string, number>>((acc, row) => {
     const bucket = row.monthly_bucket ?? "sin-fecha";
@@ -52,10 +52,10 @@ export async function GET(request: Request) {
 
   return apiSuccess({
     kpis: {
-      totalUpps: upps.length,
-      uppsActive: upps.filter((row) => row.status === "active").length,
-      uppsInactive: upps.filter((row) => row.status !== "active").length,
-      activeReactors: fieldTests.filter((row) => row.result === "positive").length,
+      totalUpps,
+      uppsActive: totalUpps,
+      uppsInactive: 0,
+      activeReactors: activeMvzAssignments,
       monthlyExports: exportsByMonth,
       activeQuarantines: activeQuarantines.length,
     },

@@ -38,17 +38,36 @@ export async function GET(request: Request) {
 
   const supabaseAdmin = getSupabaseAdminClient();
   const animalsResult = await supabaseAdmin
-    .from("animals")
-    .select("id,upp_id,siniiga_tag,sex,birth_date,status,mother_animal_id,created_at")
+    .from("v_animals_sanitary")
+    .select(
+      "animal_id,upp_id,siniiga_tag,sex,birth_date,animal_status,mother_animal_id,tb_result,tb_status,br_result,br_status,sanitary_alert"
+    )
     .eq("tenant_id", auth.context.user.tenantId)
     .in("upp_id", accessibleUppIds)
-    .order("created_at", { ascending: false });
+    .order("animal_id", { ascending: false });
 
   if (animalsResult.error) {
     return apiError("PRODUCER_BOVINOS_QUERY_FAILED", animalsResult.error.message, 500);
   }
 
-  return apiSuccess({ bovinos: animalsResult.data ?? [] });
+  return apiSuccess({
+    bovinos: (animalsResult.data ?? []).map((row) => ({
+      id: row.animal_id,
+      upp_id: row.upp_id,
+      siniiga_tag: row.siniiga_tag,
+      sex: row.sex,
+      birth_date: row.birth_date,
+      status: row.animal_status,
+      mother_animal_id: row.mother_animal_id,
+      sanitary: {
+        tb_result: row.tb_result,
+        tb_status: row.tb_status,
+        br_result: row.br_result,
+        br_status: row.br_status,
+        alert: row.sanitary_alert,
+      },
+    })),
+  });
 }
 
 export async function POST(request: Request) {

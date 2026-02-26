@@ -15,36 +15,34 @@ import {
 } from "@/shared/ui/table";
 import { getAccessToken } from "@/shared/lib/auth-session";
 
-interface ExportRow {
+interface EmployeeRow {
   id: string;
-  upp_id: string | null;
-  status: string;
-  compliance_60_rule: boolean | null;
-  tb_br_validated: boolean | null;
-  blue_tag_assigned: boolean | null;
-  blocked_reason: string | null;
-  monthly_bucket: string | null;
-  created_at: string;
+  userId: string;
+  email: string;
+  membershipStatus: string;
+  roleKey: string | null;
+  uppAccess: Array<{ uppId: string; accessLevel: string; status: string }>;
 }
 
-export default function ProducerExportacionesPage() {
-  const [rows, setRows] = useState<ExportRow[]>([]);
+export default function ProducerEmpleadosPage() {
+  const [rows, setRows] = useState<EmployeeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
-  const [uppId, setUppId] = useState("");
+  const [email, setEmail] = useState("");
+  const [uppIdsCsv, setUppIdsCsv] = useState("");
 
   const loadRows = useCallback(async () => {
     setLoading(true);
     setErrorMessage("");
-
     const accessToken = await getAccessToken();
+
     if (!accessToken) {
       setErrorMessage("No existe sesion activa.");
       setLoading(false);
       return;
     }
 
-    const response = await fetch("/api/producer/exports", {
+    const response = await fetch("/api/producer/employees", {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
@@ -52,12 +50,12 @@ export default function ProducerExportacionesPage() {
 
     const body = await response.json();
     if (!response.ok || !body.ok) {
-      setErrorMessage(body.error?.message ?? "No fue posible cargar exportaciones.");
+      setErrorMessage(body.error?.message ?? "No fue posible cargar empleados.");
       setLoading(false);
       return;
     }
 
-    setRows(body.data.exports ?? []);
+    setRows(body.data.employees ?? []);
     setLoading(false);
   }, []);
 
@@ -65,51 +63,64 @@ export default function ProducerExportacionesPage() {
     void loadRows();
   }, [loadRows]);
 
-  const createExport = async () => {
+  const createEmployee = async () => {
     const accessToken = await getAccessToken();
     if (!accessToken) {
       setErrorMessage("No existe sesion activa.");
       return;
     }
 
-    const response = await fetch("/api/producer/exports", {
+    const uppIds = uppIdsCsv
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    const response = await fetch("/api/producer/employees", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ uppId }),
+      body: JSON.stringify({
+        email,
+        uppIds,
+      }),
     });
 
     const body = await response.json();
     if (!response.ok || !body.ok) {
-      setErrorMessage(body.error?.message ?? "No fue posible crear solicitud de exportacion.");
+      setErrorMessage(body.error?.message ?? "No fue posible registrar empleado.");
       return;
     }
 
-    setUppId("");
+    setEmail("");
+    setUppIdsCsv("");
     await loadRows();
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Exportaciones</h1>
-        <p className="text-sm text-muted-foreground">Solicitudes de exportacion de tus UPP.</p>
+        <h1 className="text-2xl font-bold">Empleados</h1>
+        <p className="text-sm text-muted-foreground">Gestion de membresias y accesos UPP del personal.</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Nueva solicitud</CardTitle>
+          <CardTitle>Agregar empleado existente</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
           <div className="space-y-2">
-            <Label htmlFor="uppId">UPP ID</Label>
-            <Input id="uppId" value={uppId} onChange={(event) => setUppId(event.target.value)} />
+            <Label htmlFor="email">Correo</Label>
+            <Input id="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="uppIds">UPP IDs (coma)</Label>
+            <Input id="uppIds" value={uppIdsCsv} onChange={(event) => setUppIdsCsv(event.target.value)} />
           </div>
           <div>
-            <Button onClick={createExport} disabled={!uppId.trim()}>
-              Solicitar exportacion
+            <Button onClick={createEmployee} disabled={!email.trim()}>
+              Agregar
             </Button>
           </div>
         </CardContent>
@@ -117,7 +128,7 @@ export default function ProducerExportacionesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Historial</CardTitle>
+          <CardTitle>Empleados actuales</CardTitle>
         </CardHeader>
         <CardContent>
           {errorMessage ? <p className="mb-3 text-sm text-destructive">{errorMessage}</p> : null}
@@ -127,23 +138,19 @@ export default function ProducerExportacionesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>UPP</TableHead>
+                  <TableHead>Correo</TableHead>
+                  <TableHead>Rol</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead>TB/BR</TableHead>
-                  <TableHead>Arete azul</TableHead>
-                  <TableHead>Motivo bloqueo</TableHead>
+                  <TableHead>UPP acceso</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell className="font-mono text-xs">{row.id.slice(0, 8)}</TableCell>
-                    <TableCell>{row.upp_id ?? "-"}</TableCell>
-                    <TableCell>{row.status}</TableCell>
-                    <TableCell>{row.tb_br_validated === null ? "-" : row.tb_br_validated ? "SI" : "NO"}</TableCell>
-                    <TableCell>{row.blue_tag_assigned === null ? "-" : row.blue_tag_assigned ? "SI" : "NO"}</TableCell>
-                    <TableCell>{row.blocked_reason ?? "-"}</TableCell>
+                    <TableCell className="font-medium">{row.email}</TableCell>
+                    <TableCell>{row.roleKey ?? "-"}</TableCell>
+                    <TableCell>{row.membershipStatus}</TableCell>
+                    <TableCell>{row.uppAccess.map((access) => access.uppId.slice(0, 8)).join(", ") || "-"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

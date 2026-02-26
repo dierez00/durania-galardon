@@ -8,12 +8,11 @@ import {
   MapPin,
   Bug as Cow,
   TestTube,
-  ShieldAlert,
   Ship,
   Shield,
   ClipboardList,
-  Bell,
-  User,
+  FileText,
+  Users,
   Truck,
   ChevronLeft,
   ChevronRight,
@@ -42,19 +41,15 @@ const producerNavigation: NavigationItem[] = [
   { name: "Bovinos", href: "/producer/bovinos", icon: Cow, permission: "producer.bovinos.read" },
   { name: "Movilizacion", href: "/producer/movilizacion", icon: Truck, permission: "producer.movements.read" },
   { name: "Exportaciones", href: "/producer/exportaciones", icon: Ship, permission: "producer.exports.read" },
-  { name: "Notificaciones", href: "/producer/notificaciones", icon: Bell, permission: "producer.notifications.read" },
-  { name: "Perfil", href: "/producer/perfil", icon: User, permission: "producer.profile.read" },
+  { name: "Documentos", href: "/producer/documentos", icon: FileText, permission: "producer.documents.read" },
+  { name: "Empleados", href: "/producer/empleados", icon: Users, permission: "producer.employees.read" },
 ];
 
 const mvzNavigation: NavigationItem[] = [
   { name: "Dashboard", href: "/mvz/dashboard", icon: LayoutDashboard, permission: "mvz.dashboard.read" },
   { name: "Asignaciones", href: "/mvz/asignaciones", icon: ClipboardList, permission: "mvz.assignments.read" },
-  { name: "Bovinos", href: "/mvz/bovinos", icon: Cow, permission: "mvz.bovinos.read" },
   { name: "Pruebas", href: "/mvz/pruebas", icon: TestTube, permission: "mvz.tests.read" },
-  { name: "Cuarentenas", href: "/mvz/cuarentenas", icon: ShieldAlert, permission: "mvz.quarantines.read" },
   { name: "Exportaciones", href: "/mvz/exportaciones", icon: Ship, permission: "mvz.exports.read" },
-  { name: "Notificaciones", href: "/mvz/notificaciones", icon: Bell, permission: "mvz.notifications.read" },
-  { name: "Perfil", href: "/mvz/perfil", icon: User, permission: "mvz.dashboard.read" },
 ];
 
 export default function Sidebar() {

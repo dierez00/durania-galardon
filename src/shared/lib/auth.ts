@@ -18,17 +18,10 @@ export const ROLE_LABELS: Record<AppRole, string> = {
 
 export const PERMISSION_KEYS = [
   "admin.dashboard.read",
-  "admin.users.read",
-  "admin.users.create",
-  "admin.users.update",
-  "admin.users.delete",
-  "admin.users.roles",
   "admin.producers.read",
   "admin.producers.write",
   "admin.mvz.read",
   "admin.mvz.write",
-  "admin.upps.read",
-  "admin.upps.write",
   "admin.quarantines.read",
   "admin.quarantines.write",
   "admin.exports.read",
@@ -36,18 +29,15 @@ export const PERMISSION_KEYS = [
   "admin.normative.read",
   "admin.normative.write",
   "admin.audit.read",
-  "admin.reports.export",
+  "admin.appointments.read",
+  "admin.appointments.write",
   "mvz.dashboard.read",
   "mvz.assignments.read",
-  "mvz.bovinos.read",
   "mvz.tests.read",
   "mvz.tests.write",
   "mvz.tests.sync",
-  "mvz.quarantines.read",
-  "mvz.quarantines.write",
   "mvz.exports.read",
   "mvz.exports.write",
-  "mvz.notifications.read",
   "producer.dashboard.read",
   "producer.upp.read",
   "producer.bovinos.read",
@@ -56,9 +46,10 @@ export const PERMISSION_KEYS = [
   "producer.movements.write",
   "producer.exports.read",
   "producer.exports.write",
-  "producer.notifications.read",
-  "producer.profile.read",
-  "producer.profile.write",
+  "producer.documents.read",
+  "producer.documents.write",
+  "producer.employees.read",
+  "producer.employees.write",
 ] as const;
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
@@ -97,15 +88,11 @@ const ADMIN_PERMISSION_SET = [...ALL_PERMISSION_KEYS] as PermissionKey[];
 const MVZ_PERMISSION_SET: PermissionKey[] = [
   "mvz.dashboard.read",
   "mvz.assignments.read",
-  "mvz.bovinos.read",
   "mvz.tests.read",
   "mvz.tests.write",
   "mvz.tests.sync",
-  "mvz.quarantines.read",
-  "mvz.quarantines.write",
   "mvz.exports.read",
   "mvz.exports.write",
-  "mvz.notifications.read",
 ];
 const PRODUCER_PERMISSION_SET: PermissionKey[] = [
   "producer.dashboard.read",
@@ -116,9 +103,10 @@ const PRODUCER_PERMISSION_SET: PermissionKey[] = [
   "producer.movements.write",
   "producer.exports.read",
   "producer.exports.write",
-  "producer.notifications.read",
-  "producer.profile.read",
-  "producer.profile.write",
+  "producer.documents.read",
+  "producer.documents.write",
+  "producer.employees.read",
+  "producer.employees.write",
 ];
 
 export const ROLE_DEFAULT_PERMISSIONS: Record<AppRole, PermissionKey[]> = {
@@ -147,7 +135,7 @@ export function isMvzViewRole(role: AppRole): boolean {
 
 export function redirectPathForRole(role: AppRole): string {
   if (isTenantAdminRole(role)) {
-    return "/admin/panel";
+    return "/admin";
   }
 
   if (isProducerViewRole(role)) {

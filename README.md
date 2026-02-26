@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Durania
 
-## Getting Started
+Durania es una app Next.js (App Router) con Supabase Auth + PostgreSQL para paneles multi-tenant:
 
-First, run the development server:
+- `Admin` (`tenant_admin`)
+- `Producer` (`producer`, `employee`)
+- `MVZ` (`mvz_government`, `mvz_internal`)
+
+## Comandos
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run typecheck
+npm run test
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Mapa de rutas
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Publico
+  - `/`
+  - `/login`
+- Admin
+  - `/admin`
+  - `/admin/producers`
+  - `/admin/mvz`
+  - `/admin/quarantines`
+  - `/admin/exports`
+  - `/admin/normative`
+  - `/admin/audit`
+  - `/admin/appointments`
+- Producer
+  - `/producer/dashboard`
+  - `/producer/ranchos`
+  - `/producer/bovinos`
+  - `/producer/movilizacion`
+  - `/producer/exportaciones`
+  - `/producer/documentos`
+  - `/producer/empleados`
+- MVZ
+  - `/mvz/dashboard`
+  - `/mvz/asignaciones`
+  - `/mvz/pruebas`
+  - `/mvz/exportaciones`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## API pública y paneles
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Auth/Tenant
+  - `GET /api/auth/me`
+  - `POST /api/auth/login`
+  - `POST /api/auth/logout`
+  - `GET /api/tenant/resolve`
+- Admin
+  - `GET /api/admin/dashboard`
+  - `GET|POST|PATCH /api/admin/producers`
+  - `GET|POST|PATCH /api/admin/mvz`
+  - `GET|POST|PATCH /api/admin/quarantines`
+  - `GET|POST|PATCH /api/admin/exports`
+  - `GET|POST|PATCH /api/admin/normative`
+  - `GET /api/admin/audit`
+  - `GET|PATCH /api/admin/appointments`
+- Producer
+  - `GET /api/producer/dashboard`
+  - `GET /api/producer/upp`
+  - `GET|POST /api/producer/bovinos`
+  - `GET|POST /api/producer/movements`
+  - `GET|POST /api/producer/exports`
+  - `GET|POST|PATCH /api/producer/documents`
+  - `GET|POST|PATCH /api/producer/employees`
+- MVZ
+  - `GET /api/mvz/dashboard`
+  - `GET /api/mvz/assignments`
+  - `GET|POST /api/mvz/tests`
+  - `POST /api/mvz/tests/sync`
+  - `GET|PATCH /api/mvz/exports`
+- Public
+  - `POST /api/public/appointments`
