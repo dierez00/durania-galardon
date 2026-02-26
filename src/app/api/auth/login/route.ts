@@ -1,14 +1,11 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import {
-  resolveRedirectByRole,
+  resolveAuthenticatedRequestUser,
   type AuthError,
 } from "@/server/auth";
 import {
   createSupabaseAnonServerClient,
-  createSupabaseRlsServerClient,
 } from "@/server/auth/supabase";
-import { resolveTenant } from "@/server/tenants/resolveTenant";
-import { isAppRole, isPermissionKey } from "@/shared/lib/auth";
 
 interface LoginRequestBody {
   email?: string;
@@ -43,35 +40,14 @@ export async function POST(request: Request) {
     return apiError("INVALID_CREDENTIALS", "Correo o contrasena invalidos.", 401);
   }
 
-  const rls = createSupabaseRlsServerClient(data.session.access_token);
-  const preferredTenantSlug = request.headers.get("x-tenant-slug-resolved") ?? resolveTenant(request)?.tenantSlug;
+  const authHeaders = new Headers(request.headers);
+  authHeaders.set("authorization", `Bearer ${data.session.access_token}`);
 
-  let contextQuery = rls
-    .from("v_user_context")
-    .select("tenant_id,tenant_slug,tenant_type,role_key,role_priority")
-    .order("role_priority", { ascending: true })
-    .limit(1);
-
-  if (preferredTenantSlug) {
-    contextQuery = contextQuery.eq("tenant_slug", preferredTenantSlug);
-  }
-
-  let contextResult = await contextQuery.maybeSingle();
-  if ((contextResult.error || !contextResult.data) && preferredTenantSlug) {
-    contextResult = await rls
-      .from("v_user_context")
-      .select("tenant_id,tenant_slug,tenant_type,role_key,role_priority")
-      .order("role_priority", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-  }
-
-  if (contextResult.error || !contextResult.data || !isAppRole(contextResult.data.role_key)) {
-    const errorPayload: AuthError = {
-      status: 403,
-      code: "ROLE_NOT_FOUND",
-      message: "La cuenta no tiene un rol valido.",
-    };
+  const authContextResult = await resolveAuthenticatedRequestUser(
+    new Request(request.url, { headers: authHeaders })
+  );
+  if ("error" in authContextResult) {
+    const errorPayload: AuthError = authContextResult.error;
     return apiError(
       errorPayload.code,
       errorPayload.message,
@@ -79,17 +55,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const permissionsResult = await rls
-    .from("v_user_permissions")
-    .select("permission_key")
-    .eq("tenant_id", contextResult.data.tenant_id);
-
-  const permissions = (permissionsResult.data ?? [])
-    .map((row) => row.permission_key)
-    .filter(isPermissionKey);
-
-  const panelResult = await rls.rpc("auth_get_panel_type");
-  const panelType = panelResult.data;
+  const user = authContextResult.user;
+  const panelType = user.panelType;
+  const permissions = user.permissions;
 
   const redirectByPanel =
     panelType === "government"
@@ -98,15 +66,15 @@ export async function POST(request: Request) {
       ? "/producer"
       : panelType === "mvz"
       ? "/mvz"
-      : resolveRedirectByRole(contextResult.data.role_key);
+      : "/login";
 
   return apiSuccess({
-    roleKey: contextResult.data.role_key,
+    roleKey: user.role,
     redirectTo: redirectByPanel,
-    tenantId: contextResult.data.tenant_id,
-    tenantSlug: contextResult.data.tenant_slug,
-    tenantType: contextResult.data.tenant_type,
-    panelType: panelType ?? contextResult.data.tenant_type,
+    tenantId: user.tenantId,
+    tenantSlug: user.tenantSlug,
+    tenantType: user.tenantType,
+    panelType: panelType ?? user.tenantType,
     permissions,
     session: {
       accessToken: data.session.access_token,

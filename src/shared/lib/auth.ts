@@ -123,6 +123,27 @@ export function isAppRole(value: string): value is AppRole {
   return APP_ROLES.includes(value as AppRole);
 }
 
+const ROLE_ALIASES: Record<string, AppRole> = {
+  admin: "tenant_admin",
+  government: "tenant_admin",
+  goverment: "tenant_admin",
+  gov: "tenant_admin",
+  mvz: "mvz_government",
+};
+
+export function normalizeAppRole(value: string | null | undefined): AppRole | null {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (isAppRole(normalized)) {
+    return normalized;
+  }
+
+  return ROLE_ALIASES[normalized] ?? null;
+}
+
 export function isTenantAdminRole(role: AppRole): boolean {
   return role === "tenant_admin";
 }

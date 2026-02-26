@@ -34,37 +34,41 @@ export async function resolveClientRole(
   supabase: SupabaseClient,
   _userId: string
 ): Promise<ResolveClientRoleResult> {
-  const sessionResult = await supabase.auth.getSession();
-  const accessToken = sessionResult.data.session?.access_token;
+  try {
+    const sessionResult = await supabase.auth.getSession();
+    const accessToken = sessionResult.data.session?.access_token;
 
-  if (!accessToken) {
-    return { role: null, code: "UNAUTHORIZED" };
-  }
+    if (!accessToken) {
+      return { role: null, code: "UNAUTHORIZED" };
+    }
 
-  const response = await fetch("/api/auth/me", {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    cache: "no-store",
-  });
+    const response = await fetch("/api/auth/me", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: "no-store",
+    });
 
-  const body = (await response.json()) as AuthMeResponse;
-  if (!response.ok || !body.ok || !body.data?.user?.role || !isAppRole(body.data.user.role)) {
+    const body = (await response.json()) as AuthMeResponse;
+    if (!response.ok || !body.ok || !body.data?.user?.role || !isAppRole(body.data.user.role)) {
+      return {
+        role: null,
+        tenantId: body.data?.tenant?.id,
+        tenantSlug: body.data?.tenant?.slug,
+        code: (body.error?.code as ResolveClientRoleResult["code"]) ?? "ROLE_NOT_FOUND",
+      };
+    }
+
+    const permissions = (body.data.permissions ?? []).filter(isPermissionKey);
+
     return {
-      role: null,
-      tenantId: body.data?.tenant?.id,
-      tenantSlug: body.data?.tenant?.slug,
-      code: (body.error?.code as ResolveClientRoleResult["code"]) ?? "ROLE_NOT_FOUND",
+      role: body.data.user.role,
+      tenantId: body.data.tenant?.id,
+      tenantSlug: body.data.tenant?.slug,
+      panelType: body.data.panelType,
+      permissions,
     };
+  } catch {
+    return { role: null, code: "ROLE_NOT_FOUND" };
   }
-
-  const permissions = (body.data.permissions ?? []).filter(isPermissionKey);
-
-  return {
-    role: body.data.user.role,
-    tenantId: body.data.tenant?.id,
-    tenantSlug: body.data.tenant?.slug,
-    panelType: body.data.panelType,
-    permissions,
-  };
 }

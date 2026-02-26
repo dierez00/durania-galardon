@@ -1,9 +1,10 @@
 import { resolveTenant } from "@/server/tenants/resolveTenant";
 import {
-  isAppRole,
+  normalizeAppRole,
   isPermissionKey,
   isTenantAdminRole,
   redirectPathForRole,
+  ROLE_DEFAULT_PERMISSIONS,
   type AppRole,
   type PermissionKey,
 } from "@/shared/lib/auth";
@@ -25,6 +26,17 @@ interface UserContextRow {
 
 interface PermissionRow {
   permission_key: string;
+}
+
+interface TenantMembershipRow {
+  id: string;
+  tenant_id: string;
+}
+
+interface TenantRow {
+  id: string;
+  type: TenantType;
+  slug: string;
 }
 
 export interface AuthError {
@@ -73,6 +85,133 @@ function authError(status: number, code: string, message: string): AuthError {
   return { status, code, message };
 }
 
+function resolveTenantTypePriority(type: TenantType): number {
+  if (type === "government") {
+    return 1;
+  }
+  if (type === "mvz") {
+    return 2;
+  }
+  return 3;
+}
+
+function resolveDefaultRoleForTenantType(type: TenantType): AppRole {
+  if (type === "government") {
+    return "tenant_admin";
+  }
+  if (type === "mvz") {
+    return "mvz_government";
+  }
+  return "producer";
+}
+
+async function resolveContextFallback(
+  userId: string,
+  preferredTenantSlug: string | null
+): Promise<{ row: UserContextRow; usedDefaultRole: boolean } | null> {
+  const provisioning = getSupabaseProvisioningClient();
+
+  const membershipResult = await provisioning
+    .from("tenant_memberships")
+    .select("id,tenant_id")
+    .eq("user_id", userId)
+    .eq("status", "active");
+
+  if (membershipResult.error || !membershipResult.data || membershipResult.data.length === 0) {
+    return null;
+  }
+
+  const memberships = membershipResult.data as TenantMembershipRow[];
+  const tenantIds = memberships.map((item) => item.tenant_id);
+
+  const tenantResult = await provisioning
+    .from("tenants")
+    .select("id,type,slug")
+    .in("id", tenantIds)
+    .eq("status", "active");
+
+  if (tenantResult.error || !tenantResult.data || tenantResult.data.length === 0) {
+    return null;
+  }
+
+  let tenants = tenantResult.data as TenantRow[];
+  if (preferredTenantSlug) {
+    const preferredTenant = tenants.find((tenant) => tenant.slug === preferredTenantSlug);
+    if (preferredTenant) {
+      tenants = [preferredTenant];
+    }
+  }
+
+  const selectedTenant = [...tenants].sort(
+    (a, b) => resolveTenantTypePriority(a.type) - resolveTenantTypePriority(b.type)
+  )[0];
+
+  if (!selectedTenant) {
+    return null;
+  }
+
+  const selectedMembership = memberships.find(
+    (membership) => membership.tenant_id === selectedTenant.id
+  );
+
+  if (!selectedMembership) {
+    return null;
+  }
+
+  const roleResult = await provisioning
+    .from("tenant_user_roles")
+    .select("tenant_roles(key,priority)")
+    .eq("membership_id", selectedMembership.id);
+
+  let selectedRole: AppRole | null = null;
+  let selectedPriority = 100;
+  let usedDefaultRole = false;
+
+  if (!roleResult.error && roleResult.data) {
+    const roleRows = roleResult.data as Array<{
+      tenant_roles?: { key?: string; priority?: number } | Array<{ key?: string; priority?: number }>;
+    }>;
+
+    const flattened = roleRows
+      .flatMap((entry) =>
+        Array.isArray(entry.tenant_roles)
+          ? entry.tenant_roles
+          : entry.tenant_roles
+          ? [entry.tenant_roles]
+          : []
+      )
+      .map((role) => ({
+        role: normalizeAppRole(role.key),
+        priority: role.priority ?? 100,
+      }))
+      .filter((item): item is { role: AppRole; priority: number } => item.role !== null)
+      .sort((a, b) => a.priority - b.priority);
+
+    if (flattened.length > 0) {
+      selectedRole = flattened[0].role;
+      selectedPriority = flattened[0].priority;
+    }
+  }
+
+  if (!selectedRole) {
+    selectedRole = resolveDefaultRoleForTenantType(selectedTenant.type);
+    selectedPriority = 1;
+    usedDefaultRole = true;
+  }
+
+  return {
+    row: {
+      user_id: userId,
+      tenant_id: selectedTenant.id,
+      tenant_type: selectedTenant.type,
+      tenant_slug: selectedTenant.slug,
+      role_key: selectedRole,
+      role_priority: selectedPriority,
+    },
+    usedDefaultRole,
+  };
+}
+
 function resolveTenantSlugFromRequest(request: Request): string | null {
   const tenantHeader = request.headers.get("x-tenant-slug-resolved");
   const resolved = resolveTenant(request);
@@ -111,7 +250,18 @@ async function resolvePrimaryContext(
       .maybeSingle();
   }
 
-  if (contextResult.error || !contextResult.data) {
+  let row: UserContextRow | null = contextResult.data as UserContextRow | null;
+  let usedDefaultRole = false;
+
+  if (!row || !normalizeAppRole(row.role_key)) {
+    const fallback = await resolveContextFallback(authUserResult.data.user.id, preferredTenantSlug);
+    if (fallback) {
+      row = fallback.row;
+      usedDefaultRole = fallback.usedDefaultRole;
+    }
+  }
+
+  if (!row) {
     return {
       error: authError(
         403,
@@ -121,21 +271,26 @@ async function resolvePrimaryContext(
     };
   }
 
-  const row = contextResult.data as UserContextRow;
-  if (!isAppRole(row.role_key)) {
+  const normalizedRole = normalizeAppRole(row.role_key);
+  if (!normalizedRole) {
     return {
       error: authError(403, "ROLE_NOT_FOUND", "El rol principal no es valido para la aplicacion."),
     };
   }
+  row.role_key = normalizedRole;
 
   const permissionsResult = await supabase
     .from("v_user_permissions")
     .select("permission_key")
     .eq("tenant_id", row.tenant_id);
 
-  const permissions = (permissionsResult.data ?? [])
+  let permissions = (permissionsResult.data ?? [])
     .map((item) => (item as PermissionRow).permission_key)
     .filter(isPermissionKey);
+
+  if (permissions.length === 0 && usedDefaultRole) {
+    permissions = [...ROLE_DEFAULT_PERMISSIONS[normalizedRole]];
+  }
 
   const panelResult = await supabase.rpc("auth_get_panel_type");
   const panelType = panelResult.data;

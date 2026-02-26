@@ -8,6 +8,7 @@ import { getSupabaseBrowserClient } from "@/shared/lib/supabase-browser";
 import { resolveClientRole } from "@/shared/lib/auth-client";
 import {
   ROLE_DEFAULT_PERMISSIONS,
+  isPermissionKey,
   isMvzViewRole,
   isProducerViewRole,
   isTenantAdminRole,
@@ -48,66 +49,84 @@ export default function TenantLayout({
 
   useEffect(() => {
     const run = async () => {
-      const supabase = getSupabaseBrowserClient();
-      const { data } = await supabase.auth.getSession();
-
-      if (!data.session) {
-        router.replace("/login");
-        return;
-      }
-
-      const roleResult = await resolveClientRole(supabase, data.session.user.id);
-      if (!roleResult.role) {
-        await supabase.auth.signOut();
-        router.replace("/login");
-        return;
-      }
-
-      if (isTenantAdminRole(roleResult.role)) {
-        router.replace("/admin");
-        return;
-      }
-
-      if (isProducerViewRole(roleResult.role) && !pathname.startsWith("/producer")) {
-        router.replace("/producer/dashboard");
-        return;
-      }
-
-      if (isMvzViewRole(roleResult.role) && !pathname.startsWith("/mvz")) {
-        router.replace("/mvz/dashboard");
-        return;
-      }
-
-      const permissionsFallback = ROLE_DEFAULT_PERMISSIONS[roleResult.role] ?? [];
-      const rolePath = isProducerViewRole(roleResult.role) ? "producer" : "mvz";
-      const requiredPermission = resolvePermissionForPath(pathname, rolePath);
-
-      if (!requiredPermission) {
-        router.replace(isProducerViewRole(roleResult.role) ? "/producer/dashboard" : "/mvz/dashboard");
-        return;
-      }
-
-      let permissions = permissionsFallback;
       try {
-        const authMeResponse = await fetch("/api/auth/me", {
-          headers: {
-            Authorization: `Bearer ${data.session.access_token}`,
-          },
-        });
-        const authMeBody = await authMeResponse.json();
-        if (authMeResponse.ok && authMeBody.ok && Array.isArray(authMeBody.data?.permissions)) {
-          permissions = authMeBody.data.permissions as PermissionKey[];
+        const supabase = getSupabaseBrowserClient();
+        const { data } = await supabase.auth.getSession();
+
+        if (!data.session) {
+          router.replace("/login");
+          return;
         }
+
+        const roleResult = await resolveClientRole(supabase, data.session.user.id);
+        if (!roleResult.role) {
+          await supabase.auth.signOut();
+          router.replace("/login");
+          return;
+        }
+
+        if (isTenantAdminRole(roleResult.role)) {
+          router.replace("/admin");
+          return;
+        }
+
+        if (isProducerViewRole(roleResult.role) && !pathname.startsWith("/producer")) {
+          router.replace("/producer/dashboard");
+          return;
+        }
+
+        if (isMvzViewRole(roleResult.role) && !pathname.startsWith("/mvz")) {
+          router.replace("/mvz/dashboard");
+          return;
+        }
+
+        const permissionsFallback = ROLE_DEFAULT_PERMISSIONS[roleResult.role] ?? [];
+        const rolePath = isProducerViewRole(roleResult.role) ? "producer" : "mvz";
+        const requiredPermission = resolvePermissionForPath(pathname, rolePath);
+        const dashboardPath = isProducerViewRole(roleResult.role) ? "/producer/dashboard" : "/mvz/dashboard";
+
+        if (!requiredPermission) {
+          if (pathname !== dashboardPath) {
+            router.replace(dashboardPath);
+            return;
+          }
+
+          setReady(true);
+          return;
+        }
+
+        let permissions = permissionsFallback;
+        try {
+          const authMeResponse = await fetch("/api/auth/me", {
+            headers: {
+              Authorization: `Bearer ${data.session.access_token}`,
+            },
+          });
+          const authMeBody = await authMeResponse.json();
+          if (authMeResponse.ok && authMeBody.ok && Array.isArray(authMeBody.data?.permissions)) {
+            const apiPermissions = (authMeBody.data.permissions as string[]).filter(isPermissionKey);
+            if (apiPermissions.length > 0) {
+              permissions = apiPermissions;
+            }
+          }
+        } catch {
+          permissions = permissionsFallback;
+        }
+
+        if (!permissions.includes(requiredPermission)) {
+          if (pathname !== dashboardPath) {
+            router.replace(dashboardPath);
+            return;
+          }
+
+          router.replace("/login");
+          return;
+        }
+
+        setReady(true);
       } catch {
-        permissions = permissionsFallback;
+        router.replace("/login");
       }
-
-      if (!permissions.includes(requiredPermission)) {
-        router.replace(isProducerViewRole(roleResult.role) ? "/producer/dashboard" : "/mvz/dashboard");
-        return;
-      }
-
-      setReady(true);
     };
 
     void run();
