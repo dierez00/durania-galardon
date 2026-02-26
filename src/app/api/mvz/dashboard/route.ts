@@ -1,6 +1,7 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
+import { getSupabaseAdminClient } from "@/server/auth/supabase";
+import { resolveMvzProfileId } from "@/server/authz/profiles";
 
 export async function GET(request: Request) {
   const auth = await requireAuthorized(request, {
@@ -12,7 +13,6 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
-<<<<<<< Updated upstream
   const user = auth.context.user;
   const supabaseAdmin = getSupabaseAdminClient();
 
@@ -25,12 +25,6 @@ export async function GET(request: Request) {
     .from("v_mvz_assignments")
     .select("assignment_id,sanitary_alert,tb_last_result,br_last_result")
     .eq("mvz_profile_id", mvzProfileId);
-=======
-  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
-  const assignmentsResult = await supabase
-    .from("v_mvz_assignments")
-    .select("assignment_id,sanitary_alert,tb_last_result,br_last_result");
->>>>>>> Stashed changes
 
   if (assignmentsResult.error) {
     return apiError("MVZ_DASHBOARD_QUERY_FAILED", "No fue posible cargar dashboard clinico.", 500, {
@@ -38,7 +32,11 @@ export async function GET(request: Request) {
     });
   }
 
-  const assignments = assignmentsResult.data ?? [];
+  const assignments = (assignmentsResult.data ?? []) as Array<{
+    sanitary_alert: string | null;
+    tb_last_result: string | null;
+    br_last_result: string | null;
+  }>;
   const activeReactors = assignments.filter(
     (row) => row.tb_last_result === "positive" || row.br_last_result === "positive"
   ).length;

@@ -1,6 +1,9 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
+import {
+  createSupabaseRlsServerClient,
+  getSupabaseAdminClient,
+} from "@/server/auth/supabase";
 import { resolveMvzProfileId } from "@/server/authz/profiles";
 import { logAuditEvent } from "@/server/audit";
 
@@ -92,6 +95,7 @@ export async function POST(request: Request) {
   }
 
   const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const supabaseAdmin = getSupabaseAdminClient();
   const testTypeResult = await supabase
     .from("test_types")
     .select("id")
@@ -102,7 +106,6 @@ export async function POST(request: Request) {
     return apiError("TEST_TYPE_NOT_FOUND", "No existe test_type para el key enviado.", 404);
   }
 
-<<<<<<< Updated upstream
   const uppResult = await supabaseAdmin
     .from("upps")
     .select("tenant_id")
@@ -114,9 +117,6 @@ export async function POST(request: Request) {
   }
 
   const insertResult = await supabaseAdmin
-=======
-  const insertResult = await supabase
->>>>>>> Stashed changes
     .from("field_tests")
     .insert({
       tenant_id: uppResult.data.tenant_id,

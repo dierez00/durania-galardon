@@ -1,11 +1,7 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-<<<<<<< Updated upstream
 import { getSupabaseProvisioningClient } from "@/server/auth/supabase";
 import { createAuthUser, deleteAuthUser } from "@/server/auth/provisioning";
-=======
-import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
->>>>>>> Stashed changes
 import { logAuditEvent } from "@/server/audit";
 
 interface ProducerBody {
@@ -143,7 +139,6 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
-<<<<<<< Updated upstream
   const supabaseAdmin = getSupabaseProvisioningClient();
 
   const producersViewResult = await supabaseAdmin
@@ -152,16 +147,6 @@ export async function GET(request: Request) {
       "producer_id,full_name,curp,producer_status,registered_at,docs_validated,docs_pending,docs_issues"
     )
     .order("registered_at", { ascending: false });
-=======
-  const tenantId = auth.context.user.tenantId;
-  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
-
-  const producersResult = await supabase
-    .from("producers")
-    .select("id,user_id,curp,full_name,status,created_at")
-    .eq("tenant_id", tenantId)
-    .order("created_at", { ascending: false });
->>>>>>> Stashed changes
 
   if (!producersViewResult.error) {
     return apiSuccess({
@@ -186,37 +171,12 @@ export async function GET(request: Request) {
     .eq("owner_tenant_id", auth.context.user.tenantId)
     .order("created_at", { ascending: false });
 
-<<<<<<< Updated upstream
   if (fallbackResult.error) {
     return apiError(
       "ADMIN_PRODUCERS_QUERY_FAILED",
       fallbackResult.error.message,
       500
     );
-=======
-  let documentSummaryByProducer = new Map<string, { validated: number; pending: number; expired: number }>();
-  if (producerIds.length > 0) {
-    const documentsResult = await supabase
-      .from("producer_documents")
-      .select("producer_id,status")
-      .eq("tenant_id", tenantId)
-      .in("producer_id", producerIds);
-
-    if (!documentsResult.error) {
-      documentSummaryByProducer = (documentsResult.data ?? []).reduce((acc, row) => {
-        const current = acc.get(row.producer_id) ?? { validated: 0, pending: 0, expired: 0 };
-        if (row.status === "validated") {
-          current.validated += 1;
-        } else if (row.status === "pending") {
-          current.pending += 1;
-        } else if (row.status === "expired") {
-          current.expired += 1;
-        }
-        acc.set(row.producer_id, current);
-        return acc;
-      }, new Map<string, { validated: number; pending: number; expired: number }>());
-    }
->>>>>>> Stashed changes
   }
 
   return apiSuccess({
@@ -256,27 +216,12 @@ export async function POST(request: Request) {
     );
   }
 
-<<<<<<< Updated upstream
   const supabaseAdmin = getSupabaseProvisioningClient();
   const authUserResult = await createAuthUser({
     email,
     password,
     emailConfirmed: true,
   });
-=======
-  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
-  const createResult = await supabase
-    .from("producers")
-    .insert({
-      tenant_id: auth.context.user.tenantId,
-      user_id: userId,
-      curp,
-      full_name: fullName,
-      status: "active",
-    })
-    .select("id,user_id,curp,full_name,status,created_at")
-    .single();
->>>>>>> Stashed changes
 
   if (authUserResult.error || !authUserResult.data.user) {
     return apiError(
@@ -429,17 +374,12 @@ export async function PATCH(request: Request) {
     updatePayload.curp = body.curp?.trim() || null;
   }
 
-<<<<<<< Updated upstream
   if (Object.keys(updatePayload).length === 0) {
     return apiError("INVALID_PAYLOAD", "Debe enviar al menos un campo para actualizar.");
   }
 
   const supabaseAdmin = getSupabaseProvisioningClient();
   const updateResult = await supabaseAdmin
-=======
-  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
-  const updateResult = await supabase
->>>>>>> Stashed changes
     .from("producers")
     .update(updatePayload)
     .eq("id", id)

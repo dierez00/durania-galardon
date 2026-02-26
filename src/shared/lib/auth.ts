@@ -29,10 +29,6 @@ export const PERMISSION_KEYS = [
   "admin.normative.read",
   "admin.normative.write",
   "admin.audit.read",
-<<<<<<< Updated upstream
-=======
-  "admin.reports.export",
->>>>>>> Stashed changes
   "admin.appointments.read",
   "admin.appointments.write",
   "mvz.dashboard.read",
@@ -53,12 +49,6 @@ export const PERMISSION_KEYS = [
   "producer.exports.write",
   "producer.documents.read",
   "producer.documents.write",
-<<<<<<< Updated upstream
-=======
-  "producer.notifications.read",
-  "producer.profile.read",
-  "producer.profile.write",
->>>>>>> Stashed changes
   "producer.employees.read",
   "producer.employees.write",
 ] as const;
@@ -117,12 +107,6 @@ const PRODUCER_PERMISSION_SET: PermissionKey[] = [
   "producer.exports.write",
   "producer.documents.read",
   "producer.documents.write",
-<<<<<<< Updated upstream
-=======
-  "producer.notifications.read",
-  "producer.profile.read",
-  "producer.profile.write",
->>>>>>> Stashed changes
   "producer.employees.read",
   "producer.employees.write",
 ];

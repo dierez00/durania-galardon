@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
+"use client";
 
-<<<<<<< Updated upstream:src/app/(admin)/admin/(protected)/page.tsx
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
@@ -102,8 +101,4 @@ export default function AdminDashboardPage() {
       </Card>
     </div>
   );
-=======
-export default function AdminPanelAliasPage() {
-  redirect("/admin");
->>>>>>> Stashed changes:src/app/(admin)/admin/(protected)/panel/page.tsx
 }

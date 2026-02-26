@@ -1,10 +1,6 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-<<<<<<< Updated upstream
 import { getSupabaseProvisioningClient } from "@/server/auth/supabase";
-=======
-import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
->>>>>>> Stashed changes
 import { logAuditEvent } from "@/server/audit";
 
 interface MvzBody {
@@ -25,7 +21,6 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
-<<<<<<< Updated upstream
   const supabaseAdmin = getSupabaseProvisioningClient();
   const rowsResult = await supabaseAdmin
     .from("v_mvz_admin")
@@ -34,56 +29,6 @@ export async function GET(request: Request) {
 
   if (rowsResult.error) {
     return apiError("ADMIN_MVZ_QUERY_FAILED", rowsResult.error.message, 500);
-=======
-  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
-  const tenantId = auth.context.user.tenantId;
-
-  const mvzResult = await supabase
-    .from("mvz_profiles")
-    .select("id,user_id,full_name,license_number,status,created_at")
-    .eq("tenant_id", tenantId)
-    .order("created_at", { ascending: false });
-
-  if (mvzResult.error) {
-    return apiError("ADMIN_MVZ_QUERY_FAILED", mvzResult.error.message, 500);
-  }
-
-  const mvzRows = mvzResult.data ?? [];
-  const mvzIds = mvzRows.map((row) => row.id);
-
-  let assignmentsByMvz = new Map<string, number>();
-  let testsByMvz = new Map<string, number>();
-
-  if (mvzIds.length > 0) {
-    const [assignmentsResult, testsResult] = await Promise.all([
-      supabase
-        .from("mvz_upp_assignments")
-        .select("mvz_profile_id,status")
-        .eq("tenant_id", tenantId)
-        .in("mvz_profile_id", mvzIds),
-      supabase
-        .from("field_tests")
-        .select("mvz_profile_id")
-        .eq("tenant_id", tenantId)
-        .in("mvz_profile_id", mvzIds),
-    ]);
-
-    if (!assignmentsResult.error) {
-      assignmentsByMvz = (assignmentsResult.data ?? []).reduce((acc, row) => {
-        if (row.status === "active") {
-          acc.set(row.mvz_profile_id, (acc.get(row.mvz_profile_id) ?? 0) + 1);
-        }
-        return acc;
-      }, new Map<string, number>());
-    }
-
-    if (!testsResult.error) {
-      testsByMvz = (testsResult.data ?? []).reduce((acc, row) => {
-        acc.set(row.mvz_profile_id, (acc.get(row.mvz_profile_id) ?? 0) + 1);
-        return acc;
-      }, new Map<string, number>());
-    }
->>>>>>> Stashed changes
   }
 
   return apiSuccess({
@@ -124,13 +69,8 @@ export async function POST(request: Request) {
     return apiError("INVALID_PAYLOAD", "Debe enviar userId, fullName y licenseNumber.");
   }
 
-<<<<<<< Updated upstream
   const supabaseAdmin = getSupabaseProvisioningClient();
   const createResult = await supabaseAdmin
-=======
-  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
-  const createResult = await supabase
->>>>>>> Stashed changes
     .from("mvz_profiles")
     .insert({
       owner_tenant_id: auth.context.user.tenantId,
@@ -199,13 +139,8 @@ export async function PATCH(request: Request) {
     return apiError("INVALID_PAYLOAD", "Debe enviar status o fullName para actualizar.");
   }
 
-<<<<<<< Updated upstream
   const supabaseAdmin = getSupabaseProvisioningClient();
   const updateResult = await supabaseAdmin
-=======
-  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
-  const updateResult = await supabase
->>>>>>> Stashed changes
     .from("mvz_profiles")
     .update(updatePayload)
     .eq("id", id)

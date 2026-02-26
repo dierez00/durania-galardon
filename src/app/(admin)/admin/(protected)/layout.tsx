@@ -11,10 +11,6 @@ import { cn } from "@/shared/lib/utils";
 
 const navigation = [
   { href: "/admin", label: "Panel" },
-<<<<<<< Updated upstream
-=======
-  { href: "/admin/users", label: "Usuarios" },
->>>>>>> Stashed changes
   { href: "/admin/producers", label: "Productores" },
   { href: "/admin/mvz", label: "MVZ" },
   { href: "/admin/quarantines", label: "Cuarentenas" },
@@ -85,7 +81,6 @@ export default function AdminProtectedLayout({
               (() => {
                 const isRootAdminItem = item.href === "/admin";
                 const isActive = isRootAdminItem
-<<<<<<< Updated upstream
                   ? pathname === "/admin"
                   : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
@@ -102,24 +97,6 @@ export default function AdminProtectedLayout({
                   >
                     {item.label}
                   </Link>
-=======
-                  ? pathname === "/admin" || pathname === "/admin/panel"
-                  : pathname === item.href || pathname.startsWith(`${item.href}/`);
-
-                return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-sm transition-colors",
-                  isActive
-                    ? "bg-neutral-900 text-white"
-                    : "text-neutral-600 hover:bg-neutral-100"
-                )}
-              >
-                {item.label}
-              </Link>
->>>>>>> Stashed changes
                 );
               })()
             ))}

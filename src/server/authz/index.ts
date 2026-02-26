@@ -1,5 +1,7 @@
 import { apiError } from "@/shared/lib/api-response";
 import {
+  isMvzViewRole,
+  isProducerViewRole,
   isTenantAdminRole,
   type AppRole,
   type PermissionKey,
@@ -8,7 +10,10 @@ import {
   resolveAuthenticatedRequestUser,
   type AuthenticatedRequestUser,
 } from "@/server/auth";
-import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
+import {
+  createSupabaseRlsServerClient,
+  getSupabaseAdminClient,
+} from "@/server/auth/supabase";
 import { requirePermission } from "@/server/auth/permissions";
 import { logAuditEvent } from "@/server/audit";
 
@@ -62,7 +67,8 @@ export async function hasUppScopeAccess(
     return true;
   }
 
-<<<<<<< Updated upstream
+  const supabaseAdmin = getSupabaseAdminClient();
+
   if (isProducerViewRole(user.role)) {
     const producerResult = await supabaseAdmin
       .from("producers")
@@ -112,13 +118,6 @@ export async function hasUppScopeAccess(
   }
 
   return false;
-=======
-  const mvzScopeResult = await supabase.rpc("auth_mvz_assigned_to_upp", {
-    p_upp_id: uppId,
-  });
-
-  return !mvzScopeResult.error && mvzScopeResult.data === true;
->>>>>>> Stashed changes
 }
 
 export async function resolveAccessibleUppIds(
@@ -131,7 +130,7 @@ export async function resolveAccessibleUppIds(
     return [];
   }
 
-<<<<<<< Updated upstream
+  const supabaseAdmin = getSupabaseAdminClient();
   const uppIds = new Set<string>();
 
   const directAccessResult = await supabaseAdmin
@@ -198,9 +197,6 @@ export async function resolveAccessibleUppIds(
   }
 
   return [...uppIds];
-=======
-  return (uppResult.data ?? []).map((row) => row.id);
->>>>>>> Stashed changes
 }
 
 export async function requireAuthorized(

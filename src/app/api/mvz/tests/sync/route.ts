@@ -1,6 +1,9 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
+import {
+  createSupabaseRlsServerClient,
+  getSupabaseAdminClient,
+} from "@/server/auth/supabase";
 import { resolveMvzProfileId } from "@/server/authz/profiles";
 import { logAuditEvent } from "@/server/audit";
 import type { OfflineSyncItem } from "@/shared/lib/auth";
@@ -37,6 +40,7 @@ export async function POST(request: Request) {
   }
 
   const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const supabaseAdmin = getSupabaseAdminClient();
   const synced: Array<{ clientMutationId: string; fieldTestId: string }> = [];
   const skipped: Array<{ clientMutationId: string; reason: string }> = [];
 
@@ -80,7 +84,6 @@ export async function POST(request: Request) {
       continue;
     }
 
-<<<<<<< Updated upstream
     const uppResult = await supabaseAdmin
       .from("upps")
       .select("tenant_id")
@@ -95,9 +98,6 @@ export async function POST(request: Request) {
     const targetTenantId = uppResult.data.tenant_id;
 
     const insertFieldTest = await supabaseAdmin
-=======
-    const insertFieldTest = await supabase
->>>>>>> Stashed changes
       .from("field_tests")
       .insert({
         tenant_id: targetTenantId,
@@ -126,13 +126,8 @@ export async function POST(request: Request) {
         .eq("id", animalId);
     }
 
-<<<<<<< Updated upstream
     const syncInsert = await supabaseAdmin.from("field_test_sync_events").insert({
       tenant_id: targetTenantId,
-=======
-    const syncInsert = await supabase.from("field_test_sync_events").insert({
-      tenant_id: auth.context.user.tenantId,
->>>>>>> Stashed changes
       mvz_user_id: auth.context.user.id,
       client_mutation_id: clientMutationId,
       field_test_id: insertFieldTest.data.id,

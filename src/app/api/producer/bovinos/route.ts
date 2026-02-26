@@ -1,6 +1,9 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
+import {
+  createSupabaseRlsServerClient,
+  getSupabaseAdminClient,
+} from "@/server/auth/supabase";
 import { logAuditEvent } from "@/server/audit";
 
 interface ProducerBovinoBody {
@@ -36,19 +39,12 @@ export async function GET(request: Request) {
     return apiSuccess({ bovinos: [] });
   }
 
-<<<<<<< Updated upstream
   const supabaseAdmin = getSupabaseAdminClient();
   const animalsResult = await supabaseAdmin
     .from("v_animals_sanitary")
     .select(
       "animal_id,upp_id,siniiga_tag,sex,birth_date,animal_status,mother_animal_id,tb_result,tb_status,br_result,br_status,sanitary_alert"
     )
-=======
-  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
-  const animalsResult = await supabase
-    .from("animals")
-    .select("id,upp_id,siniiga_tag,sex,birth_date,status,mother_animal_id,created_at")
->>>>>>> Stashed changes
     .eq("tenant_id", auth.context.user.tenantId)
     .in("upp_id", accessibleUppIds)
     .order("animal_id", { ascending: false });
@@ -58,7 +54,20 @@ export async function GET(request: Request) {
   }
 
   return apiSuccess({
-    bovinos: (animalsResult.data ?? []).map((row) => ({
+    bovinos: (animalsResult.data ?? []).map((row: {
+      animal_id: string;
+      upp_id: string;
+      siniiga_tag: string;
+      sex: "M" | "F";
+      birth_date: string | null;
+      animal_status: string;
+      mother_animal_id: string | null;
+      tb_result: string | null;
+      tb_status: string | null;
+      br_result: string | null;
+      br_status: string | null;
+      sanitary_alert: string | null;
+    }) => ({
       id: row.animal_id,
       upp_id: row.upp_id,
       siniiga_tag: row.siniiga_tag,
