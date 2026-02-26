@@ -1,6 +1,6 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { getSupabaseAdminClient } from "@/server/auth/supabase";
+import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
 import { logAuditEvent } from "@/server/audit";
 
 interface MvzExportBody {
@@ -26,8 +26,8 @@ export async function GET(request: Request) {
     return apiSuccess({ exports: [] });
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const rowsResult = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const rowsResult = await supabase
     .from("export_requests")
     .select(
       "id,upp_id,status,compliance_60_rule,tb_br_validated,blue_tag_assigned,blocked_reason,created_at,updated_at"
@@ -64,8 +64,8 @@ export async function PATCH(request: Request) {
     return apiError("INVALID_PAYLOAD", "Debe enviar id de export_request.");
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const lookup = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const lookup = await supabase
     .from("export_requests")
     .select("id,upp_id")
     .eq("id", id)
@@ -98,7 +98,7 @@ export async function PATCH(request: Request) {
     updatePayload.blocked_reason = body.blockedReason?.trim() || null;
   }
 
-  const updateResult = await supabaseAdmin
+  const updateResult = await supabase
     .from("export_requests")
     .update(updatePayload)
     .eq("id", id)

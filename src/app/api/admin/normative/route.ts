@@ -1,6 +1,6 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { getSupabaseAdminClient } from "@/server/auth/supabase";
+import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
 import { logAuditEvent } from "@/server/audit";
 
 interface NormativeBody {
@@ -22,8 +22,8 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const rowsResult = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const rowsResult = await supabase
     .from("normative_settings")
     .select("id,key,value_json,effective_from,effective_until,status,created_at")
     .eq("tenant_id", auth.context.user.tenantId)
@@ -60,8 +60,8 @@ export async function POST(request: Request) {
     return apiError("INVALID_PAYLOAD", "Debe enviar key y valueJson.");
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const insertResult = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const insertResult = await supabase
     .from("normative_settings")
     .insert({
       tenant_id: auth.context.user.tenantId,
@@ -135,8 +135,8 @@ export async function PATCH(request: Request) {
     updatePayload.effective_until = body.effectiveUntil || null;
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const updateResult = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const updateResult = await supabase
     .from("normative_settings")
     .update(updatePayload)
     .eq("tenant_id", auth.context.user.tenantId)

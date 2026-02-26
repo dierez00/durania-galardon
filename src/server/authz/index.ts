@@ -1,10 +1,5 @@
 import { apiError } from "@/shared/lib/api-response";
 import {
-  ALL_PERMISSION_KEYS,
-  ROLE_DEFAULT_PERMISSIONS,
-  isPermissionKey,
-  isMvzViewRole,
-  isProducerViewRole,
   isTenantAdminRole,
   type AppRole,
   type PermissionKey,
@@ -13,7 +8,8 @@ import {
   resolveAuthenticatedRequestUser,
   type AuthenticatedRequestUser,
 } from "@/server/auth";
-import { getSupabaseAdminClient } from "@/server/auth/supabase";
+import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
+import { requirePermission } from "@/server/auth/permissions";
 import { logAuditEvent } from "@/server/audit";
 
 export interface RequireAuthorizedOptions {
@@ -37,86 +33,10 @@ export interface AuthorizedContext {
   getAccessibleUppIds: () => Promise<string[]>;
 }
 
-function dedupePermissions(values: PermissionKey[]): PermissionKey[] {
-  return [...new Set(values)];
-}
-
-async function resolveRoleIds(user: AuthenticatedRequestUser): Promise<string[]> {
-  const supabaseAdmin = getSupabaseAdminClient();
-  const membershipResult = await supabaseAdmin
-    .from("tenant_memberships")
-    .select("id")
-    .eq("tenant_id", user.tenantId)
-    .eq("user_id", user.id)
-    .eq("status", "active")
-    .maybeSingle();
-
-  if (membershipResult.error || !membershipResult.data) {
-    return [];
-  }
-
-  const rolesResult = await supabaseAdmin
-    .from("tenant_user_roles")
-    .select("tenant_role_id")
-    .eq("membership_id", membershipResult.data.id);
-
-  if (rolesResult.error) {
-    return [];
-  }
-
-  return (rolesResult.data ?? []).map((row) => row.tenant_role_id);
-}
-
 export async function resolveUserPermissions(
   user: AuthenticatedRequestUser
 ): Promise<PermissionKey[]> {
-  if (isTenantAdminRole(user.role)) {
-    return ALL_PERMISSION_KEYS;
-  }
-
-  const roleIds = await resolveRoleIds(user);
-  const fallback = ROLE_DEFAULT_PERMISSIONS[user.role] ?? [];
-
-  if (roleIds.length === 0) {
-    return fallback;
-  }
-
-  const supabaseAdmin = getSupabaseAdminClient();
-  const permissionsResult = await supabaseAdmin
-    .from("tenant_role_permissions")
-    .select("permission:permissions(key)")
-    .in("tenant_role_id", roleIds);
-
-  if (permissionsResult.error) {
-    return fallback;
-  }
-
-  type PermissionRow = {
-    permission:
-      | {
-          key: string;
-        }
-      | {
-          key: string;
-        }[]
-      | null;
-  };
-
-  const parsedKeys = ((permissionsResult.data ?? []) as PermissionRow[])
-    .flatMap((row) => {
-      if (!row.permission) {
-        return [] as string[];
-      }
-
-      if (Array.isArray(row.permission)) {
-        return row.permission.map((item) => item.key).filter((key): key is string => Boolean(key));
-      }
-
-      return row.permission.key ? [row.permission.key] : [];
-    })
-    .filter(isPermissionKey);
-
-  return dedupePermissions([...fallback, ...parsedKeys]);
+  return user.permissions;
 }
 
 export async function hasUppScopeAccess(
@@ -127,25 +47,22 @@ export async function hasUppScopeAccess(
     return false;
   }
 
-  if (isTenantAdminRole(user.role)) {
+  const supabase = createSupabaseRlsServerClient(user.accessToken);
+  const uppResult = await supabase.from("upps").select("id").eq("id", uppId).maybeSingle();
+  if (!uppResult.error && uppResult.data) {
     return true;
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
+  const uppScopeResult = await supabase.rpc("auth_has_upp_access", {
+    p_upp_id: uppId,
+    p_min_level: "viewer",
+  });
 
-  const directAccessResult = await supabaseAdmin
-    .from("user_upp_access")
-    .select("id")
-    .eq("tenant_id", user.tenantId)
-    .eq("user_id", user.id)
-    .eq("upp_id", uppId)
-    .eq("status", "active")
-    .maybeSingle();
-
-  if (!directAccessResult.error && directAccessResult.data) {
+  if (!uppScopeResult.error && uppScopeResult.data === true) {
     return true;
   }
 
+<<<<<<< Updated upstream
   if (isProducerViewRole(user.role)) {
     const producerResult = await supabaseAdmin
       .from("producers")
@@ -195,26 +112,26 @@ export async function hasUppScopeAccess(
   }
 
   return false;
+=======
+  const mvzScopeResult = await supabase.rpc("auth_mvz_assigned_to_upp", {
+    p_upp_id: uppId,
+  });
+
+  return !mvzScopeResult.error && mvzScopeResult.data === true;
+>>>>>>> Stashed changes
 }
 
 export async function resolveAccessibleUppIds(
   user: AuthenticatedRequestUser
 ): Promise<string[]> {
-  const supabaseAdmin = getSupabaseAdminClient();
+  const supabase = createSupabaseRlsServerClient(user.accessToken);
+  const uppResult = await supabase.from("upps").select("id");
 
-  if (isTenantAdminRole(user.role)) {
-    const uppResult = await supabaseAdmin
-      .from("upps")
-      .select("id")
-      .eq("tenant_id", user.tenantId);
-
-    if (uppResult.error) {
-      return [];
-    }
-
-    return (uppResult.data ?? []).map((row) => row.id);
+  if (uppResult.error) {
+    return [];
   }
 
+<<<<<<< Updated upstream
   const uppIds = new Set<string>();
 
   const directAccessResult = await supabaseAdmin
@@ -281,6 +198,9 @@ export async function resolveAccessibleUppIds(
   }
 
   return [...uppIds];
+=======
+  return (uppResult.data ?? []).map((row) => row.id);
+>>>>>>> Stashed changes
 }
 
 export async function requireAuthorized(
@@ -320,8 +240,14 @@ export async function requireAuthorized(
   }
 
   if (options.permissions && options.permissions.length > 0) {
-    const hasAll = options.permissions.every((permission) => permissions.includes(permission));
-    const hasAny = options.permissions.some((permission) => permissions.includes(permission));
+    const permissionChecks = await Promise.all(
+      options.permissions.map((permission) =>
+        requirePermission(user.accessToken, user.tenantId, permission)
+      )
+    );
+
+    const hasAll = permissionChecks.every(Boolean);
+    const hasAny = permissionChecks.some(Boolean);
     const permissionAllowed = options.requireAllPermissions ? hasAll : hasAny;
 
     if (!permissionAllowed) {

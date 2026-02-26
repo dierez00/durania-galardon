@@ -1,6 +1,6 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { getSupabaseAdminClient } from "@/server/auth/supabase";
+import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
 import { resolveMvzProfileId } from "@/server/authz/profiles";
 import { logAuditEvent } from "@/server/audit";
 import type { OfflineSyncItem } from "@/shared/lib/auth";
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     return apiError("MVZ_PROFILE_NOT_FOUND", "No existe perfil MVZ activo para sincronizar.", 403);
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
   const synced: Array<{ clientMutationId: string; fieldTestId: string }> = [];
   const skipped: Array<{ clientMutationId: string; reason: string }> = [];
 
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       continue;
     }
 
-    const existingSync = await supabaseAdmin
+    const existingSync = await supabase
       .from("field_test_sync_events")
       .select("field_test_id")
       .eq("mvz_user_id", auth.context.user.id)
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
       continue;
     }
 
-    const testTypeResult = await supabaseAdmin
+    const testTypeResult = await supabase
       .from("test_types")
       .select("id")
       .eq("key", testTypeKey)
@@ -80,6 +80,7 @@ export async function POST(request: Request) {
       continue;
     }
 
+<<<<<<< Updated upstream
     const uppResult = await supabaseAdmin
       .from("upps")
       .select("tenant_id")
@@ -94,6 +95,9 @@ export async function POST(request: Request) {
     const targetTenantId = uppResult.data.tenant_id;
 
     const insertFieldTest = await supabaseAdmin
+=======
+    const insertFieldTest = await supabase
+>>>>>>> Stashed changes
       .from("field_tests")
       .insert({
         tenant_id: targetTenantId,
@@ -116,14 +120,19 @@ export async function POST(request: Request) {
     }
 
     if (item.result === "positive") {
-      await supabaseAdmin
+      await supabase
         .from("animals")
         .update({ status: "blocked" })
         .eq("id", animalId);
     }
 
+<<<<<<< Updated upstream
     const syncInsert = await supabaseAdmin.from("field_test_sync_events").insert({
       tenant_id: targetTenantId,
+=======
+    const syncInsert = await supabase.from("field_test_sync_events").insert({
+      tenant_id: auth.context.user.tenantId,
+>>>>>>> Stashed changes
       mvz_user_id: auth.context.user.id,
       client_mutation_id: clientMutationId,
       field_test_id: insertFieldTest.data.id,

@@ -1,6 +1,6 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { getSupabaseAdminClient } from "@/server/auth/supabase";
+import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
 import { resolveProducerId } from "@/server/authz/profiles";
 import { logAuditEvent } from "@/server/audit";
 
@@ -23,8 +23,8 @@ export async function GET(request: Request) {
     return apiSuccess({ exports: [] });
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const rowsResult = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const rowsResult = await supabase
     .from("export_requests")
     .select(
       "id,upp_id,status,compliance_60_rule,tb_br_validated,blue_tag_assigned,blocked_reason,monthly_bucket,created_at,updated_at"
@@ -68,8 +68,8 @@ export async function POST(request: Request) {
   }
 
   const producerId = await resolveProducerId(auth.context.user);
-  const supabaseAdmin = getSupabaseAdminClient();
-  const createResult = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const createResult = await supabase
     .from("export_requests")
     .insert({
       tenant_id: auth.context.user.tenantId,

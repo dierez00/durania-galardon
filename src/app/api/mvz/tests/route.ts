@@ -1,6 +1,6 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { getSupabaseAdminClient } from "@/server/auth/supabase";
+import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
 import { resolveMvzProfileId } from "@/server/authz/profiles";
 import { logAuditEvent } from "@/server/audit";
 
@@ -40,8 +40,8 @@ export async function GET(request: Request) {
     return apiSuccess({ tests: [] });
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const testsResult = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const testsResult = await supabase
     .from("field_tests")
     .select("id,animal_id,upp_id,mvz_profile_id,test_type_id,sample_date,result,valid_until,captured_lat,captured_lng,created_at")
     .in("upp_id", accessibleUppIds)
@@ -91,8 +91,8 @@ export async function POST(request: Request) {
     return apiError("MVZ_PROFILE_NOT_FOUND", "No existe perfil MVZ activo para el usuario.", 403);
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const testTypeResult = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const testTypeResult = await supabase
     .from("test_types")
     .select("id")
     .eq("key", testTypeKey)
@@ -102,6 +102,7 @@ export async function POST(request: Request) {
     return apiError("TEST_TYPE_NOT_FOUND", "No existe test_type para el key enviado.", 404);
   }
 
+<<<<<<< Updated upstream
   const uppResult = await supabaseAdmin
     .from("upps")
     .select("tenant_id")
@@ -113,6 +114,9 @@ export async function POST(request: Request) {
   }
 
   const insertResult = await supabaseAdmin
+=======
+  const insertResult = await supabase
+>>>>>>> Stashed changes
     .from("field_tests")
     .insert({
       tenant_id: uppResult.data.tenant_id,
@@ -138,7 +142,7 @@ export async function POST(request: Request) {
   }
 
   if (result === "positive") {
-    await supabaseAdmin
+    await supabase
       .from("animals")
       .update({ status: "blocked" })
       .eq("id", animalId);

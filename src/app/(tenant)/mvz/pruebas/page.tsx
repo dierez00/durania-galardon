@@ -1,4 +1,8 @@
+<<<<<<< Updated upstream
 "use client";
+=======
+import LegacyPage from "@/modules/tests/presentation/TestsPage";
+>>>>>>> Stashed changes
 
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";

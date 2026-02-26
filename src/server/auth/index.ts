@@ -1,11 +1,31 @@
 import { resolveTenant } from "@/server/tenants/resolveTenant";
 import {
   isAppRole,
+  isPermissionKey,
   isTenantAdminRole,
   redirectPathForRole,
   type AppRole,
+  type PermissionKey,
 } from "@/shared/lib/auth";
-import { getSupabaseAdminClient } from "@/server/auth/supabase";
+import {
+  createSupabaseRlsServerClient,
+  getSupabaseProvisioningClient,
+} from "@/server/auth/supabase";
+
+type TenantType = "government" | "producer" | "mvz";
+
+interface UserContextRow {
+  user_id: string;
+  tenant_id: string;
+  tenant_type: TenantType;
+  tenant_slug: string;
+  role_key: string;
+  role_priority: number;
+}
+
+interface PermissionRow {
+  permission_key: string;
+}
 
 export interface AuthError {
   status: number;
@@ -29,6 +49,9 @@ export interface AuthenticatedRequestUser {
   role: AppRole;
   tenantId: string;
   tenantSlug: string;
+  tenantType: TenantType;
+  panelType: TenantType;
+  permissions: PermissionKey[];
   accessToken: string;
 }
 
@@ -50,21 +73,100 @@ function authError(status: number, code: string, message: string): AuthError {
   return { status, code, message };
 }
 
+function resolveTenantSlugFromRequest(request: Request): string | null {
+  const tenantHeader = request.headers.get("x-tenant-slug-resolved");
+  const resolved = resolveTenant(request);
+  return tenantHeader ?? resolved?.tenantSlug ?? null;
+}
+
+async function resolvePrimaryContext(
+  accessToken: string,
+  preferredTenantSlug: string | null
+): Promise<{ row: UserContextRow; panelType: TenantType; permissions: PermissionKey[] } | { error: AuthError }> {
+  const supabase = createSupabaseRlsServerClient(accessToken);
+
+  const authUserResult = await supabase.auth.getUser(accessToken);
+  if (authUserResult.error || !authUserResult.data.user) {
+    return { error: authError(401, "UNAUTHORIZED", "Token invalido o expirado.") };
+  }
+
+  let contextQuery = supabase
+    .from("v_user_context")
+    .select("user_id,tenant_id,tenant_type,tenant_slug,role_key,role_priority")
+    .order("role_priority", { ascending: true })
+    .limit(1);
+
+  if (preferredTenantSlug) {
+    contextQuery = contextQuery.eq("tenant_slug", preferredTenantSlug);
+  }
+
+  let contextResult = await contextQuery.maybeSingle();
+
+  if ((contextResult.error || !contextResult.data) && preferredTenantSlug) {
+    contextResult = await supabase
+      .from("v_user_context")
+      .select("user_id,tenant_id,tenant_type,tenant_slug,role_key,role_priority")
+      .order("role_priority", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+  }
+
+  if (contextResult.error || !contextResult.data) {
+    return {
+      error: authError(
+        403,
+        "ROLE_NOT_FOUND",
+        "No existe contexto de usuario activo en v_user_context."
+      ),
+    };
+  }
+
+  const row = contextResult.data as UserContextRow;
+  if (!isAppRole(row.role_key)) {
+    return {
+      error: authError(403, "ROLE_NOT_FOUND", "El rol principal no es valido para la aplicacion."),
+    };
+  }
+
+  const permissionsResult = await supabase
+    .from("v_user_permissions")
+    .select("permission_key")
+    .eq("tenant_id", row.tenant_id);
+
+  const permissions = (permissionsResult.data ?? [])
+    .map((item) => (item as PermissionRow).permission_key)
+    .filter(isPermissionKey);
+
+  const panelResult = await supabase.rpc("auth_get_panel_type");
+  const panelType = panelResult.data;
+
+  if (panelType !== "government" && panelType !== "producer" && panelType !== "mvz") {
+    return {
+      row,
+      permissions,
+      panelType: row.tenant_type,
+    };
+  }
+
+  return {
+    row,
+    permissions,
+    panelType,
+  };
+}
+
 export async function resolveTenantContextFromRequest(
   request: Request
 ): Promise<{ tenant: TenantContextResolution } | { error: AuthError }> {
-  const tenantHeader = request.headers.get("x-tenant-slug-resolved");
-  const resolved = resolveTenant(request);
-  const tenantSlug = tenantHeader ?? resolved?.tenantSlug ?? null;
-
+  const tenantSlug = resolveTenantSlugFromRequest(request);
   if (!tenantSlug) {
     return {
       error: authError(400, "TENANT_NOT_RESOLVED", "No se pudo resolver tenant para la solicitud."),
     };
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const tenantResult = await supabaseAdmin
+  const provisioning = getSupabaseProvisioningClient();
+  const tenantResult = await provisioning
     .from("tenants")
     .select("id,slug,status")
     .eq("slug", tenantSlug)
@@ -85,80 +187,14 @@ export async function resolveTenantContextFromRequest(
   };
 }
 
-type TenantRoleRow = {
-  tenant_role:
-    | {
-        key: string;
-      }[]
-    | {
-        key: string;
-      }
-    | null;
-};
-
 export async function resolveSingleRoleForUser(
-  userId: string,
-  tenantId: string
+  _userId: string,
+  _tenantId: string
 ): Promise<RoleResolution> {
-  const supabaseAdmin = getSupabaseAdminClient();
-
-  const membershipResult = await supabaseAdmin
-    .from("tenant_memberships")
-    .select("id")
-    .eq("tenant_id", tenantId)
-    .eq("user_id", userId)
-    .eq("status", "active")
-    .maybeSingle();
-
-  if (membershipResult.error || !membershipResult.data) {
-    return {
-      role: null,
-      error: authError(403, "ROLE_NOT_FOUND", "El usuario no pertenece al tenant o no esta activo."),
-    };
-  }
-
-  const rolesResult = await supabaseAdmin
-    .from("tenant_user_roles")
-    .select("tenant_role:tenant_roles(key)")
-    .eq("membership_id", membershipResult.data.id);
-
-  if (rolesResult.error) {
-    return {
-      role: null,
-      error: authError(500, "ROLE_QUERY_FAILED", "No fue posible consultar el rol del usuario."),
-    };
-  }
-
-  const rows = (rolesResult.data ?? []) as unknown as TenantRoleRow[];
-  const roles = rows
-    .flatMap((row) => {
-      if (!row.tenant_role) {
-        return [];
-      }
-
-      if (Array.isArray(row.tenant_role)) {
-        return row.tenant_role.map((item) => item.key);
-      }
-
-      return [row.tenant_role.key];
-    })
-    .filter(isAppRole);
-
-  if (roles.length === 0) {
-    return {
-      role: null,
-      error: authError(403, "ROLE_NOT_FOUND", "El usuario no tiene rol tenant asignado."),
-    };
-  }
-
-  if (roles.length > 1) {
-    return {
-      role: null,
-      error: authError(403, "ROLE_MULTI_ASSIGNED", "El usuario tiene multiples roles tenant asignados."),
-    };
-  }
-
-  return { role: roles[0] };
+  return {
+    role: null,
+    error: authError(500, "ROLE_QUERY_FAILED", "Use v_user_context para resolver el rol principal."),
+  };
 }
 
 export function resolveRedirectByRole(role: AppRole): string {
@@ -177,36 +213,28 @@ export async function resolveAuthenticatedRequestUser(
     return { error: authError(401, "UNAUTHORIZED", "Falta token de autenticacion.") };
   }
 
-  const tenantResult = await resolveTenantContextFromRequest(request);
-  if ("error" in tenantResult) {
-    return { error: tenantResult.error };
+  const preferredTenantSlug = resolveTenantSlugFromRequest(request);
+  const contextResult = await resolvePrimaryContext(accessToken, preferredTenantSlug);
+  if ("error" in contextResult) {
+    return { error: contextResult.error };
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const authUserResult = await supabaseAdmin.auth.getUser(accessToken);
-  if (authUserResult.error || !authUserResult.data.user) {
+  const supabase = createSupabaseRlsServerClient(accessToken);
+  const userResult = await supabase.auth.getUser(accessToken);
+  if (userResult.error || !userResult.data.user) {
     return { error: authError(401, "UNAUTHORIZED", "Token invalido o expirado.") };
-  }
-
-  const roleResult = await resolveSingleRoleForUser(
-    authUserResult.data.user.id,
-    tenantResult.tenant.tenantId
-  );
-  if (!roleResult.role || roleResult.error) {
-    return {
-      error:
-        roleResult.error ??
-        authError(403, "ROLE_NOT_FOUND", "La cuenta no tiene un rol valido para acceder."),
-    };
   }
 
   return {
     user: {
-      id: authUserResult.data.user.id,
-      email: authUserResult.data.user.email ?? "",
-      role: roleResult.role,
-      tenantId: tenantResult.tenant.tenantId,
-      tenantSlug: tenantResult.tenant.tenantSlug,
+      id: userResult.data.user.id,
+      email: userResult.data.user.email ?? "",
+      role: contextResult.row.role_key as AppRole,
+      tenantId: contextResult.row.tenant_id,
+      tenantSlug: contextResult.row.tenant_slug,
+      tenantType: contextResult.row.tenant_type,
+      panelType: contextResult.panelType,
+      permissions: contextResult.permissions,
       accessToken,
     },
   };

@@ -1,6 +1,6 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { getSupabaseAdminClient } from "@/server/auth/supabase";
+import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
 import { logAuditEvent } from "@/server/audit";
 
 interface ProducerBovinoBody {
@@ -36,12 +36,19 @@ export async function GET(request: Request) {
     return apiSuccess({ bovinos: [] });
   }
 
+<<<<<<< Updated upstream
   const supabaseAdmin = getSupabaseAdminClient();
   const animalsResult = await supabaseAdmin
     .from("v_animals_sanitary")
     .select(
       "animal_id,upp_id,siniiga_tag,sex,birth_date,animal_status,mother_animal_id,tb_result,tb_status,br_result,br_status,sanitary_alert"
     )
+=======
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const animalsResult = await supabase
+    .from("animals")
+    .select("id,upp_id,siniiga_tag,sex,birth_date,status,mother_animal_id,created_at")
+>>>>>>> Stashed changes
     .eq("tenant_id", auth.context.user.tenantId)
     .in("upp_id", accessibleUppIds)
     .order("animal_id", { ascending: false });
@@ -100,8 +107,8 @@ export async function POST(request: Request) {
     return apiError("FORBIDDEN", "No tiene acceso a la UPP solicitada.", 403);
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const createResult = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const createResult = await supabase
     .from("animals")
     .insert({
       tenant_id: auth.context.user.tenantId,

@@ -1,6 +1,6 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { getSupabaseAdminClient } from "@/server/auth/supabase";
+import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
 
 export async function GET(request: Request) {
   const auth = await requireAuthorized(request, {
@@ -19,8 +19,8 @@ export async function GET(request: Request) {
   const resource = url.searchParams.get("resource");
   const limit = Number(url.searchParams.get("limit") ?? "100");
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  let query = supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  let query = supabase
     .from("audit_logs")
     .select("id,actor_user_id,role_key,action,resource,resource_id,payload_json,ip,user_agent,created_at")
     .eq("tenant_id", auth.context.user.tenantId)

@@ -1,6 +1,6 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { getSupabaseAdminClient } from "@/server/auth/supabase";
+import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
 
 export async function GET(request: Request) {
   const auth = await requireAuthorized(request, {
@@ -12,19 +12,31 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
+<<<<<<< Updated upstream
   const supabaseAdmin = getSupabaseAdminClient();
 
   const [producersResult, mvzResult, exportsResult, quarantinesResult] = await Promise.all([
     supabaseAdmin.from("v_producers_admin").select("producer_id,total_upps"),
     supabaseAdmin.from("v_mvz_admin").select("mvz_profile_id,active_assignments"),
     supabaseAdmin
+=======
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+
+  const [producersResult, mvzResult, exportsResult, quarantinesResult] = await Promise.all([
+    supabase.from("v_producers_admin").select("producer_id,total_upps"),
+    supabase.from("v_mvz_admin").select("mvz_profile_id,active_assignments"),
+    supabase
+>>>>>>> Stashed changes
       .from("export_requests")
       .select("id,status,monthly_bucket")
       .order("monthly_bucket", { ascending: true }),
-    supabaseAdmin
+    supabase
       .from("state_quarantines")
       .select("id,status")
+<<<<<<< Updated upstream
       .eq("declared_by_tenant_id", auth.context.user.tenantId)
+=======
+>>>>>>> Stashed changes
       .eq("status", "active"),
   ]);
 

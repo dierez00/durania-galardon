@@ -18,7 +18,9 @@ export async function GET(request: Request) {
     tenant: {
       id: user.tenantId,
       slug: user.tenantSlug,
+      type: user.tenantType,
     },
+    panelType: user.panelType,
     permissions,
   });
 }

@@ -1,6 +1,6 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { getSupabaseAdminClient } from "@/server/auth/supabase";
+import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
 
 export async function GET(request: Request) {
   const auth = await requireAuthorized(request, {
@@ -17,8 +17,8 @@ export async function GET(request: Request) {
     return apiSuccess({ upps: [] });
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const uppsResult = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const uppsResult = await supabase
     .from("upps")
     .select("id,producer_id,upp_code,name,address_text,hectares_total,herd_limit,status,created_at")
     .eq("tenant_id", auth.context.user.tenantId)

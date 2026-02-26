@@ -1,138 +1,70 @@
 "use client";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { isAppRole, type AppRole } from "@/shared/lib/auth";
-
-type TenantResolveApiResponse = {
-  ok: boolean;
-  data?: {
-    tenant: {
-      tenantSlug: string;
-      source: string;
-    } | null;
-  };
-};
+import { isAppRole, isPermissionKey, type AppRole, type PermissionKey } from "@/shared/lib/auth";
 
 export interface ResolveClientRoleResult {
   role: AppRole | null;
   tenantId?: string;
   tenantSlug?: string;
-  code?: "TENANT_NOT_FOUND" | "ROLE_NOT_FOUND" | "ROLE_MULTI_ASSIGNED";
+  permissions?: PermissionKey[];
+  panelType?: "government" | "producer" | "mvz";
+  code?: "UNAUTHORIZED" | "ROLE_NOT_FOUND" | "TENANT_NOT_FOUND";
 }
 
-async function resolveClientTenant(supabase: SupabaseClient) {
-  const tenantResponse = await fetch("/api/tenant/resolve", {
-    method: "GET",
-    cache: "no-store",
-  });
-  const tenantBody = (await tenantResponse.json()) as TenantResolveApiResponse;
-  const tenantSlug = tenantBody.data?.tenant?.tenantSlug;
-  if (!tenantSlug) {
-    return null;
-  }
-
-  const tenantResult = await supabase
-    .from("tenants")
-    .select("id,slug,status")
-    .eq("slug", tenantSlug)
-    .eq("status", "active")
-    .maybeSingle();
-
-  if (tenantResult.error || !tenantResult.data) {
-    return null;
-  }
-
-  return tenantResult.data;
+interface AuthMeResponse {
+  ok: boolean;
+  data?: {
+    user?: {
+      role?: string;
+    };
+    tenant?: {
+      id?: string;
+      slug?: string;
+    };
+    panelType?: "government" | "producer" | "mvz";
+    permissions?: string[];
+  };
+  error?: {
+    code?: string;
+  };
 }
-
-type TenantRoleRow = {
-  tenant_role:
-    | {
-        key: string;
-      }[]
-    | {
-        key: string;
-      }
-    | null;
-};
 
 export async function resolveClientRole(
   supabase: SupabaseClient,
-  userId: string
+  _userId: string
 ): Promise<ResolveClientRoleResult> {
-  const tenant = await resolveClientTenant(supabase);
-  if (!tenant) {
-    return { role: null, code: "TENANT_NOT_FOUND" };
+  const sessionResult = await supabase.auth.getSession();
+  const accessToken = sessionResult.data.session?.access_token;
+
+  if (!accessToken) {
+    return { role: null, code: "UNAUTHORIZED" };
   }
 
-  const membershipResult = await supabase
-    .from("tenant_memberships")
-    .select("id")
-    .eq("tenant_id", tenant.id)
-    .eq("user_id", userId)
-    .eq("status", "active")
-    .maybeSingle();
+  const response = await fetch("/api/auth/me", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    cache: "no-store",
+  });
 
-  if (membershipResult.error || !membershipResult.data) {
+  const body = (await response.json()) as AuthMeResponse;
+  if (!response.ok || !body.ok || !body.data?.user?.role || !isAppRole(body.data.user.role)) {
     return {
       role: null,
-      tenantId: tenant.id,
-      tenantSlug: tenant.slug,
-      code: "ROLE_NOT_FOUND",
+      tenantId: body.data?.tenant?.id,
+      tenantSlug: body.data?.tenant?.slug,
+      code: (body.error?.code as ResolveClientRoleResult["code"]) ?? "ROLE_NOT_FOUND",
     };
   }
 
-  const rolesResult = await supabase
-    .from("tenant_user_roles")
-    .select("tenant_role:tenant_roles(key)")
-    .eq("membership_id", membershipResult.data.id);
-
-  if (rolesResult.error) {
-    return {
-      role: null,
-      tenantId: tenant.id,
-      tenantSlug: tenant.slug,
-      code: "ROLE_NOT_FOUND",
-    };
-  }
-
-  const rows = (rolesResult.data ?? []) as unknown as TenantRoleRow[];
-  const roles = rows
-    .flatMap((item) => {
-      if (!item.tenant_role) {
-        return [];
-      }
-
-      if (Array.isArray(item.tenant_role)) {
-        return item.tenant_role.map((role) => role.key);
-      }
-
-      return [item.tenant_role.key];
-    })
-    .filter((value): value is string => Boolean(value))
-    .filter(isAppRole);
-
-  if (roles.length === 1) {
-    return {
-      role: roles[0],
-      tenantId: tenant.id,
-      tenantSlug: tenant.slug,
-    };
-  }
-
-  if (roles.length > 1) {
-    return {
-      role: null,
-      tenantId: tenant.id,
-      tenantSlug: tenant.slug,
-      code: "ROLE_MULTI_ASSIGNED",
-    };
-  }
+  const permissions = (body.data.permissions ?? []).filter(isPermissionKey);
 
   return {
-    role: null,
-    tenantId: tenant.id,
-    tenantSlug: tenant.slug,
-    code: "ROLE_NOT_FOUND",
+    role: body.data.user.role,
+    tenantId: body.data.tenant?.id,
+    tenantSlug: body.data.tenant?.slug,
+    panelType: body.data.panelType,
+    permissions,
   };
 }

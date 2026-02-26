@@ -1,6 +1,6 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { getSupabaseAdminClient } from "@/server/auth/supabase";
+import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
 import { resolveProducerId } from "@/server/authz/profiles";
 import { logAuditEvent } from "@/server/audit";
 
@@ -29,8 +29,8 @@ export async function GET(request: Request) {
     return apiSuccess({ movements: [] });
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const rowsResult = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const rowsResult = await supabase
     .from("movement_requests")
     .select("id,upp_id,status,qr_code,route_note,incidence_note,movement_date,created_at,updated_at")
     .eq("tenant_id", auth.context.user.tenantId)
@@ -72,8 +72,8 @@ export async function POST(request: Request) {
   }
 
   const producerId = await resolveProducerId(auth.context.user);
-  const supabaseAdmin = getSupabaseAdminClient();
-  const createResult = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const createResult = await supabase
     .from("movement_requests")
     .insert({
       tenant_id: auth.context.user.tenantId,
@@ -96,7 +96,7 @@ export async function POST(request: Request) {
   }
 
   const qrCode = createMovementQr(createResult.data.id);
-  await supabaseAdmin
+  await supabase
     .from("movement_requests")
     .update({ qr_code: qrCode, updated_at: new Date().toISOString() })
     .eq("tenant_id", auth.context.user.tenantId)

@@ -1,4 +1,8 @@
+<<<<<<< Updated upstream
 "use client";
+=======
+import LegacyPage from "@/modules/animals/presentation/AnimalsPage";
+>>>>>>> Stashed changes
 
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";

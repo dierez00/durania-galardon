@@ -1,5 +1,5 @@
 import { requireAuthorized } from "@/server/authz";
-import { getSupabaseAdminClient } from "@/server/auth/supabase";
+import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { logAuditEvent } from "@/server/audit";
 
@@ -20,8 +20,8 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const appointmentsResult = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const appointmentsResult = await supabase
     .from("appointment_requests")
     .select("id,full_name,phone,email,requested_service,requested_date,requested_time,notes,status,created_at")
     .eq("tenant_id", auth.context.user.tenantId)
@@ -58,8 +58,8 @@ export async function PATCH(request: Request) {
     return apiError("INVALID_PAYLOAD", "Debe enviar id y status valido.");
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const updateResult = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const updateResult = await supabase
     .from("appointment_requests")
     .update({ status })
     .eq("tenant_id", auth.context.user.tenantId)

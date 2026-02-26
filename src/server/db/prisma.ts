@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -12,4 +12,30 @@ export const prisma =
 
 if (process.env.DATABASE_URL_DIRECT !== "production") {
   globalForPrisma.prisma = prisma;
+}
+
+export interface PrismaRlsContext {
+  userId: string;
+  role?: string | null;
+  tenantId?: string | null;
+}
+
+// Applies JWT claim context so Postgres RLS helpers can evaluate permissions for the request user.
+export async function withPrismaRls<T>(
+  context: PrismaRlsContext,
+  execute: (tx: Prisma.TransactionClient) => Promise<T>
+): Promise<T> {
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('request.jwt.claim.sub', ${context.userId}, true)`;
+
+    if (context.role) {
+      await tx.$executeRaw`SELECT set_config('request.jwt.claim.role', ${context.role}, true)`;
+    }
+
+    if (context.tenantId) {
+      await tx.$executeRaw`SELECT set_config('request.jwt.claim.tenant_id', ${context.tenantId}, true)`;
+    }
+
+    return execute(tx);
+  });
 }

@@ -1,6 +1,6 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { getSupabaseAdminClient } from "@/server/auth/supabase";
+import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
 import { logAuditEvent } from "@/server/audit";
 
 interface ExportBody {
@@ -26,8 +26,8 @@ export async function GET(request: Request) {
   }
 
   const tenantId = auth.context.user.tenantId;
-  const supabaseAdmin = getSupabaseAdminClient();
-  const rowsResult = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const rowsResult = await supabase
     .from("export_requests")
     .select(
       "id,producer_id,upp_id,status,compliance_60_rule,tb_br_validated,blue_tag_assigned,monthly_bucket,metrics_json,blocked_reason,created_at,updated_at"
@@ -85,8 +85,8 @@ export async function POST(request: Request) {
     return apiError("INVALID_PAYLOAD", "Debe enviar uppId.");
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const createResult = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const createResult = await supabase
     .from("export_requests")
     .insert({
       tenant_id: auth.context.user.tenantId,
@@ -175,8 +175,8 @@ export async function PATCH(request: Request) {
   }
   updatePayload.updated_at = new Date().toISOString();
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const updateResult = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const updateResult = await supabase
     .from("export_requests")
     .update(updatePayload)
     .eq("tenant_id", auth.context.user.tenantId)

@@ -1,9 +1,9 @@
-import { getSupabaseAdminClient } from "@/server/auth/supabase";
+import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
 import type { AuthenticatedRequestUser } from "@/server/auth";
 
 export async function resolveMvzProfileId(user: AuthenticatedRequestUser): Promise<string | null> {
-  const supabaseAdmin = getSupabaseAdminClient();
-  const result = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(user.accessToken);
+  const result = await supabase
     .from("mvz_profiles")
     .select("id")
     .eq("owner_tenant_id", user.tenantId)
@@ -19,8 +19,8 @@ export async function resolveMvzProfileId(user: AuthenticatedRequestUser): Promi
 }
 
 export async function resolveProducerId(user: AuthenticatedRequestUser): Promise<string | null> {
-  const supabaseAdmin = getSupabaseAdminClient();
-  const result = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(user.accessToken);
+  const result = await supabase
     .from("producers")
     .select("id")
     .eq("owner_tenant_id", user.tenantId)

@@ -1,10 +1,14 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import {
   resolveRedirectByRole,
-  resolveTenantContextFromRequest,
-  resolveSingleRoleForUser,
+  type AuthError,
 } from "@/server/auth";
-import { createSupabaseAnonServerClient } from "@/server/auth/supabase";
+import {
+  createSupabaseAnonServerClient,
+  createSupabaseRlsServerClient,
+} from "@/server/auth/supabase";
+import { resolveTenant } from "@/server/tenants/resolveTenant";
+import { isAppRole, isPermissionKey } from "@/shared/lib/auth";
 
 interface LoginRequestBody {
   email?: string;
@@ -39,25 +43,71 @@ export async function POST(request: Request) {
     return apiError("INVALID_CREDENTIALS", "Correo o contrasena invalidos.", 401);
   }
 
-  const tenantResult = await resolveTenantContextFromRequest(request);
-  if ("error" in tenantResult) {
-    return apiError(tenantResult.error.code, tenantResult.error.message, tenantResult.error.status);
+  const rls = createSupabaseRlsServerClient(data.session.access_token);
+  const preferredTenantSlug = request.headers.get("x-tenant-slug-resolved") ?? resolveTenant(request)?.tenantSlug;
+
+  let contextQuery = rls
+    .from("v_user_context")
+    .select("tenant_id,tenant_slug,tenant_type,role_key,role_priority")
+    .order("role_priority", { ascending: true })
+    .limit(1);
+
+  if (preferredTenantSlug) {
+    contextQuery = contextQuery.eq("tenant_slug", preferredTenantSlug);
   }
 
-  const roleResult = await resolveSingleRoleForUser(data.user.id, tenantResult.tenant.tenantId);
-  if (!roleResult.role || roleResult.error) {
+  let contextResult = await contextQuery.maybeSingle();
+  if ((contextResult.error || !contextResult.data) && preferredTenantSlug) {
+    contextResult = await rls
+      .from("v_user_context")
+      .select("tenant_id,tenant_slug,tenant_type,role_key,role_priority")
+      .order("role_priority", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+  }
+
+  if (contextResult.error || !contextResult.data || !isAppRole(contextResult.data.role_key)) {
+    const errorPayload: AuthError = {
+      status: 403,
+      code: "ROLE_NOT_FOUND",
+      message: "La cuenta no tiene un rol valido.",
+    };
     return apiError(
-      roleResult.error?.code ?? "ROLE_NOT_FOUND",
-      roleResult.error?.message ?? "La cuenta no tiene un rol valido.",
-      roleResult.error?.status ?? 403
+      errorPayload.code,
+      errorPayload.message,
+      errorPayload.status
     );
   }
 
+  const permissionsResult = await rls
+    .from("v_user_permissions")
+    .select("permission_key")
+    .eq("tenant_id", contextResult.data.tenant_id);
+
+  const permissions = (permissionsResult.data ?? [])
+    .map((row) => row.permission_key)
+    .filter(isPermissionKey);
+
+  const panelResult = await rls.rpc("auth_get_panel_type");
+  const panelType = panelResult.data;
+
+  const redirectByPanel =
+    panelType === "government"
+      ? "/admin"
+      : panelType === "producer"
+      ? "/producer"
+      : panelType === "mvz"
+      ? "/mvz"
+      : resolveRedirectByRole(contextResult.data.role_key);
+
   return apiSuccess({
-    roleKey: roleResult.role,
-    redirectTo: resolveRedirectByRole(roleResult.role),
-    tenantId: tenantResult.tenant.tenantId,
-    tenantSlug: tenantResult.tenant.tenantSlug,
+    roleKey: contextResult.data.role_key,
+    redirectTo: redirectByPanel,
+    tenantId: contextResult.data.tenant_id,
+    tenantSlug: contextResult.data.tenant_slug,
+    tenantType: contextResult.data.tenant_type,
+    panelType: panelType ?? contextResult.data.tenant_type,
+    permissions,
     session: {
       accessToken: data.session.access_token,
       refreshToken: data.session.refresh_token,

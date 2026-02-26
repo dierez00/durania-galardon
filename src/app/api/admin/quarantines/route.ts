@@ -1,6 +1,6 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { getSupabaseAdminClient } from "@/server/auth/supabase";
+import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
 import { logAuditEvent } from "@/server/audit";
 
 interface QuarantineBody {
@@ -24,8 +24,8 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const rowsResult = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const rowsResult = await supabase
     .from("state_quarantines")
     .select(
       "id,upp_id,status,quarantine_type,title,reason,geojson,started_at,released_at,epidemiological_note,created_at"
@@ -62,8 +62,8 @@ export async function POST(request: Request) {
     return apiError("INVALID_PAYLOAD", "Debe enviar title.");
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const createResult = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const createResult = await supabase
     .from("state_quarantines")
     .insert({
       declared_by_tenant_id: auth.context.user.tenantId,
@@ -146,8 +146,8 @@ export async function PATCH(request: Request) {
     return apiError("INVALID_PAYLOAD", "Debe enviar al menos un campo para actualizar.");
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const updateResult = await supabaseAdmin
+  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const updateResult = await supabase
     .from("state_quarantines")
     .update(updatePayload)
     .eq("declared_by_tenant_id", auth.context.user.tenantId)

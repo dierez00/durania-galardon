@@ -2,19 +2,30 @@ import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getServerEnv, publicEnv } from "@/shared/config";
 
+<<<<<<< Updated upstream
 let adminClient: SupabaseClient | null = null;
+=======
+>>>>>>> Stashed changes
 let provisioningClient: SupabaseClient | null = null;
 
-export function createSupabaseAnonServerClient(): SupabaseClient {
-  return createClient(publicEnv.supabaseUrl, publicEnv.supabaseAnonKey, {
+function buildAuthConfig(accessToken?: string) {
+  return {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
     },
-  });
+    global: accessToken
+      ? {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      : undefined,
+  };
 }
 
+<<<<<<< Updated upstream
 export function createSupabaseRlsServerClient(accessToken: string): SupabaseClient {
   return createClient(publicEnv.supabaseUrl, publicEnv.supabaseAnonKey, {
     global: {
@@ -39,11 +50,29 @@ export function getSupabaseAdminClient(): SupabaseClient {
         detectSessionInUrl: false,
       },
     });
-  }
-
-  return adminClient;
+=======
+export function createSupabaseAnonServerClient(): SupabaseClient {
+  return createClient(publicEnv.supabaseUrl, publicEnv.supabaseAnonKey, buildAuthConfig());
 }
 
+export function createSupabaseRlsServerClient(accessToken: string): SupabaseClient {
+  return createClient(publicEnv.supabaseUrl, publicEnv.supabaseAnonKey, buildAuthConfig(accessToken));
+}
+
+export function getSupabaseProvisioningClient(): SupabaseClient {
+  if (!provisioningClient) {
+    provisioningClient = createClient(
+      publicEnv.supabaseUrl,
+      getServerEnv().supabaseServiceRoleKey,
+      buildAuthConfig()
+    );
+>>>>>>> Stashed changes
+  }
+
+  return provisioningClient;
+}
+
+<<<<<<< Updated upstream
 export function getSupabaseProvisioningClient(): SupabaseClient {
   if (!provisioningClient) {
     provisioningClient = createClient(publicEnv.supabaseUrl, getServerEnv().supabaseServiceRoleKey, {
@@ -57,3 +86,7 @@ export function getSupabaseProvisioningClient(): SupabaseClient {
 
   return provisioningClient;
 }
+=======
+// Backward compatibility while routes are migrated.
+export const getSupabaseAdminClient = getSupabaseProvisioningClient;
+>>>>>>> Stashed changes
