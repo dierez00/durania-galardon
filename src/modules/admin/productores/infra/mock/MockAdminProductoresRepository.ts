@@ -1,4 +1,6 @@
 import type {
+  AdminProductorBatchCreateInput,
+  AdminProductorBatchCreateResult,
   AdminProductoresRepository,
   AdminProductorCreateInput,
   ListAdminProductoresParams,
@@ -19,5 +21,12 @@ export class MockAdminProductoresRepository implements AdminProductoresRepositor
 
   async create(_input: AdminProductorCreateInput): Promise<AdminProductor> {
     throw new Error("Not implemented in mock.");
+  }
+
+  async createBatch(_input: AdminProductorBatchCreateInput): Promise<AdminProductorBatchCreateResult> {
+    return {
+      created: [],
+      count: 0,
+    };
   }
 }

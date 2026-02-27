@@ -23,7 +23,9 @@ npm run test
 - Admin
   - `/admin`
   - `/admin/producers`
+  - `/admin/producers/new`
   - `/admin/mvz`
+  - `/admin/mvz/new`
   - `/admin/quarantines`
   - `/admin/exports`
   - `/admin/normative`
@@ -53,7 +55,9 @@ npm run test
 - Admin
   - `GET /api/admin/dashboard`
   - `GET|POST|PATCH /api/admin/producers`
+  - `POST /api/admin/producers/batch`
   - `GET|POST|PATCH /api/admin/mvz`
+  - `POST /api/admin/mvz/batch`
   - `GET|POST|PATCH /api/admin/quarantines`
   - `GET|POST|PATCH /api/admin/exports`
   - `GET|POST|PATCH /api/admin/normative`

@@ -13,7 +13,10 @@ src/
         (protected)/
           page.tsx
           producers/page.tsx
+          producers/new/page.tsx
           mvz/page.tsx
+          mvz/new/page.tsx
+          upps/page.tsx
           quarantines/page.tsx
           exports/page.tsx
           normative/page.tsx
@@ -58,28 +61,3 @@ sql/
   migration_002_mvz_hierarchy.sql
   views.sql
   seeds.sql
-```
-
-## Modelo de acceso
-
-- Resolucion de tenant por subdominio/header/fallback local.
-- Roles por tenant (`tenant_roles` + `tenant_user_roles`).
-- Login unico con redireccion por rol.
-- Guardias por layout y permisos por ruta.
-- Scope por rancho (`uppId`) para endpoints MVZ jerarquicos.
-
-## Jerarquia MVZ
-
-- Nivel 1: `/mvz/dashboard`
-  - KPIs globales del MVZ.
-  - Selector/listado de ranchos asignados.
-- Nivel 2: `/mvz/ranchos/[uppId]/*`
-  - Contexto fijo de rancho.
-  - Modulos: resumen, animales, historial clinico, vacunacion, incidencias, reportes, documentacion, visitas.
-
-## Capas backend relevantes
-
-- `src/server/authz`: autorizacion por rol/permisos + scope UPP.
-- `src/app/api/mvz/ranchos/_utils.ts`: validador comun para endpoints scoped.
-- `sql/migration_002_mvz_hierarchy.sql`: tablas MVZ jerarquicas + RLS + permisos + realtime publication.
-- `sql/views.sql`: vistas agregadas para dashboard global y panel de rancho.

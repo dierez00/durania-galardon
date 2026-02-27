@@ -1,12 +1,9 @@
 import type {
   AdminProductor,
-  AdminProductoresSortField,
   AdminProductoresSortDir,
+  AdminProductoresSortField,
 } from "../entities/AdminProductorEntity";
 
-// ─── Input / Output del puerto ─────────────────────────────────────────────────
-
-/** Parámetros de consulta para listar productores — pertenecen a domain, no a infra */
 export interface ListAdminProductoresParams {
   search?: string;
   status?: string;
@@ -25,10 +22,6 @@ export interface ListAdminProductoresResult {
   limit: number;
 }
 
-/**
- * Input de creación definido en domain para que el puerto no importe nada de application.
- * Tiene la misma forma que CreateAdminProductorDTO.
- */
 export interface AdminProductorCreateInput {
   email: string;
   password: string;
@@ -36,9 +29,34 @@ export interface AdminProductorCreateInput {
   curp?: string;
 }
 
-// ─── Puerto (contrato hexagonal) ───────────────────────────────────────────────
+export interface AdminProductorBatchRowInput {
+  email: string;
+  fullName: string;
+  curp?: string;
+}
+
+export interface AdminProductorBatchCreateInput {
+  rows: AdminProductorBatchRowInput[];
+  options: {
+    atomic: true;
+  };
+}
+
+export interface AdminBatchCreateSuccessItem {
+  rowIndex: number;
+  entityId: string;
+  tenantId: string;
+  email: string;
+  temporaryPassword: string;
+}
+
+export interface AdminProductorBatchCreateResult {
+  created: AdminBatchCreateSuccessItem[];
+  count: number;
+}
 
 export interface AdminProductoresRepository {
   list(params: ListAdminProductoresParams): Promise<ListAdminProductoresResult>;
   create(input: AdminProductorCreateInput): Promise<AdminProductor>;
+  createBatch(input: AdminProductorBatchCreateInput): Promise<AdminProductorBatchCreateResult>;
 }

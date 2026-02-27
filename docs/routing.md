@@ -13,7 +13,9 @@
 - `tenant_admin`
   - `/admin`
   - `/admin/producers`
+  - `/admin/producers/new`
   - `/admin/mvz`
+  - `/admin/mvz/new`
   - `/admin/quarantines`
   - `/admin/exports`
   - `/admin/normative`

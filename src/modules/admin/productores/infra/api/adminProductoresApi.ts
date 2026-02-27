@@ -1,21 +1,22 @@
 import type {
   AdminProductor,
-  AdminProductoresSortField,
   AdminProductoresSortDir,
+  AdminProductoresSortField,
 } from "@/modules/admin/productores/domain/entities/AdminProductorEntity";
 import type { CreateAdminProductorDTO } from "@/modules/admin/productores/application/dto/CreateAdminProductorDTO";
 import type { UpdateAdminProductorDTO } from "@/modules/admin/productores/application/dto/UpdateAdminProductorDTO";
 import type {
-  AdminProductoresRepository,
+  AdminProductorBatchCreateInput,
+  AdminProductorBatchCreateResult,
   AdminProductorCreateInput,
+  AdminProductoresRepository,
   ListAdminProductoresParams,
   ListAdminProductoresResult,
 } from "@/modules/admin/productores/domain/repositories/adminProductoresRepository";
 import { getAccessToken } from "@/shared/lib/auth-session";
 
 const BASE_URL = "/api/admin/producers";
-
-// ─── Parámetros ────────────────────────────────────────────────────────────────
+const BATCH_URL = "/api/admin/producers/batch";
 
 export interface FetchAdminProductoresParams {
   accessToken: string;
@@ -44,7 +45,9 @@ export interface UpdateAdminProductorParams extends UpdateAdminProductorDTO {
   accessToken: string;
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
+export interface CreateAdminProductoresBatchParams extends AdminProductorBatchCreateInput {
+  accessToken: string;
+}
 
 function authHeaders(accessToken: string): HeadersInit {
   return {
@@ -58,21 +61,42 @@ function buildQueryString(params: Record<string, string | number | undefined>): 
     ([, value]) => value !== undefined && value !== ""
   );
   if (entries.length === 0) return "";
-  return "?" + entries.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join("&");
+  return (
+    "?" +
+    entries
+      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+      .join("&")
+  );
 }
-
-// ─── GET — lista con filtros y paginación ──────────────────────────────────────
 
 export async function fetchAdminProductores(
   params: FetchAdminProductoresParams
 ): Promise<FetchAdminProductoresResult> {
-  const { accessToken, search, status, page = 1, limit = 20, sortBy, sortDir, dateFrom, dateTo } = params;
+  const {
+    accessToken,
+    search,
+    status,
+    page = 1,
+    limit = 20,
+    sortBy,
+    sortDir,
+    dateFrom,
+    dateTo,
+  } = params;
 
-  const qs = buildQueryString({ search, status, page, limit, sortBy, sortDir, dateFrom, dateTo });
-  const response = await fetch(`${BASE_URL}${qs}`, {
+  const queryString = buildQueryString({
+    search,
+    status,
+    page,
+    limit,
+    sortBy,
+    sortDir,
+    dateFrom,
+    dateTo,
+  });
+  const response = await fetch(`${BASE_URL}${queryString}`, {
     headers: authHeaders(accessToken),
   });
-
   const body = await response.json();
 
   if (!response.ok || !body.ok) {
@@ -87,19 +111,15 @@ export async function fetchAdminProductores(
   };
 }
 
-// ─── POST — crear productor ─────────────────────────────────────────────────────
-
 export async function createAdminProductor(
   params: CreateAdminProductorParams
 ): Promise<AdminProductor> {
   const { accessToken, ...dto } = params;
-
   const response = await fetch(BASE_URL, {
     method: "POST",
     headers: authHeaders(accessToken),
     body: JSON.stringify(dto),
   });
-
   const body = await response.json();
 
   if (!response.ok || !body.ok) {
@@ -109,19 +129,37 @@ export async function createAdminProductor(
   return body.data.producer as AdminProductor;
 }
 
-// ─── PATCH — actualizar productor ─────────────────────────────────────────────
+export async function createAdminProductoresBatch(
+  params: CreateAdminProductoresBatchParams
+): Promise<AdminProductorBatchCreateResult> {
+  const { accessToken, ...payload } = params;
+  const response = await fetch(BATCH_URL, {
+    method: "POST",
+    headers: authHeaders(accessToken),
+    body: JSON.stringify(payload),
+  });
+  const body = await response.json();
+
+  if (!response.ok || !body.ok) {
+    const message = body.error?.message ?? "No fue posible crear productores en lote.";
+    throw new Error(message);
+  }
+
+  return {
+    created: body.data.created ?? [],
+    count: body.data.count ?? 0,
+  };
+}
 
 export async function updateAdminProductor(
   params: UpdateAdminProductorParams
 ): Promise<AdminProductor> {
   const { accessToken, ...dto } = params;
-
   const response = await fetch(BASE_URL, {
     method: "PATCH",
     headers: authHeaders(accessToken),
     body: JSON.stringify(dto),
   });
-
   const body = await response.json();
 
   if (!response.ok || !body.ok) {
@@ -131,24 +169,22 @@ export async function updateAdminProductor(
   return body.data.producer as AdminProductor;
 }
 
-// ─── Adaptador hexagonal ────────────────────────────────────────────────────────
-
-/**
- * AdminProductoresApiRepository implementa el puerto AdminProductoresRepository
- * usando fetch hacia /api/admin/producers.
- * Es la única clase del proyecto que conoce este endpoint.
- * La presentation NUNCA debe importar este archivo directamente.
- */
 export class AdminProductoresApiRepository implements AdminProductoresRepository {
   async list(params: ListAdminProductoresParams): Promise<ListAdminProductoresResult> {
     const accessToken = await getAccessToken();
-    if (!accessToken) throw new Error("No existe sesión activa.");
+    if (!accessToken) throw new Error("No existe sesion activa.");
     return fetchAdminProductores({ accessToken, ...params });
   }
 
   async create(input: AdminProductorCreateInput): Promise<AdminProductor> {
     const accessToken = await getAccessToken();
-    if (!accessToken) throw new Error("No existe sesión activa.");
+    if (!accessToken) throw new Error("No existe sesion activa.");
     return createAdminProductor({ accessToken, ...input });
+  }
+
+  async createBatch(input: AdminProductorBatchCreateInput): Promise<AdminProductorBatchCreateResult> {
+    const accessToken = await getAccessToken();
+    if (!accessToken) throw new Error("No existe sesion activa.");
+    return createAdminProductoresBatch({ accessToken, ...input });
   }
 }
