@@ -6,6 +6,7 @@ import Sidebar from "@/shared/ui/layout/Sidebar";
 import Topbar from "@/shared/ui/layout/Topbar";
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase-browser";
 import { resolveClientRole } from "@/shared/lib/auth-client";
+import { MvzRanchProvider } from "@/shared/hooks";
 import {
   ROLE_DEFAULT_PERMISSIONS,
   isPermissionKey,
@@ -27,6 +28,7 @@ const producerRoutePermissions: Array<{ prefix: string; permission: PermissionKe
 
 const mvzRoutePermissions: Array<{ prefix: string; permission: PermissionKey }> = [
   { prefix: "/mvz/dashboard", permission: "mvz.dashboard.read" },
+  { prefix: "/mvz/ranchos", permission: "mvz.ranch.read" },
   { prefix: "/mvz/asignaciones", permission: "mvz.assignments.read" },
   { prefix: "/mvz/pruebas", permission: "mvz.tests.read" },
   { prefix: "/mvz/exportaciones", permission: "mvz.exports.read" },
@@ -145,7 +147,9 @@ export default function TenantLayout({
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar />
-        <main className="flex-1 p-6 overflow-auto">{children}</main>
+        <main className="flex-1 p-6 overflow-auto">
+          <MvzRanchProvider>{children}</MvzRanchProvider>
+        </main>
       </div>
     </div>
   );

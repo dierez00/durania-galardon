@@ -4,7 +4,9 @@
 
 - Publico: `/` y `/login`
 - Admin tenant: `/admin/*`
-- Operacion tenant: `/producer/*` y `/mvz/*`
+- Operacion tenant:
+  - Productor: `/producer/*`
+  - MVZ: `/mvz/dashboard` + `/mvz/ranchos/[uppId]/*`
 
 ## Rutas por panel
 
@@ -17,6 +19,7 @@
   - `/admin/normative`
   - `/admin/audit`
   - `/admin/appointments`
+
 - `producer` y `employee`
   - `/producer/dashboard`
   - `/producer/ranchos`
@@ -25,20 +28,35 @@
   - `/producer/exportaciones`
   - `/producer/documentos`
   - `/producer/empleados`
+
 - `mvz_government` y `mvz_internal`
   - `/mvz/dashboard`
-  - `/mvz/asignaciones`
-  - `/mvz/pruebas`
-  - `/mvz/exportaciones`
+  - `/mvz/ranchos`
+  - `/mvz/ranchos/[uppId]`
+  - `/mvz/ranchos/[uppId]/animales`
+  - `/mvz/ranchos/[uppId]/historial-clinico`
+  - `/mvz/ranchos/[uppId]/vacunacion`
+  - `/mvz/ranchos/[uppId]/incidencias`
+  - `/mvz/ranchos/[uppId]/reportes`
+  - `/mvz/ranchos/[uppId]/documentacion`
+  - `/mvz/ranchos/[uppId]/visitas`
+
+## Compatibilidad legacy MVZ
+
+Estas rutas se mantienen, pero redirigen a la jerarquia nueva:
+
+- `/mvz/asignaciones` -> `/mvz/ranchos/[selectedUppId]`
+- `/mvz/pruebas` -> `/mvz/ranchos/[selectedUppId]/historial-clinico`
+- `/mvz/exportaciones` -> `/mvz/ranchos/[selectedUppId]/reportes`
+
+Si no hay `selectedUppId` persistido, redirigen a `/mvz/dashboard?selectRancho=1`.
 
 ## Guards principales
 
 - `src/app/(tenant)/layout.tsx`
   - valida sesion
   - resuelve rol tenant
-  - restringe acceso a prefijos permitidos
-  - valida permisos por ruta
-- `src/app/(admin)/admin/(protected)/layout.tsx`
-  - valida sesion
-  - permite solo `tenant_admin`
-  - redirige otros roles a su home correspondiente
+  - valida permisos por prefijo de ruta
+- `src/server/authz/index.ts`
+  - aplica `roles`, `permissions` y `scope.uppId`
+  - bloquea acceso a ranchos no asignados

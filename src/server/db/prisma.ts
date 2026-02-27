@@ -25,7 +25,7 @@ export async function withPrismaRls<T>(
   context: PrismaRlsContext,
   execute: (tx: Prisma.TransactionClient) => Promise<T>
 ): Promise<T> {
-  return prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.$executeRaw`SELECT set_config('request.jwt.claim.sub', ${context.userId}, true)`;
 
     if (context.role) {

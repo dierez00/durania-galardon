@@ -86,14 +86,28 @@ JOIN public.permissions p ON p.key = ANY(
       'mvz.dashboard.read', 'mvz.assignments.read', 'mvz.bovinos.read',
       'mvz.tests.read', 'mvz.tests.write', 'mvz.tests.sync',
       'mvz.quarantines.read', 'mvz.quarantines.write',
-      'mvz.exports.read', 'mvz.exports.write', 'mvz.notifications.read'
+      'mvz.exports.read', 'mvz.exports.write', 'mvz.notifications.read',
+      'mvz.ranch.read',
+      'mvz.ranch.animals.read', 'mvz.ranch.clinical.read',
+      'mvz.ranch.vaccinations.read', 'mvz.ranch.vaccinations.write',
+      'mvz.ranch.incidents.read', 'mvz.ranch.incidents.write',
+      'mvz.ranch.reports.read',
+      'mvz.ranch.documents.read', 'mvz.ranch.documents.write',
+      'mvz.ranch.visits.read', 'mvz.ranch.visits.write'
     ]
     -- mvz_government: auditor externo
     WHEN t.type = 'mvz' AND tr.key = 'mvz_government' THEN ARRAY[
       'mvz.dashboard.read', 'mvz.assignments.read', 'mvz.bovinos.read',
       'mvz.tests.read', 'mvz.tests.write', 'mvz.tests.sync',
       'mvz.quarantines.read', 'mvz.quarantines.write',
-      'mvz.exports.read', 'mvz.exports.write', 'mvz.notifications.read'
+      'mvz.exports.read', 'mvz.exports.write', 'mvz.notifications.read',
+      'mvz.ranch.read',
+      'mvz.ranch.animals.read', 'mvz.ranch.clinical.read',
+      'mvz.ranch.vaccinations.read', 'mvz.ranch.vaccinations.write',
+      'mvz.ranch.incidents.read', 'mvz.ranch.incidents.write',
+      'mvz.ranch.reports.read',
+      'mvz.ranch.documents.read', 'mvz.ranch.documents.write',
+      'mvz.ranch.visits.read', 'mvz.ranch.visits.write'
     ]
     ELSE ARRAY[]::TEXT[]
   END

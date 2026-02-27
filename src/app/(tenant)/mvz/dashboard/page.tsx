@@ -1,18 +1,38 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Button } from "@/shared/ui/button";
 import { getAccessToken } from "@/shared/lib/auth-session";
+import { useMvzRanchContext, useMvzRealtime } from "@/shared/hooks";
 
-interface MvzKpis {
-  pendingTests: number;
-  activeReactors: number;
-  activeQuarantines: number;
-  assignedRouteUpps: number;
+interface MvzGlobalKpis {
+  totalRanchosAsignados: number;
+  totalAnimalesRegistrados: number;
+  totalCitasActivas: number;
+  alertasSanitariasActivas: number;
+  vacunacionesPendientes: number;
+  incidenciasRecientes: number;
+}
+
+interface AssignmentRow {
+  assignment_id: string;
+  upp_id: string;
+  upp_name: string;
+  upp_code: string | null;
+  producer_name: string;
+  sanitary_alert: string;
+  active_animals: number;
 }
 
 export default function MvzDashboardPage() {
-  const [kpis, setKpis] = useState<MvzKpis | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { selectedUppId, setSelectedUppId } = useMvzRanchContext();
+  const [kpis, setKpis] = useState<MvzGlobalKpis | null>(null);
+  const [ranchos, setRanchos] = useState<AssignmentRow[]>([]);
+  const [localSelectedUppId, setLocalSelectedUppId] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState("");
 
   const loadDashboard = useCallback(async () => {
@@ -28,6 +48,7 @@ export default function MvzDashboardPage() {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
+      cache: "no-store",
     });
 
     const body = await response.json();
@@ -36,53 +57,141 @@ export default function MvzDashboardPage() {
       return;
     }
 
-    setKpis(body.data.kpis ?? null);
-  }, []);
+    const rows = (body.data.ranchosAsignados ?? []) as AssignmentRow[];
+    setKpis(body.data.kpisGlobales ?? null);
+    setRanchos(rows);
+
+    const preferred = selectedUppId && rows.some((row) => row.upp_id === selectedUppId)
+      ? selectedUppId
+      : rows[0]?.upp_id ?? "";
+
+    setLocalSelectedUppId(preferred);
+  }, [selectedUppId]);
 
   useEffect(() => {
     void loadDashboard();
   }, [loadDashboard]);
 
+  useMvzRealtime({
+    onEvent: () => {
+      void loadDashboard();
+    },
+  });
+
+  const openRancho = (uppId: string) => {
+    if (!uppId) {
+      return;
+    }
+
+    setSelectedUppId(uppId);
+    router.push(`/mvz/ranchos/${uppId}`);
+  };
+
+  const showSelectionHint = searchParams.get("selectRancho") === "1";
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Dashboard MVZ</h1>
-        <p className="text-sm text-muted-foreground">Resumen de asignaciones y riesgos sanitarios.</p>
+        <p className="text-sm text-muted-foreground">
+          Resumen global y selector de ranchos asignados.
+        </p>
       </div>
+
+      {showSelectionHint ? (
+        <p className="text-sm text-amber-700">Seleccione un rancho para continuar con el panel contextual.</p>
+      ) : null}
 
       {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Selector de ranchos asignados</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <select
+              value={localSelectedUppId}
+              onChange={(event) => setLocalSelectedUppId(event.target.value)}
+              className="h-10 rounded-md border bg-background px-3 text-sm"
+            >
+              <option value="">Selecciona un rancho</option>
+              {ranchos.map((rancho) => (
+                <option key={rancho.assignment_id} value={rancho.upp_id}>
+                  {rancho.upp_name} - {rancho.producer_name}
+                </option>
+              ))}
+            </select>
+            <Button onClick={() => openRancho(localSelectedUppId)} disabled={!localSelectedUppId}>
+              Abrir panel del rancho
+            </Button>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {ranchos.map((rancho) => (
+              <button
+                key={rancho.assignment_id}
+                type="button"
+                onClick={() => openRancho(rancho.upp_id)}
+                className="rounded-lg border p-4 text-left hover:bg-accent"
+              >
+                <p className="font-semibold">{rancho.upp_name}</p>
+                <p className="text-xs text-muted-foreground">Productor: {rancho.producer_name}</p>
+                <p className="text-xs text-muted-foreground">Alerta: {rancho.sanitary_alert}</p>
+                <p className="text-xs text-muted-foreground">Animales activos: {rancho.active_animals ?? 0}</p>
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Pruebas pendientes</CardTitle>
+            <CardTitle className="text-base">Total ranchos asignados</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{kpis?.pendingTests ?? 0}</p>
+            <p className="text-2xl font-bold">{kpis?.totalRanchosAsignados ?? 0}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Reactores activos</CardTitle>
+            <CardTitle className="text-base">Total animales registrados</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{kpis?.activeReactors ?? 0}</p>
+            <p className="text-2xl font-bold">{kpis?.totalAnimalesRegistrados ?? 0}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Cuarentenas activas</CardTitle>
+            <CardTitle className="text-base">Citas activas</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{kpis?.activeQuarantines ?? 0}</p>
+            <p className="text-2xl font-bold">{kpis?.totalCitasActivas ?? 0}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">UPP asignadas</CardTitle>
+            <CardTitle className="text-base">Alertas sanitarias activas</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{kpis?.assignedRouteUpps ?? 0}</p>
+            <p className="text-2xl font-bold">{kpis?.alertasSanitariasActivas ?? 0}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Vacunaciones pendientes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{kpis?.vacunacionesPendientes ?? 0}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Incidencias recientes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{kpis?.incidenciasRecientes ?? 0}</p>
           </CardContent>
         </Card>
       </div>

@@ -8,7 +8,6 @@ import { Calendar } from "@/shared/ui/calendar";
 import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/lib/utils";
 
-/** Alias reexportable para que otros módulos no dependan de react-day-picker directamente */
 export type { DateRange } from "react-day-picker";
 export type DateRangeValue = DateRange;
 
@@ -18,38 +17,85 @@ const fmtShort = new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "shor
 function formatRange(range: DateRangeValue | undefined): string {
   if (!range?.from) return "";
   if (!range.to) return fmt.format(range.from);
-  return `${fmtShort.format(range.from)} – ${fmt.format(range.to)}`;
+  return `${fmtShort.format(range.from)} - ${fmt.format(range.to)}`;
 }
 
 interface DateRangeFilterProps {
-  value: DateRangeValue | undefined;
-  onChange: (range: DateRangeValue | undefined) => void;
+  value?: DateRangeValue | undefined;
+  onChange?: (range: DateRangeValue | undefined) => void;
   placeholder?: string;
-  /** Número de meses visibles en el calendario (default 2) */
+  startDate?: string;
+  endDate?: string;
+  onStartDateChange?: (value: string) => void;
+  onEndDateChange?: (value: string) => void;
+  startPlaceholder?: string;
+  endPlaceholder?: string;
   numberOfMonths?: number;
   className?: string;
 }
 
-/**
- * Campo de rango de fechas: un solo botón trigger que abre un popover con
- * un calendario de selección de rango (react-day-picker mode="range").
- * Incluye botón × para limpiar la selección.
- * Reutilizable en cualquier módulo que necesite filtrado por periodo.
- */
+function parseIsoDate(iso: string | undefined): Date | undefined {
+  if (!iso) return undefined;
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return undefined;
+  return new Date(y, m - 1, d);
+}
+
+function toIsoDate(date: Date | undefined): string {
+  if (!date) return "";
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
   value,
   onChange,
-  placeholder = "Seleccionar periodo...",
+  placeholder,
+  startDate,
+  endDate,
+  onStartDateChange,
+  onEndDateChange,
+  startPlaceholder = "Desde",
+  endPlaceholder = "Hasta",
   numberOfMonths = 2,
   className,
 }) => {
   const [open, setOpen] = useState(false);
-  const hasValue = Boolean(value?.from);
-  const label = formatRange(value) || placeholder;
+
+  const resolvedValue: DateRangeValue | undefined =
+    value !== undefined || onChange
+      ? value
+      : {
+          from: parseIsoDate(startDate),
+          to: parseIsoDate(endDate),
+        };
+
+  const resolvedPlaceholder = placeholder ?? `${startPlaceholder} - ${endPlaceholder}`;
+  const hasValue = Boolean(resolvedValue?.from);
+  const label = formatRange(resolvedValue) || resolvedPlaceholder;
+
+  const handleSelect = (range: DateRangeValue | undefined) => {
+    if (onChange) {
+      onChange(range);
+      return;
+    }
+
+    onStartDateChange?.(toIsoDate(range?.from));
+    onEndDateChange?.(toIsoDate(range?.to));
+  };
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onChange(undefined);
+
+    if (onChange) {
+      onChange(undefined);
+      return;
+    }
+
+    onStartDateChange?.("");
+    onEndDateChange?.("");
   };
 
   return (
@@ -80,15 +126,11 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
         )}
       </div>
 
-      <PopoverContent
-        className="w-auto p-0"
-        align="start"
-        onInteractOutside={() => setOpen(false)}
-      >
+      <PopoverContent className="w-auto p-0" align="start" onInteractOutside={() => setOpen(false)}>
         <Calendar
           mode="range"
-          selected={value}
-          onSelect={onChange}
+          selected={resolvedValue}
+          onSelect={handleSelect}
           numberOfMonths={numberOfMonths}
           autoFocus
         />
@@ -96,4 +138,3 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
     </Popover>
   );
 };
-

@@ -35,6 +35,15 @@
 - `GET|POST /api/mvz/tests`
 - `POST /api/mvz/tests/sync`
 - `GET|PATCH /api/mvz/exports`
+- `GET /api/mvz/ranchos/:uppId`
+- `GET /api/mvz/ranchos/:uppId/overview`
+- `GET /api/mvz/ranchos/:uppId/animales`
+- `GET /api/mvz/ranchos/:uppId/historial-clinico`
+- `GET|POST|PATCH /api/mvz/ranchos/:uppId/vacunacion`
+- `GET|POST|PATCH /api/mvz/ranchos/:uppId/incidencias`
+- `GET /api/mvz/ranchos/:uppId/reportes`
+- `GET|POST /api/mvz/ranchos/:uppId/documentacion`
+- `GET|POST|PATCH /api/mvz/ranchos/:uppId/visitas`
 
 ## Public
 

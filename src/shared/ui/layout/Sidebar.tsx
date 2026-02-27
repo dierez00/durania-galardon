@@ -62,9 +62,10 @@ const producerNavigation: NavigationItem[] = [
 
 const mvzNavigation: NavigationItem[] = [
   { name: "Dashboard", href: "/mvz/dashboard", icon: LayoutDashboard, permission: "mvz.dashboard.read" },
-  { name: "Asignaciones", href: "/mvz/asignaciones", icon: ClipboardList, permission: "mvz.assignments.read" },
-  { name: "Pruebas", href: "/mvz/pruebas", icon: TestTube, permission: "mvz.tests.read" },
-  { name: "Exportaciones", href: "/mvz/exportaciones", icon: Ship, permission: "mvz.exports.read" },
+  { name: "Ranchos", href: "/mvz/ranchos", icon: ClipboardList, permission: "mvz.ranch.read" },
+  { name: "Asignaciones (legacy)", href: "/mvz/asignaciones", icon: ClipboardList, permission: "mvz.assignments.read" },
+  { name: "Pruebas (legacy)", href: "/mvz/pruebas", icon: TestTube, permission: "mvz.tests.read" },
+  { name: "Exportaciones (legacy)", href: "/mvz/exportaciones", icon: Ship, permission: "mvz.exports.read" },
 ];
 
 export default function Sidebar() {

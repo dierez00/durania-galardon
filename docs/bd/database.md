@@ -1,6 +1,6 @@
 # DURANIA MVP PRO — Documentación de Base de Datos
 
-> **Stack:** Supabase / PostgreSQL · **Versión:** v5  
+> **Stack:** Supabase / PostgreSQL · **Versión:** v6  
 > Referencia técnica para desarrolladores del proyecto.
 
 ---
@@ -23,6 +23,7 @@
 5. [Funciones Helper RLS](#5-funciones-helper-rls)
 6. [Operaciones Frecuentes](#6-operaciones-frecuentes)
 7. [Resumen de Accesos RLS](#7-resumen-de-accesos-rls)
+8. [Actualizacion v6 (MVZ Jerarquico)](#8-actualizacion-v6-mvz-jerarquico)
 
 ---
 
@@ -975,3 +976,105 @@ RETURNING id;
 - `propio` — Solo sus propios datos
 - `asignadas` — Solo UPPs/ranchos asignados
 - `todos` — Todos los registros del sistema
+
+---
+
+## 8. Actualizacion v6 (MVZ Jerarquico)
+
+Esta version agrega soporte completo de jerarquia MVZ Gobierno -> Rancho (`UPP`) con dashboard global, panel contextual por rancho, modulos internos y realtime.
+
+### 8.1 Tablas nuevas
+
+#### `mvz_visits`
+
+Visitas/citas de MVZ por rancho.
+
+| Columna | Tipo | Descripcion |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `tenant_id` | `UUID` | Tenant productor del rancho |
+| `upp_id` | `UUID` | Rancho objetivo |
+| `mvz_profile_id` | `UUID` | MVZ responsable |
+| `visit_type` | `TEXT` | Tipo de visita |
+| `status` | `TEXT` | `scheduled` \| `in_progress` \| `completed` \| `cancelled` |
+| `scheduled_at` | `TIMESTAMPTZ` | Fecha programada |
+| `started_at` / `finished_at` | `TIMESTAMPTZ` | Tiempos de ejecucion |
+
+#### `animal_vaccinations`
+
+Registro de vacunacion por animal dentro de una UPP.
+
+| Columna | Tipo | Descripcion |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `tenant_id` | `UUID` | Tenant productor |
+| `upp_id` | `UUID` | Rancho |
+| `animal_id` | `UUID` | Animal vacunado |
+| `vaccine_name` | `TEXT` | Vacuna aplicada/planeada |
+| `status` | `TEXT` | `pending` \| `applied` \| `overdue` \| `cancelled` |
+| `applied_at` / `due_at` | `DATE` | Fechas sanitarias |
+
+#### `sanitary_incidents`
+
+Incidencias sanitarias por animal y rancho.
+
+| Columna | Tipo | Descripcion |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `tenant_id` | `UUID` | Tenant productor |
+| `upp_id` | `UUID` | Rancho |
+| `animal_id` | `UUID` | Animal afectado |
+| `incident_type` | `TEXT` | Tipo de incidencia |
+| `severity` | `TEXT` | `low` \| `medium` \| `high` \| `critical` |
+| `status` | `TEXT` | `open` \| `in_progress` \| `resolved` \| `dismissed` |
+
+#### `upp_documents`
+
+Documentos asociados al rancho (`UPP`) en lugar de solo productor.
+
+| Columna | Tipo | Descripcion |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `tenant_id` | `UUID` | Tenant productor |
+| `upp_id` | `UUID` | Rancho |
+| `document_type` | `TEXT` | Tipo de documento |
+| `file_storage_key` | `TEXT` | Ruta en Storage |
+| `status` | `TEXT` | `pending` \| `validated` \| `expired` \| `rejected` |
+| `is_current` | `BOOLEAN` | Documento vigente por tipo |
+
+### 8.2 Vistas nuevas
+
+- `v_mvz_dashboard_global`: KPIs agregados por MVZ sin duplicidad.
+- `v_mvz_ranch_overview`: cabecera + metricas contextuales del rancho.
+- `v_mvz_ranch_reports`: resumen operativo (exportaciones, movimientos, pruebas e incidencias).
+
+### 8.3 Permisos nuevos (modulo `mvz`)
+
+- `mvz.ranch.read`
+- `mvz.ranch.animals.read`
+- `mvz.ranch.clinical.read`
+- `mvz.ranch.vaccinations.read` / `mvz.ranch.vaccinations.write`
+- `mvz.ranch.incidents.read` / `mvz.ranch.incidents.write`
+- `mvz.ranch.reports.read`
+- `mvz.ranch.documents.read` / `mvz.ranch.documents.write`
+- `mvz.ranch.visits.read` / `mvz.ranch.visits.write`
+
+### 8.4 RLS y Realtime
+
+- Todas las tablas nuevas tienen RLS habilitado.
+- Regla central MVZ: acceso solo a ranchos asignados (`auth_mvz_assigned_to_upp(upp_id)`).
+- Se agregan tablas nuevas a `supabase_realtime` para `postgres_changes`.
+
+### 8.5 Endpoints jerarquicos MVZ
+
+- `GET /api/mvz/dashboard` (extendido)
+- `GET /api/mvz/ranchos/:uppId`
+- `GET /api/mvz/ranchos/:uppId/overview`
+- `GET /api/mvz/ranchos/:uppId/animales`
+- `GET /api/mvz/ranchos/:uppId/historial-clinico`
+- `GET|POST|PATCH /api/mvz/ranchos/:uppId/vacunacion`
+- `GET|POST|PATCH /api/mvz/ranchos/:uppId/incidencias`
+- `GET /api/mvz/ranchos/:uppId/reportes`
+- `GET|POST /api/mvz/ranchos/:uppId/documentacion`
+- `GET|POST|PATCH /api/mvz/ranchos/:uppId/visitas`
+

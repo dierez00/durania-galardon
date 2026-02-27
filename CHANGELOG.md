@@ -6,6 +6,46 @@ Todas las fechas usan formato YYYY-MM-DD.
 
 ### Added
 
+- Migracion `sql/migration_002_mvz_hierarchy.sql` con:
+  - `mvz_visits`
+  - `animal_vaccinations`
+  - `sanitary_incidents`
+  - `upp_documents`
+- Nuevas vistas SQL para jerarquia MVZ:
+  - `v_mvz_dashboard_global`
+  - `v_mvz_ranch_overview`
+  - `v_mvz_ranch_reports`
+- Nuevos permisos `mvz.ranch.*` y asignacion por seed para roles MVZ.
+- Nuevos endpoints API:
+  - `GET /api/mvz/ranchos/:uppId`
+  - `GET /api/mvz/ranchos/:uppId/overview`
+  - `GET /api/mvz/ranchos/:uppId/animales`
+  - `GET /api/mvz/ranchos/:uppId/historial-clinico`
+  - `GET|POST|PATCH /api/mvz/ranchos/:uppId/vacunacion`
+  - `GET|POST|PATCH /api/mvz/ranchos/:uppId/incidencias`
+  - `GET /api/mvz/ranchos/:uppId/reportes`
+  - `GET|POST /api/mvz/ranchos/:uppId/documentacion`
+  - `GET|POST|PATCH /api/mvz/ranchos/:uppId/visitas`
+- Contexto cliente MVZ para seleccion de rancho persistida en sesion.
+- Hook `useMvzRealtime` para refresh dinamico por `postgres_changes`.
+- Tests de integracion para rutas MVZ de rancho (`tests/integration/mvzRanchRoutes.test.ts`).
+
+### Changed
+
+- `GET /api/mvz/dashboard` ahora retorna `kpisGlobales` y `ranchosAsignados`.
+- Navegacion MVZ migrada a jerarquia por rancho (`/mvz/ranchos/[uppId]/*`).
+- Paginas legacy MVZ (`/mvz/asignaciones`, `/mvz/pruebas`, `/mvz/exportaciones`) ahora redirigen a la nueva jerarquia.
+- Layout tenant envuelve vistas con `MvzRanchProvider`.
+- `src/shared/lib/auth.ts` extendido con permisos nuevos de rancho.
+
+### Fixed
+
+- Tipado en `src/server/db/prisma.ts` para compatibilidad con `tsc --noEmit`.
+
+## [2026-02-24]
+
+### Added
+
 - Migracion SQL v3 tenant IAM: `sql/durania_mvp_migration_v3_tenant_iam.sql`.
 - Nuevas tablas tenant IAM:
   - `tenants`
@@ -46,31 +86,3 @@ Todas las fechas usan formato YYYY-MM-DD.
 
 - Conflicto de App Router por rutas paralelas duplicadas: se consolidaron segmentos reales bajo `/producer/*` y `/mvz/*`.
 - Resolucion tenant en login local: fallback robusto a `default-tenant` cuando `DEFAULT_TENANT_SLUG` no esta definido.
-
-## [2026-02-24]
-
-### Added
-
-- Estructura modular base Hexagonal en `src/modules/*` con capas `domain/application/infra/presentation`.
-- Capa server para tenant:
-  - `src/server/tenants/resolveTenant.ts`
-  - `src/server/middleware/tenant-context.ts`
-  - `src/proxy.ts`
-- API base:
-  - `GET /api/health`
-  - `GET /api/tenant/resolve`
-- Prisma singleton en `src/server/db/prisma.ts`.
-- Tests unitarios e integracion en `tests/unit` y `tests/integration`.
-- Configuracion ESLint y Vitest.
-
-### Changed
-
-- Migracion de layout/paginas admin a route group tenant:
-  - paginas bajo `src/app/(tenant)`.
-- Reorganizacion de componentes compartidos a `src/shared/*`.
-- Refactor de imports a aliases nuevos (`@app`, `@core`, `@modules`, `@shared`, `@server`).
-- `prisma/schema.prisma` generado desde `sql/durania_mvp_migration_v2.sql`.
-
-### Removed
-
-- Estructura legacy en `src/components/*` y rutas directas previas que ya fueron movidas.

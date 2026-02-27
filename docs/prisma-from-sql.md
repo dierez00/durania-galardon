@@ -2,25 +2,23 @@
 
 ## Fuente de verdad
 
-El schema Prisma fue generado a partir de:
+El modelo operativo se mantiene en SQL para Supabase.
 
-- `sql/durania_mvp_migration_v2.sql`
+Migraciones activas:
 
-Archivo actual:
+- `sql/migration_001_duraniaMVP.sql`
+- `sql/migration_002_mvz_hierarchy.sql`
+- `sql/views.sql`
+- `sql/seeds.sql`
+
+Archivo Prisma actual:
 
 - `prisma/schema.prisma`
 
 ## Variables de entorno para Prisma
 
-Usadas por Prisma:
-
 - `DATABASE_URL`
-- `DATABASE_URL_DIRECT` (asignada a `directUrl`)
-
-Notas:
-
-- Variables `NEXT_PUBLIC_*` y `SUPABASE_SERVICE_ROLE_KEY` no son usadas por Prisma.
-- Prisma CLI lee `.env` en la raiz del proyecto.
+- `DATABASE_URL_DIRECT`
 
 ## Comandos utiles
 
@@ -30,11 +28,15 @@ npx prisma validate
 npx prisma generate
 ```
 
-## Lo que no representa Prisma (se mantiene en SQL)
+## Piezas SQL-first (no gestionadas por Prisma)
 
-- Trigger `handle_new_user` sobre `auth.users`.
-- Funciones/politicas RLS.
-- Indice parcial:
-  - `producer_documents_current_unique` (`WHERE is_current = TRUE`).
+- Trigger `handle_new_user` en `auth.users`.
+- Funciones y politicas RLS.
+- Vistas de reporting MVZ y dashboards.
+- Publicacion realtime (`supabase_realtime`).
 
-Estas piezas deben mantenerse en migraciones SQL para Supabase.
+## Nota sobre MVZ jerarquico
+
+La implementacion jerarquica MVZ usa cliente Supabase (RLS) para tablas nuevas (`mvz_visits`, `animal_vaccinations`, `sanitary_incidents`, `upp_documents`).
+
+Si quieres reflejarlas en Prisma, regenera `prisma/schema.prisma` desde la BD actualizada.

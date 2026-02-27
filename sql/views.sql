@@ -382,3 +382,211 @@ FROM public.animals             a
 JOIN public.upps                u  ON u.id = a.upp_id
 LEFT JOIN last_tb               tb ON tb.animal_id = a.id
 LEFT JOIN last_br               br ON br.animal_id = a.id;
+-- ============================================================
+-- 8. v_mvz_dashboard_global
+--    Dashboard global MVZ con KPIs agregados de todas sus UPPs.
+-- ============================================================
+
+CREATE OR REPLACE VIEW public.v_mvz_dashboard_global
+WITH (security_invoker = true) AS
+WITH assignments AS (
+  SELECT va.mvz_profile_id, va.upp_id, va.sanitary_alert
+  FROM public.v_mvz_assignments va
+),
+upps AS (
+  SELECT mvz_profile_id, COUNT(DISTINCT upp_id) AS total_assigned_upps
+  FROM assignments
+  GROUP BY mvz_profile_id
+),
+animals AS (
+  SELECT a2.mvz_profile_id, COUNT(a.id) AS total_animals_registered
+  FROM assignments a2
+  JOIN public.animals a ON a.upp_id = a2.upp_id
+  GROUP BY a2.mvz_profile_id
+),
+visits AS (
+  SELECT a2.mvz_profile_id,
+    COUNT(v.id) FILTER (WHERE v.status IN ('scheduled', 'in_progress')) AS total_active_visits
+  FROM assignments a2
+  LEFT JOIN public.mvz_visits v ON v.upp_id = a2.upp_id
+  GROUP BY a2.mvz_profile_id
+),
+alerts AS (
+  SELECT mvz_profile_id,
+    COUNT(*) FILTER (WHERE sanitary_alert IS DISTINCT FROM 'ok') AS active_sanitary_alerts
+  FROM assignments
+  GROUP BY mvz_profile_id
+),
+vaccinations AS (
+  SELECT a2.mvz_profile_id,
+    COUNT(v.id) FILTER (
+      WHERE v.status = 'overdue'
+        OR v.status = 'pending'
+        OR (v.status = 'pending' AND v.due_at IS NOT NULL AND v.due_at < CURRENT_DATE)
+    ) AS pending_vaccinations
+  FROM assignments a2
+  LEFT JOIN public.animal_vaccinations v ON v.upp_id = a2.upp_id
+  GROUP BY a2.mvz_profile_id
+),
+incidents AS (
+  SELECT a2.mvz_profile_id,
+    COUNT(i.id) FILTER (WHERE i.detected_at >= NOW() - INTERVAL '30 days') AS recent_incidents
+  FROM assignments a2
+  LEFT JOIN public.sanitary_incidents i ON i.upp_id = a2.upp_id
+  GROUP BY a2.mvz_profile_id
+)
+SELECT
+  p.mvz_profile_id,
+  COALESCE(u.total_assigned_upps, 0) AS total_assigned_upps,
+  COALESCE(an.total_animals_registered, 0) AS total_animals_registered,
+  COALESCE(v.total_active_visits, 0) AS total_active_visits,
+  COALESCE(al.active_sanitary_alerts, 0) AS active_sanitary_alerts,
+  COALESCE(vac.pending_vaccinations, 0) AS pending_vaccinations,
+  COALESCE(inc.recent_incidents, 0) AS recent_incidents
+FROM (SELECT DISTINCT mvz_profile_id FROM assignments) p
+LEFT JOIN upps u ON u.mvz_profile_id = p.mvz_profile_id
+LEFT JOIN animals an ON an.mvz_profile_id = p.mvz_profile_id
+LEFT JOIN visits v ON v.mvz_profile_id = p.mvz_profile_id
+LEFT JOIN alerts al ON al.mvz_profile_id = p.mvz_profile_id
+LEFT JOIN vaccinations vac ON vac.mvz_profile_id = p.mvz_profile_id
+LEFT JOIN incidents inc ON inc.mvz_profile_id = p.mvz_profile_id;
+
+-- ============================================================
+-- 9. v_mvz_ranch_overview
+--    Vista de panel contextual por UPP para MVZ.
+-- ============================================================
+
+CREATE OR REPLACE VIEW public.v_mvz_ranch_overview
+WITH (security_invoker = true) AS
+WITH visits_agg AS (
+  SELECT
+    v.upp_id,
+    COUNT(v.id) AS total_visits,
+    MAX(COALESCE(v.finished_at, v.started_at, v.scheduled_at)) AS last_visit_at,
+    MAX(COALESCE(v.finished_at, v.started_at, v.scheduled_at)) FILTER (WHERE v.status = 'completed') AS last_inspection_at
+  FROM public.mvz_visits v
+  GROUP BY v.upp_id
+),
+vaccinations_agg AS (
+  SELECT
+    v.upp_id,
+    COUNT(v.id) FILTER (
+      WHERE v.status = 'overdue'
+        OR v.status = 'pending'
+        OR (v.status = 'pending' AND v.due_at IS NOT NULL AND v.due_at < CURRENT_DATE)
+    ) AS pending_vaccinations
+  FROM public.animal_vaccinations v
+  GROUP BY v.upp_id
+),
+incidents_agg AS (
+  SELECT
+    i.upp_id,
+    COUNT(i.id) AS incidents_registered,
+    COUNT(i.id) FILTER (WHERE i.status IN ('open', 'in_progress')) AS active_incidents,
+    COUNT(DISTINCT i.animal_id) FILTER (WHERE i.status IN ('open', 'in_progress')) AS animals_in_treatment
+  FROM public.sanitary_incidents i
+  GROUP BY i.upp_id
+),
+animals_agg AS (
+  SELECT
+    a.upp_id,
+    COUNT(a.id) AS total_animals,
+    COUNT(a.id) FILTER (WHERE a.status = 'active') AS active_animals
+  FROM public.animals a
+  GROUP BY a.upp_id
+)
+SELECT
+  va.mvz_profile_id,
+  va.assignment_id,
+  va.upp_id,
+  va.upp_name,
+  va.upp_code,
+  va.upp_status,
+  va.producer_id,
+  va.producer_name,
+  u.address_text,
+  va.location_lat,
+  va.location_lng,
+  va.sanitary_alert,
+  COALESCE(aa.total_animals, 0) AS total_animals,
+  COALESCE(aa.active_animals, 0) AS active_animals,
+  COALESCE(ia.animals_in_treatment, 0) AS animals_in_treatment,
+  COALESCE(va2.pending_vaccinations, 0) AS pending_vaccinations,
+  COALESCE(ia.incidents_registered, 0) AS incidents_registered,
+  COALESCE(ia.active_incidents, 0) AS active_incidents,
+  COALESCE(vi.total_visits, 0) AS total_visits,
+  vi.last_visit_at,
+  vi.last_inspection_at
+FROM public.v_mvz_assignments va
+JOIN public.upps u ON u.id = va.upp_id
+LEFT JOIN animals_agg aa ON aa.upp_id = va.upp_id
+LEFT JOIN incidents_agg ia ON ia.upp_id = va.upp_id
+LEFT JOIN vaccinations_agg va2 ON va2.upp_id = va.upp_id
+LEFT JOIN visits_agg vi ON vi.upp_id = va.upp_id;
+
+-- ============================================================
+-- 10. v_mvz_ranch_reports
+--     Resumen operativo por UPP para reportes MVZ.
+-- ============================================================
+
+CREATE OR REPLACE VIEW public.v_mvz_ranch_reports
+WITH (security_invoker = true) AS
+WITH exports_agg AS (
+  SELECT
+    er.upp_id,
+    COUNT(er.id) FILTER (WHERE er.status = 'requested') AS exports_requested,
+    COUNT(er.id) FILTER (WHERE er.status = 'mvz_validated') AS exports_validated,
+    COUNT(er.id) FILTER (WHERE er.status IN ('blocked', 'rejected')) AS exports_blocked
+  FROM public.export_requests er
+  WHERE er.upp_id IS NOT NULL
+  GROUP BY er.upp_id
+),
+movements_agg AS (
+  SELECT
+    mr.upp_id,
+    COUNT(mr.id) FILTER (WHERE mr.status = 'requested') AS movements_requested,
+    COUNT(mr.id) FILTER (WHERE mr.status = 'approved') AS movements_approved
+  FROM public.movement_requests mr
+  WHERE mr.upp_id IS NOT NULL
+  GROUP BY mr.upp_id
+),
+field_tests_agg AS (
+  SELECT
+    ft.upp_id,
+    COUNT(ft.id) FILTER (WHERE ft.sample_date >= CURRENT_DATE - INTERVAL '90 days') AS tests_total_90d,
+    COUNT(ft.id) FILTER (
+      WHERE ft.sample_date >= CURRENT_DATE - INTERVAL '90 days'
+        AND ft.result = 'positive'
+    ) AS positive_tests_90d
+  FROM public.field_tests ft
+  GROUP BY ft.upp_id
+),
+incidents_agg AS (
+  SELECT
+    si.upp_id,
+    COUNT(si.id) FILTER (WHERE si.status IN ('open', 'in_progress')) AS incidents_open,
+    COUNT(si.id) FILTER (
+      WHERE si.status = 'resolved'
+        AND si.resolved_at >= NOW() - INTERVAL '30 days'
+    ) AS incidents_resolved_30d
+  FROM public.sanitary_incidents si
+  GROUP BY si.upp_id
+)
+SELECT
+  va.mvz_profile_id,
+  va.upp_id,
+  va.upp_name,
+  COALESCE(e.exports_requested, 0) AS exports_requested,
+  COALESCE(e.exports_validated, 0) AS exports_validated,
+  COALESCE(e.exports_blocked, 0) AS exports_blocked,
+  COALESCE(m.movements_requested, 0) AS movements_requested,
+  COALESCE(m.movements_approved, 0) AS movements_approved,
+  COALESCE(t.tests_total_90d, 0) AS tests_total_90d,
+  COALESCE(t.positive_tests_90d, 0) AS positive_tests_90d,
+  COALESCE(i.incidents_open, 0) AS incidents_open,
+  COALESCE(i.incidents_resolved_30d, 0) AS incidents_resolved_30d
+FROM public.v_mvz_assignments va
+LEFT JOIN exports_agg e ON e.upp_id = va.upp_id
+LEFT JOIN movements_agg m ON m.upp_id = va.upp_id
+LEFT JOIN field_tests_agg t ON t.upp_id = va.upp_id
+LEFT JOIN incidents_agg i ON i.upp_id = va.upp_id;

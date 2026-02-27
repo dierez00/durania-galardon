@@ -4,20 +4,20 @@
 
 ### Added
 
-- `docs/auth-admin.md`: modelo tenant IAM, login unico y endpoints IAM/CRM.
-- Documentacion de rutas visibles por rol: `/producer/*` y `/mvz/*`.
-- `docs/tenant-iam.md`: entidades, flujos y politicas del modelo IAM por tenant.
-- `docs/routing.md`: matriz de rutas por rol y guards de App Router.
-- `docs/troubleshooting-login.md`: guia operativa para errores de login y tenant.
+- `docs/mvz-hierarchy.md`: guia funcional y tecnica del flujo MVZ jerarquico (dashboard global + panel por rancho).
+- Documentacion de APIs jerarquicas en `docs/auth-admin.md` y `docs/bd/database.md`.
+- Seccion de actualizacion v6 en `docs/bd/database.md` con tablas, vistas, permisos, RLS y realtime.
 
 ### Changed
 
-- `docs/architecture.md`: estructura App Router con modulo admin tenant, APIs IAM y migracion SQL v3.
-- `docs/setup.md`: secuencia de migraciones (`v2` + `v3`) y roles tenant de sistema.
-- `docs/README.md`: resumen actualizado de rutas y capacidades tenant IAM.
-- `docs/tenant-iam.md`: politica de rutas depurada sin rutas tenant legacy.
-- `docs/multitenancy.md`: fallback local documentado (`DEFAULT_TENANT_SLUG` -> `default-tenant`).
-- `docs/auth-admin.md`: flujo de login detallado + catalogo de errores frecuentes.
+- `docs/README.md`: indice actualizado con jerarquia MVZ.
+- `docs/architecture.md`: estructura real de rutas MVZ por rancho y nuevos hooks/contexto.
+- `docs/routing.md`: rutas nuevas `/mvz/ranchos/[uppId]/*` y politica de redirects legacy.
+- `docs/setup.md`: orden de migraciones actualizado (`migration_001`, `migration_002`, `views`, `seeds`).
+- `docs/multitenancy.md`: separacion entre contexto tenant y contexto de rancho MVZ.
+- `docs/auth-admin.md`: permisos y autorizacion por `scope.uppId`.
+- `docs/tenant-iam.md`: catalogo de permisos `mvz.ranch.*`.
+- `docs/prisma-from-sql.md`: nota SQL-first para tablas nuevas de MVZ jerarquico.
 
 ## [2026-02-24]
 

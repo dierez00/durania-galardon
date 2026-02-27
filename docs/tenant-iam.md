@@ -2,15 +2,15 @@
 
 ## Alcance
 
-Este documento describe la capa IAM por tenant introducida en la migracion SQL v3.
+Este documento describe la capa IAM por tenant y su extension para el flujo MVZ jerarquico por rancho.
 
-## Entidades
+## Entidades IAM
 
-- `tenants`: tenant operativo.
-- `tenant_memberships`: pertenencia de usuario al tenant.
-- `tenant_roles`: roles por tenant (sistema y personalizados).
-- `tenant_role_permissions`: permisos asignados al rol tenant.
-- `tenant_user_roles`: asignacion de rol a una membresia.
+- `tenants`
+- `tenant_memberships`
+- `tenant_roles`
+- `tenant_role_permissions`
+- `tenant_user_roles`
 
 ## Roles de sistema
 
@@ -20,40 +20,43 @@ Este documento describe la capa IAM por tenant introducida en la migracion SQL v
 - `mvz_government`
 - `mvz_internal`
 
+## Permisos MVZ por rancho (nuevos)
+
+- `mvz.ranch.read`
+- `mvz.ranch.animals.read`
+- `mvz.ranch.clinical.read`
+- `mvz.ranch.vaccinations.read`
+- `mvz.ranch.vaccinations.write`
+- `mvz.ranch.incidents.read`
+- `mvz.ranch.incidents.write`
+- `mvz.ranch.reports.read`
+- `mvz.ranch.documents.read`
+- `mvz.ranch.documents.write`
+- `mvz.ranch.visits.read`
+- `mvz.ranch.visits.write`
+
 ## Flujos backend
 
-- Login (`POST /api/auth/login`): valida credenciales, resuelve tenant y rol tenant, devuelve `redirectTo`.
-- Admin usuarios (`/api/admin/users*`): crea usuario auth, membresia tenant y rol tenant.
-- IAM tenant (`/api/tenant/iam/*`): administra membresias/subroles/permisos.
-
-## Politica de rutas
-
-- `tenant_admin` -> `/admin/*`
-- `producer|employee` -> `/producer/*`
-- `mvz_government|mvz_internal` -> `/mvz/*`
+- Login (`POST /api/auth/login`): resuelve contexto tenant + permisos.
+- MVZ rancho (`/api/mvz/ranchos/:uppId/*`): requiere permisos + scope UPP.
+- IAM tenant: continua administrando membresias/roles/permisos por tenant.
 
 ## Invariantes de negocio
 
-- Una membresia (`tenant_memberships`) representa a un usuario dentro de un tenant.
-- El acceso operativo requiere membresia activa.
-- El login exige exactamente un rol tenant por membresia activa.
-- Los endpoints administrativos e IAM exigen rol `tenant_admin`.
+- Una membresia activa representa acceso base al tenant.
+- Los permisos se derivan de roles asignados en la membresia.
+- En flujo MVZ, pertenecer al tenant MVZ no basta:
+  - tambien se exige asignacion activa en `mvz_upp_assignments` para el `uppId`.
 
-## Tablas operativas tenant-aware
+## Tablas operativas nuevas (MVZ jerarquico)
 
-La migracion v3 agrega `tenant_id` y backfill en:
-
-- `producers`
-- `upps`
-- `user_upp_access`
-- `mvz_profiles`
-- `mvz_upp_assignments`
-- `producer_documents`
-- `animals`
-- `field_tests`
+- `mvz_visits`
+- `animal_vaccinations`
+- `sanitary_incidents`
+- `upp_documents`
 
 ## Notas de seguridad
 
-- Toda operacion tenant se valida por `tenantId` del request autenticado.
-- Endpoints IAM y admin exigen `tenant_admin`.
-- Persistencia de sesion basada en Supabase (token bearer + `supabase.auth.setSession` en cliente).
+- RLS en tablas MVZ nuevas aplica `auth_mvz_assigned_to_upp(upp_id)`.
+- Vistas MVZ nuevas usan `security_invoker` para respetar RLS.
+- Realtime (`postgres_changes`) hereda control de acceso via RLS.
