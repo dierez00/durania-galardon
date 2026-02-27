@@ -1,177 +1,163 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/shared/ui/table";
-import { getAccessToken } from "@/shared/lib/auth-session";
-
-interface ProducerItem {
-  id: string;
-  full_name: string;
-  curp: string | null;
-  status: string;
-  created_at: string;
-  documents: {
-    validated: number;
-    pending: number;
-    expired: number;
-  };
-}
+import { AdminProductoresFilters } from "@/modules/admin/productores/presentation/AdminProductoresFilters";
+import { AdminProductoresList } from "@/modules/admin/productores/presentation/AdminProductoresList";
+import { useAdminProductores } from "@/modules/admin/productores/presentation/hooks/useAdminProductores";
+import { useCreateAdminProductor } from "@/modules/admin/productores/presentation/hooks/useCreateAdminProductor";
 
 export default function AdminProducersPage() {
-  const [producers, setProducers] = useState<ProducerItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [curp, setCurp] = useState("");
+  const {
+    producers,
+    total,
+    totalPages,
+    page,
+    canPrev,
+    canNext,
+    setPage,
+    loading,
+    error,
+    filters,
+    sort,
+    handleFiltersChange,
+    handleSortChange,
+    reload,
+  } = useAdminProductores();
 
-  const loadProducers = useCallback(async () => {
-    setLoading(true);
-    setErrorMessage("");
-
-    const accessToken = await getAccessToken();
-    if (!accessToken) {
-      setErrorMessage("No existe sesion activa.");
-      setLoading(false);
-      return;
-    }
-
-    const response = await fetch("/api/admin/producers", {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    const body = await response.json();
-    if (!response.ok || !body.ok) {
-      setErrorMessage(body.error?.message ?? "No fue posible cargar productores.");
-      setLoading(false);
-      return;
-    }
-
-    setProducers(body.data.producers ?? []);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    void loadProducers();
-  }, [loadProducers]);
-
-  const createProducer = async () => {
-    const accessToken = await getAccessToken();
-    if (!accessToken) {
-      setErrorMessage("No existe sesion activa.");
-      return;
-    }
-
-    const response = await fetch("/api/admin/producers", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ email, password, fullName, curp }),
-    });
-
-    const body = await response.json();
-    if (!response.ok || !body.ok) {
-      setErrorMessage(body.error?.message ?? "No fue posible crear productor.");
-      return;
-    }
-
-    setEmail("");
-    setPassword("");
-    setFullName("");
-    setCurp("");
-    await loadProducers();
-  };
+  const {
+    email, setEmail,
+    password, setPassword,
+    fullName, setFullName,
+    curp, setCurp,
+    creating,
+    createError,
+    handleCreate,
+  } = useCreateAdminProductor({ onSuccess: reload });
 
   return (
     <div className="space-y-6">
+      {/* Encabezado */}
       <div>
         <h1 className="text-2xl font-bold">Gestion de Productores</h1>
-        <p className="text-sm text-muted-foreground">Alta, baja/suspension, estado documental e historial.</p>
+        <p className="text-sm text-muted-foreground">
+          Alta, baja/suspension, estado documental e historial.
+        </p>
       </div>
 
+      {/* Forma de alta */}
       <Card>
         <CardHeader>
           <CardTitle>Alta de productor</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Correo</Label>
-            <Input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Correo</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Contrasena</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="fullName">Nombre completo</Label>
+              <Input
+                id="fullName"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="curp">CURP</Label>
+              <Input
+                id="curp"
+                value={curp}
+                onChange={(e) => setCurp(e.target.value)}
+              />
+            </div>
+            <div className="flex items-end">
+              <Button
+                onClick={handleCreate}
+                disabled={creating || !email.trim() || !password.trim() || !fullName.trim()}
+              >
+                {creating ? "Creando..." : "Crear productor"}
+              </Button>
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Contrasena</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="fullName">Nombre completo</Label>
-            <Input id="fullName" value={fullName} onChange={(event) => setFullName(event.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="curp">CURP</Label>
-            <Input id="curp" value={curp} onChange={(event) => setCurp(event.target.value)} />
-          </div>
-          <div>
-            <Button onClick={createProducer} disabled={!email.trim() || !password.trim() || !fullName.trim()}>
-              Crear productor
-            </Button>
-          </div>
+          {createError ? (
+            <p className="text-sm text-destructive">{createError}</p>
+          ) : null}
         </CardContent>
       </Card>
 
+      {/* Filtros — FiltersLayout tiene su propio contenedor tipo card */}
+      <AdminProductoresFilters filters={filters} onChange={handleFiltersChange} />
+
+      {/* Lista */}
       <Card>
         <CardHeader>
-          <CardTitle>Productores registrados</CardTitle>
+          <CardTitle>
+            Productores registrados
+            {!loading && (
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                ({total} en total)
+              </span>
+            )}
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          {errorMessage ? <p className="mb-3 text-sm text-destructive">{errorMessage}</p> : null}
+        <CardContent className="space-y-4">
+          {error ? (
+            <p className="text-sm text-destructive">{error}</p>
+          ) : null}
+
           {loading ? (
-            <p className="text-sm text-muted-foreground">Cargando...</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">Cargando...</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>CURP</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Documentos</TableHead>
-                  <TableHead>Creado</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {producers.map((producer) => (
-                  <TableRow key={producer.id}>
-                    <TableCell className="font-medium">{producer.full_name}</TableCell>
-                    <TableCell>{producer.curp ?? "-"}</TableCell>
-                    <TableCell>{producer.status}</TableCell>
-                    <TableCell>
-                      V:{producer.documents.validated} P:{producer.documents.pending} E:{producer.documents.expired}
-                    </TableCell>
-                    <TableCell>{new Date(producer.created_at).toLocaleDateString("es-MX")}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <AdminProductoresList
+              productores={producers}
+              sort={sort}
+              onSortChange={handleSortChange}
+            />
+          )}
+
+          {/* Paginacion */}
+          {!loading && totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2">
+              <p className="text-sm text-muted-foreground">
+                Pagina {page} de {totalPages}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!canPrev}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!canNext}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Siguiente
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

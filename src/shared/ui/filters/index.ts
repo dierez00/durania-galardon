@@ -16,3 +16,4 @@ export { ActionButtons } from "./action-buttons";
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 export type { FilterOption, FilterOptionGroup } from "./filter-select";
 export type { ActionButtonConfig } from "./action-buttons";
+export type { DateRangeValue } from "./date-range-filter";

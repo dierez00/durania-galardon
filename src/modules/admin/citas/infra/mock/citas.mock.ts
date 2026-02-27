@@ -1,0 +1,40 @@
+import type { Cita } from "@/modules/admin/citas/domain/entities/CitaEntity";
+
+export const citasMock: Cita[] = [
+  {
+    id: "cita-1",
+    full_name: "Maria Lopez",
+    phone: "614-100-0001",
+    email: "maria@ejemplo.com",
+    requested_service: "Registro productor",
+    requested_date: "2026-01-15",
+    requested_time: "10:00",
+    notes: null,
+    status: "requested",
+    created_at: "2025-12-20T00:00:00Z",
+  },
+  {
+    id: "cita-2",
+    full_name: "Carlos Torres",
+    phone: "614-200-0002",
+    email: null,
+    requested_service: "Tramite exportacion",
+    requested_date: "2026-01-18",
+    requested_time: "11:30",
+    notes: "Solicita informacion sobre aretes azules.",
+    status: "contacted",
+    created_at: "2025-12-21T00:00:00Z",
+  },
+  {
+    id: "cita-3",
+    full_name: "Rosa Mendez",
+    phone: "614-300-0003",
+    email: "rosa@ejemplo.com",
+    requested_service: "Consulta normativa",
+    requested_date: "2026-01-20",
+    requested_time: "09:00",
+    notes: null,
+    status: "scheduled",
+    created_at: "2025-12-22T00:00:00Z",
+  },
+];

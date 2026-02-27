@@ -16,6 +16,8 @@ import {
   Truck,
   ChevronLeft,
   ChevronRight,
+  CalendarDays,
+  Stethoscope,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ComponentType } from "react";
@@ -24,6 +26,7 @@ import { resolveClientRole } from "@/shared/lib/auth-client";
 import {
   ROLE_DEFAULT_PERMISSIONS,
   isProducerViewRole,
+  isTenantAdminRole,
   type AppRole,
   type PermissionKey,
 } from "@/shared/lib/auth";
@@ -33,7 +36,19 @@ interface NavigationItem {
   href: string;
   icon: ComponentType<{ className?: string }>;
   permission: PermissionKey;
+  exact?: boolean;
 }
+
+const adminNavigation: NavigationItem[] = [
+  { name: "Dashboard", href: "/admin", icon: LayoutDashboard, permission: "admin.dashboard.read", exact: true },
+  { name: "Productores", href: "/admin/producers", icon: Users, permission: "admin.producers.read" },
+  { name: "MVZ", href: "/admin/mvz", icon: Stethoscope, permission: "admin.mvz.read" },
+  { name: "Cuarentenas", href: "/admin/quarantines", icon: Shield, permission: "admin.quarantines.read" },
+  { name: "Exportaciones", href: "/admin/exports", icon: Ship, permission: "admin.exports.read" },
+  { name: "Normativa", href: "/admin/normative", icon: ClipboardList, permission: "admin.normative.read" },
+  { name: "Auditoria", href: "/admin/audit", icon: FileText, permission: "admin.audit.read" },
+  { name: "Citas", href: "/admin/appointments", icon: CalendarDays, permission: "admin.appointments.read" },
+];
 
 const producerNavigation: NavigationItem[] = [
   { name: "Dashboard", href: "/producer/dashboard", icon: LayoutDashboard, permission: "producer.dashboard.read" },
@@ -96,7 +111,13 @@ export default function Sidebar() {
   }, []);
 
   const navigation = useMemo(() => {
-    const baseNavigation = !role || isProducerViewRole(role) ? producerNavigation : mvzNavigation;
+    function getBaseNavigation(): NavigationItem[] {
+      if (!role) return producerNavigation;
+      if (isTenantAdminRole(role)) return adminNavigation;
+      if (isProducerViewRole(role)) return producerNavigation;
+      return mvzNavigation;
+    }
+    const baseNavigation = getBaseNavigation();
 
     if (permissions.length === 0) {
       return baseNavigation;
@@ -109,7 +130,7 @@ export default function Sidebar() {
     <aside
       className={cn(
         "h-screen bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border transition-all duration-300 sticky top-0",
-        collapsed ? "w-[68px]" : "w-[260px]"
+        collapsed ? "w-17" : "w-65"
       )}
     >
       <div className="h-16 flex items-center px-4 border-b border-sidebar-border shrink-0">
@@ -126,7 +147,9 @@ export default function Sidebar() {
 
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
         {navigation.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const isActive = item.exact
+              ? pathname === item.href
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
             <Link
               key={item.name}

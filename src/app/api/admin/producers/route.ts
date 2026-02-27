@@ -139,16 +139,56 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
+  // ── Query params ────────────────────────────────────────────────────────────
+  const url = new URL(request.url);
+  const search = url.searchParams.get("search")?.trim() ?? "";
+  const status = url.searchParams.get("status")?.trim() ?? "";
+  const page = Math.max(1, Number.parseInt(url.searchParams.get("page") ?? "1", 10));
+  const limit = Math.min(100, Math.max(1, Number.parseInt(url.searchParams.get("limit") ?? "20", 10)));
+  const offset = (page - 1) * limit;
+  const sortBy = url.searchParams.get("sortBy") ?? "registered_at";
+  const sortDir = url.searchParams.get("sortDir") ?? "desc";
+  const ascending = sortDir === "asc";
+  const dateFrom = url.searchParams.get("dateFrom")?.trim() ?? "";
+  const dateTo = url.searchParams.get("dateTo")?.trim() ?? "";
+
+  const ALLOWED_SORT_FIELDS: Record<string, string> = {
+    registered_at:  "registered_at",
+    docs_validated: "docs_validated",
+    docs_pending:   "docs_pending",
+    docs_issues:    "docs_issues",
+  };
+  const orderColumn = ALLOWED_SORT_FIELDS[sortBy] ?? "registered_at";
+
   const supabaseAdmin = getSupabaseProvisioningClient();
 
-  const producersViewResult = await supabaseAdmin
+  // ── Primary: v_producers_admin view ────────────────────────────────────────
+  let viewQuery = supabaseAdmin
     .from("v_producers_admin")
     .select(
-      "producer_id,full_name,curp,producer_status,registered_at,docs_validated,docs_pending,docs_issues"
+      "producer_id,full_name,curp,producer_status,registered_at,docs_validated,docs_pending,docs_issues",
+      { count: "exact" }
     )
-    .order("registered_at", { ascending: false });
+    .order(orderColumn, { ascending })
+    .range(offset, offset + limit - 1);
+
+  if (search) {
+    viewQuery = viewQuery.ilike("full_name", `%${search}%`);
+  }
+  if (status) {
+    viewQuery = viewQuery.eq("producer_status", status);
+  }
+  if (dateFrom) {
+    viewQuery = viewQuery.gte("registered_at", dateFrom);
+  }
+  if (dateTo) {
+    viewQuery = viewQuery.lte("registered_at", `${dateTo}T23:59:59`);
+  }
+
+  const producersViewResult = await viewQuery;
 
   if (!producersViewResult.error) {
+    const total = producersViewResult.count ?? 0;
     return apiSuccess({
       producers: (producersViewResult.data ?? []).map((row) => ({
         id: row.producer_id,
@@ -162,14 +202,34 @@ export async function GET(request: Request) {
           expired: row.docs_issues ?? 0,
         },
       })),
+      total,
+      page,
+      limit,
     });
   }
 
-  const fallbackResult = await supabaseAdmin
+  // ── Fallback: producers table ───────────────────────────────────────────────
+  let fallbackQuery = supabaseAdmin
     .from("producers")
-    .select("id,user_id,curp,full_name,status,created_at")
+    .select("id,user_id,curp,full_name,status,created_at", { count: "exact" })
     .eq("owner_tenant_id", auth.context.user.tenantId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending })
+    .range(offset, offset + limit - 1);
+
+  if (search) {
+    fallbackQuery = fallbackQuery.ilike("full_name", `%${search}%`);
+  }
+  if (status) {
+    fallbackQuery = fallbackQuery.eq("status", status);
+  }
+  if (dateFrom) {
+    fallbackQuery = fallbackQuery.gte("created_at", dateFrom);
+  }
+  if (dateTo) {
+    fallbackQuery = fallbackQuery.lte("created_at", `${dateTo}T23:59:59`);
+  }
+
+  const fallbackResult = await fallbackQuery;
 
   if (fallbackResult.error) {
     return apiError(
@@ -179,11 +239,15 @@ export async function GET(request: Request) {
     );
   }
 
+  const total = fallbackResult.count ?? 0;
   return apiSuccess({
     producers: (fallbackResult.data ?? []).map((row) => ({
       ...row,
       documents: { validated: 0, pending: 0, expired: 0 },
     })),
+    total,
+    page,
+    limit,
   });
 }
 

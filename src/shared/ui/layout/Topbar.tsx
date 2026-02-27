@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { User, LogOut, ChevronDown } from "lucide-react";
 import { Badge } from "@/shared/ui/badge";
@@ -10,9 +11,53 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase-browser";
+import { ROLE_LABELS, type AppRole } from "@/shared/lib/auth";
+
+interface UserInfo {
+  displayName: string;
+  email: string;
+  roleLabel: string;
+}
 
 export default function Topbar() {
   const router = useRouter();
+  const [userInfo, setUserInfo] = useState<UserInfo>({
+    displayName: "",
+    email: "",
+    roleLabel: "",
+  });
+
+  useEffect(() => {
+    const run = async () => {
+      const supabase = getSupabaseBrowserClient();
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) return;
+
+      const sessionEmail = data.session.user.email ?? "";
+
+      try {
+        const res = await fetch("/api/auth/me", {
+          headers: { Authorization: `Bearer ${data.session.access_token}` },
+        });
+        const body = await res.json();
+        if (res.ok && body.ok && body.data) {
+          const role = body.data.role as AppRole | undefined;
+          setUserInfo({
+            displayName: body.data.full_name ?? sessionEmail,
+            email: sessionEmail,
+            roleLabel: role ? (ROLE_LABELS[role] ?? role) : "",
+          });
+          return;
+        }
+      } catch {
+        // fallback
+      }
+
+      setUserInfo({ displayName: sessionEmail, email: sessionEmail, roleLabel: "" });
+    };
+
+    void run();
+  }, []);
 
   return (
     <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6 sticky top-0 z-30">
@@ -30,19 +75,25 @@ export default function Topbar() {
                 <User className="w-4 h-4 text-primary" />
               </div>
               <div className="text-left hidden sm:block">
-                <p className="text-sm font-medium leading-none">Dr. Carlos Martinez</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Administrador</p>
+                <p className="text-sm font-medium leading-none">
+                  {userInfo.displayName || "..."}
+                </p>
+                {userInfo.roleLabel ? (
+                  <p className="text-xs text-muted-foreground mt-0.5">{userInfo.roleLabel}</p>
+                ) : null}
               </div>
               <ChevronDown className="w-4 h-4 text-muted-foreground hidden sm:block" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <div className="px-3 py-2">
-              <p className="text-sm font-medium">Dr. Carlos Martinez</p>
-              <p className="text-xs text-muted-foreground">admin@siiniga.gob.mx</p>
-              <Badge variant="secondary" className="mt-1.5 text-[10px]">
-                Administrador
-              </Badge>
+              <p className="text-sm font-medium">{userInfo.displayName}</p>
+              <p className="text-xs text-muted-foreground">{userInfo.email}</p>
+              {userInfo.roleLabel ? (
+                <Badge variant="secondary" className="mt-1.5 text-[10px]">
+                  {userInfo.roleLabel}
+                </Badge>
+              ) : null}
             </div>
             <DropdownMenuSeparator />
             <button
