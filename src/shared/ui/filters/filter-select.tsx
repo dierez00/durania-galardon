@@ -37,6 +37,25 @@ const isGroup = (
   item: FilterOption | FilterOptionGroup
 ): item is FilterOptionGroup => "options" in item;
 
+// ─── Sub-componentes internos ─────────────────────────────────────────────────
+
+/** Encabezado de grupo de opciones (no exportado, uso interno de FilterSelect). */
+const FilterGroupHeader: React.FC<{ label: string }> = ({ label }) => (
+  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+    {label}
+  </div>
+);
+
+/** Ítem individual de opción con soporte de icono (no exportado). */
+const FilterOptionItem: React.FC<{ option: FilterOption }> = ({ option }) => (
+  <SelectItem value={option.value}>
+    <span className="flex items-center gap-2">
+      {option.icon && <option.icon className="w-3.5 h-3.5" />}
+      {option.label}
+    </span>
+  </SelectItem>
+);
+
 /**
  * Select de filtro genérico con soporte de icono dinámico, grupos de opciones
  * y coloración del icono según valor. Usa los componentes Select de Shadcn.
@@ -56,24 +75,14 @@ export const FilterSelect: React.FC<FilterSelectProps> = ({
   // Valor seguro para el Select: si viene "" usamos el centinela "__all__"
   const safeValue = value || "__all__";
 
-  const iconColorClass =
-    getOptionColor && value
-      ? getOptionColor(value)
-      : value
-      ? "text-primary"
-      : "text-muted-foreground";
-
-  const renderOption = (opt: FilterOption) => (
-    <SelectItem key={opt.value} value={opt.value}>
-      <span className="flex items-center gap-2">
-        {opt.icon && <opt.icon className="w-3.5 h-3.5" />}
-        {opt.label}
-      </span>
-    </SelectItem>
-  );
+  const iconColorClass = (() => {
+    if (getOptionColor && value) return getOptionColor(value);
+    if (value) return "text-primary";
+    return "text-muted-foreground";
+  })();
 
   return (
-    <div className={cn("relative min-w-[160px]", className)}>
+    <div className={cn("relative min-w-40", className)}>
       {/* Icono de prefijo del trigger */}
       {Icon && (
         <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
@@ -95,13 +104,13 @@ export const FilterSelect: React.FC<FilterSelectProps> = ({
           {options.map((item) =>
             isGroup(item) ? (
               <React.Fragment key={`group-${item.label}`}>
-                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  {item.label}
-                </div>
-                {item.options.map(renderOption)}
+                <FilterGroupHeader label={item.label} />
+                {item.options.map((opt) => (
+                  <FilterOptionItem key={opt.value} option={opt} />
+                ))}
               </React.Fragment>
             ) : (
-              renderOption(item)
+              <FilterOptionItem key={item.value} option={item} />
             )
           )}
         </SelectContent>

@@ -1,15 +1,15 @@
 function escapeXml(value: string): string {
   return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
-    .replace(/'/g, "&apos;");
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
 }
 
 export function buildExcelXml(columns: string[], rows: Array<Array<string | number | boolean | null>>) {
   const headerRow = `<Row>${columns
-    .map((column) => `<Cell><Data ss:Type=\"String\">${escapeXml(column)}</Data></Cell>`)
+    .map((column) => `<Cell><Data ss:Type="String">${escapeXml(column)}</Data></Cell>`)
     .join("")}</Row>`;
 
   const bodyRows = rows
@@ -17,11 +17,11 @@ export function buildExcelXml(columns: string[], rows: Array<Array<string | numb
       const cells = row
         .map((value) => {
           if (value === null || value === undefined) {
-            return "<Cell><Data ss:Type=\"String\"></Data></Cell>";
+            return '<Cell><Data ss:Type="String"></Data></Cell>';
           }
 
           const dataType = typeof value === "number" ? "Number" : "String";
-          return `<Cell><Data ss:Type=\"${dataType}\">${escapeXml(String(value))}</Data></Cell>`;
+          return `<Cell><Data ss:Type="${dataType}">${escapeXml(String(value))}</Data></Cell>`;
         })
         .join("");
 
@@ -29,14 +29,14 @@ export function buildExcelXml(columns: string[], rows: Array<Array<string | numb
     })
     .join("");
 
-  return `<?xml version=\"1.0\"?>
-<?mso-application progid=\"Excel.Sheet\"?>
-<Workbook xmlns=\"urn:schemas-microsoft-com:office:spreadsheet\"
- xmlns:o=\"urn:schemas-microsoft-com:office:office\"
- xmlns:x=\"urn:schemas-microsoft-com:office:excel\"
- xmlns:ss=\"urn:schemas-microsoft-com:office:spreadsheet\"
- xmlns:html=\"http://www.w3.org/TR/REC-html40\">
-  <Worksheet ss:Name=\"Reporte\">
+  return `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+  <Worksheet ss:Name="Reporte">
     <Table>
       ${headerRow}
       ${bodyRows}
@@ -46,7 +46,7 @@ export function buildExcelXml(columns: string[], rows: Array<Array<string | numb
 }
 
 function escapePdfText(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+  return value.replaceAll("\\", "\\\\").replaceAll("(", String.raw`\(`).replaceAll(")", String.raw`\)`);
 }
 
 export function buildSimplePdf(title: string, lines: string[]): Uint8Array {

@@ -1,6 +1,10 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { createAuthUser, deleteAuthUser } from "@/server/auth/provisioning";
+import {
+  authEmailsExistBulk,
+  createAuthUser,
+  deleteAuthUser,
+} from "@/server/auth/provisioning";
 import { getSupabaseProvisioningClient } from "@/server/auth/supabase";
 import { logAuditEvent } from "@/server/audit";
 import {
@@ -107,21 +111,18 @@ async function validateBatchRows(rows: NormalizedMvzRow[]): Promise<void> {
     }
   }
 
-  const supabaseAdmin = getSupabaseProvisioningClient();
-  const emails = rows.map((row) => row.email);
-  const licenses = rows.map((row) => row.licenseNumber);
-
-  const existingAuthUsersResult = await supabaseAdmin
-    .schema("auth")
-    .from("users")
-    .select("email")
-    .in("email", emails);
-  if (existingAuthUsersResult.error) {
-    throw new Error(existingAuthUsersResult.error.message);
+  // ── Emails ya existentes en Auth ─────────────────────────────────────────
+  const allEmails = rows.map((row) => row.email);
+  const existingAuthEmails = await authEmailsExistBulk(allEmails);
+  for (let index = 0; index < rows.length; index += 1) {
+    if (existingAuthEmails.has(rows[index].email)) {
+      throw new BatchRowError(index, `El email ya esta registrado: ${rows[index].email}`);
+    }
   }
-  const existingEmails = new Set(
-    (existingAuthUsersResult.data ?? []).map((row) => String(row.email ?? "").toLowerCase())
-  );
+
+  // ── Licencias ya existentes en DB ─────────────────────────────────────────
+  const supabaseAdmin = getSupabaseProvisioningClient();
+  const licenses = rows.map((row) => row.licenseNumber);
 
   const existingLicensesResult = await supabaseAdmin
     .from("mvz_profiles")
@@ -138,9 +139,6 @@ async function validateBatchRows(rows: NormalizedMvzRow[]): Promise<void> {
 
   for (let index = 0; index < rows.length; index += 1) {
     const row = rows[index];
-    if (existingEmails.has(row.email)) {
-      throw new BatchRowError(index, `El email ya existe: ${row.email}`);
-    }
     if (existingLicenses.has(row.licenseNumber)) {
       throw new BatchRowError(index, `La cedula/licencia ya existe: ${row.licenseNumber}`);
     }
@@ -180,21 +178,108 @@ function roleNameFor(roleKey: AdminMvzRoleKey): string {
   return roleKey === "mvz_internal" ? "MVZ Interno" : "MVZ Gobierno";
 }
 
-export async function POST(request: Request) {
-  const auth = await requireAuthorized(request, {
-    roles: ["tenant_admin"],
-    permissions: ["admin.mvz.write"],
-    resource: "admin.mvz.batch",
-  });
-  if (!auth.ok) return auth.response;
+async function provisionSingleMvz(
+  row: NormalizedMvzRow,
+  rowIndex: number,
+  roleKey: AdminMvzRoleKey,
+  createdByUserId: string
+): Promise<{ item: BatchCreatedItem; rollback: { mvzProfileId: string; tenantId: string; userId: string } }> {
+  const supabaseAdmin = getSupabaseProvisioningClient();
+  const rowState: { mvzProfileId: string | null; tenantId: string | null; userId: string | null } = {
+    mvzProfileId: null,
+    tenantId: null,
+    userId: null,
+  };
 
-  let body: MvzBatchBody;
   try {
-    body = (await request.json()) as MvzBatchBody;
-  } catch {
-    return apiError("INVALID_BODY", "El cuerpo de la solicitud no es JSON valido.");
-  }
+    const temporaryPassword = generateTemporaryPassword();
+    const authUserResult = await createAuthUser({
+      email: row.email,
+      password: temporaryPassword,
+      emailConfirmed: true,
+    });
 
+    if (authUserResult.error || !authUserResult.data.user) {
+      throw new BatchRowError(
+        rowIndex,
+        authUserResult.error?.message ?? "No fue posible crear usuario Auth."
+      );
+    }
+
+    const userId = authUserResult.data.user.id;
+    rowState.userId = userId;
+
+    const profileExists = await waitForProfile(userId);
+    if (!profileExists) {
+      throw new BatchRowError(rowIndex, "No se pudo confirmar perfil del usuario.");
+    }
+
+    const tenant = await createTenantWithUniqueSlug({
+      type: "mvz",
+      fullName: row.fullName,
+      email: row.email,
+      createdByUserId,
+    });
+    rowState.tenantId = tenant.tenantId;
+
+    const roleId = await ensureTenantRole({
+      tenantId: tenant.tenantId,
+      roleKey,
+      roleName: roleNameFor(roleKey),
+      permissions: MVZ_PERMISSIONS,
+    });
+
+    await createMembershipAndAssignRole({
+      tenantId: tenant.tenantId,
+      userId,
+      roleId,
+      invitedByUserId: createdByUserId,
+      assignedByUserId: createdByUserId,
+    });
+
+    const mvzInsert = await supabaseAdmin
+      .from("mvz_profiles")
+      .insert({
+        owner_tenant_id: tenant.tenantId,
+        user_id: userId,
+        full_name: row.fullName,
+        license_number: row.licenseNumber,
+        status: "active",
+      })
+      .select("id")
+      .single();
+
+    if (mvzInsert.error || !mvzInsert.data) {
+      throw new BatchRowError(rowIndex, mvzInsert.error?.message ?? "No fue posible crear MVZ.");
+    }
+
+    rowState.mvzProfileId = mvzInsert.data.id;
+
+    return {
+      item: {
+        rowIndex,
+        entityId: mvzInsert.data.id,
+        tenantId: tenant.tenantId,
+        email: row.email,
+        temporaryPassword,
+      },
+      rollback: {
+        mvzProfileId: mvzInsert.data.id,
+        tenantId: tenant.tenantId,
+        userId,
+      },
+    };
+  } catch (rowError) {
+    await rollbackPartialRow(rowState);
+    if (rowError instanceof BatchRowError) throw rowError;
+    throw new BatchRowError(
+      rowIndex,
+      rowError instanceof Error ? rowError.message : "No fue posible crear MVZ."
+    );
+  }
+}
+
+function parseAndValidateBody(body: MvzBatchBody): { normalizedRows: NormalizedMvzRow[]; roleKey: AdminMvzRoleKey } | Response {
   const roleKey = body.options?.roleKey;
   if (!body.options?.atomic) {
     return apiError("INVALID_PAYLOAD", "options.atomic=true es obligatorio.");
@@ -208,19 +293,42 @@ export async function POST(request: Request) {
   if (body.rows.length > MAX_BATCH_ROWS) {
     return apiError("INVALID_PAYLOAD", `El maximo por lote es ${MAX_BATCH_ROWS} filas.`);
   }
+  return { normalizedRows: body.rows.map(normalizeRow), roleKey };
+}
 
-  const normalizedRows = body.rows.map(normalizeRow);
+export async function POST(request: Request) {
+  const auth = await requireAuthorized(request, {
+    roles: ["tenant_admin"],
+    permissions: ["admin.mvz.write"],
+    resource: "admin.mvz.batch",
+  });
+  if (!auth.ok) return auth.response;
+
+  let body: MvzBatchBody;
+  try {
+    body = (await request.json()) as MvzBatchBody;
+  } catch (error_) {
+    console.error("[mvz/batch] JSON parse error:", error_);
+    return apiError("INVALID_BODY", "El cuerpo de la solicitud no es JSON valido.");
+  }
+
+  const parsed = parseAndValidateBody(body);
+  if (parsed instanceof Response) return parsed;
+  const { normalizedRows, roleKey } = parsed;
+
   try {
     normalizedRows.forEach((row, rowIndex) => validateRow(row, rowIndex));
     await validateBatchRows(normalizedRows);
   } catch (error) {
     if (error instanceof BatchRowError) {
+      console.error(`[mvz/batch] Validation failed row ${error.rowIndex}:`, error.message);
       return apiError("BATCH_VALIDATION_FAILED", error.message, 400, {
         failedRowIndex: error.rowIndex,
         failedReason: error.message,
         rolledBack: true,
       });
     }
+    console.error("[mvz/batch] Validation error:", error);
     return apiError(
       "BATCH_VALIDATION_FAILED",
       error instanceof Error ? error.message : "No fue posible validar el lote.",
@@ -230,108 +338,23 @@ export async function POST(request: Request) {
 
   const created: BatchCreatedItem[] = [];
   const rollbackStack: Array<{ mvzProfileId: string; tenantId: string; userId: string }> = [];
-  const supabaseAdmin = getSupabaseProvisioningClient();
 
   try {
     for (let rowIndex = 0; rowIndex < normalizedRows.length; rowIndex += 1) {
-      const row = normalizedRows[rowIndex];
-      const rowState: { mvzProfileId: string | null; tenantId: string | null; userId: string | null } =
-        {
-          mvzProfileId: null,
-          tenantId: null,
-          userId: null,
-        };
-
-      try {
-        const temporaryPassword = generateTemporaryPassword();
-        const authUserResult = await createAuthUser({
-          email: row.email,
-          password: temporaryPassword,
-          emailConfirmed: true,
-        });
-
-        if (authUserResult.error || !authUserResult.data.user) {
-          throw new BatchRowError(
-            rowIndex,
-            authUserResult.error?.message ?? "No fue posible crear usuario Auth."
-          );
-        }
-
-        const userId = authUserResult.data.user.id;
-        rowState.userId = userId;
-
-        const profileExists = await waitForProfile(userId);
-        if (!profileExists) {
-          throw new BatchRowError(rowIndex, "No se pudo confirmar perfil del usuario.");
-        }
-
-        const tenant = await createTenantWithUniqueSlug({
-          type: "mvz",
-          fullName: row.fullName,
-          email: row.email,
-          createdByUserId: auth.context.user.id,
-        });
-        rowState.tenantId = tenant.tenantId;
-
-        const roleId = await ensureTenantRole({
-          tenantId: tenant.tenantId,
-          roleKey,
-          roleName: roleNameFor(roleKey),
-          permissions: MVZ_PERMISSIONS,
-        });
-
-        await createMembershipAndAssignRole({
-          tenantId: tenant.tenantId,
-          userId,
-          roleId,
-          invitedByUserId: auth.context.user.id,
-          assignedByUserId: auth.context.user.id,
-        });
-
-        const mvzInsert = await supabaseAdmin
-          .from("mvz_profiles")
-          .insert({
-            owner_tenant_id: tenant.tenantId,
-            user_id: userId,
-            full_name: row.fullName,
-            license_number: row.licenseNumber,
-            status: "active",
-          })
-          .select("id")
-          .single();
-
-        if (mvzInsert.error || !mvzInsert.data) {
-          throw new BatchRowError(rowIndex, mvzInsert.error?.message ?? "No fue posible crear MVZ.");
-        }
-        rowState.mvzProfileId = mvzInsert.data.id;
-
-        rollbackStack.push({
-          mvzProfileId: mvzInsert.data.id,
-          tenantId: tenant.tenantId,
-          userId,
-        });
-        created.push({
-          rowIndex,
-          entityId: mvzInsert.data.id,
-          tenantId: tenant.tenantId,
-          email: row.email,
-          temporaryPassword,
-        });
-      } catch (rowError) {
-        await rollbackPartialRow(rowState);
-        if (rowError instanceof BatchRowError) {
-          throw rowError;
-        }
-        throw new BatchRowError(
-          rowIndex,
-          rowError instanceof Error ? rowError.message : "No fue posible crear MVZ."
-        );
-      }
+      const result = await provisionSingleMvz(
+        normalizedRows[rowIndex],
+        rowIndex,
+        roleKey,
+        auth.context.user.id
+      );
+      rollbackStack.push(result.rollback);
+      created.push(result.item);
     }
   } catch (error) {
     await rollbackRows(rollbackStack);
     const failedRowIndex = error instanceof BatchRowError ? error.rowIndex : -1;
     const failedReason = error instanceof Error ? error.message : "No fue posible crear el lote.";
+    console.error(`[mvz/batch] Creation failed row ${failedRowIndex}:`, failedReason);
     return apiError("ADMIN_MVZ_BATCH_CREATE_FAILED", failedReason, 400, {
       failedRowIndex,
       failedReason,

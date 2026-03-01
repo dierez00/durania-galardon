@@ -1,3 +1,4 @@
+import * as XLSX from "xlsx";
 import type { CellBase, Matrix } from "react-spreadsheet";
 import type {
   SpreadsheetCellError,
@@ -103,25 +104,44 @@ export function validateRows<TRow extends object>(
   };
 }
 
-function escapeCsvValue(value: string): string {
-  const escaped = value.replace(/"/g, "\"\"");
-  return `"${escaped}"`;
+/* ── Excel helpers ── */
+
+export function buildExcelBuffer(headers: string[], rows: string[][]): ArrayBuffer {
+  const aoa = [headers, ...rows];
+  const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Datos");
+  return XLSX.write(workbook, { bookType: "xlsx", type: "array" }) as ArrayBuffer;
 }
 
-export function buildCsv(headers: string[], rows: string[][]): string {
-  const headerLine = headers.map(escapeCsvValue).join(",");
-  const rowLines = rows.map((row) => row.map(escapeCsvValue).join(","));
-  return [headerLine, ...rowLines].join("\n");
-}
-
-export function downloadCsv(filename: string, csvContent: string): void {
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+export function downloadExcel(filename: string, buffer: ArrayBuffer): void {
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.setAttribute("download", filename);
   document.body.appendChild(anchor);
   anchor.click();
-  document.body.removeChild(anchor);
+  anchor.remove();
   URL.revokeObjectURL(url);
+}
+
+export async function parseExcelFile(file: File, columnCount: number): Promise<string[][]> {
+  const arrayBuffer = await file.arrayBuffer();
+  const workbook = XLSX.read(arrayBuffer, { type: "array" });
+  const firstSheetName = workbook.SheetNames[0];
+  if (!firstSheetName) return [];
+  const worksheet = workbook.Sheets[firstSheetName];
+  if (!worksheet) return [];
+  const raw = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1 });
+  // Skip the header row (first row) and pad/trim each row to columnCount
+  const dataRows = raw.slice(1).map((row) => {
+    const padded = Array.from({ length: columnCount }, (_, i) =>
+      String(row[i] ?? "")
+    );
+    return padded;
+  });
+  return dataRows;
 }

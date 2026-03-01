@@ -22,7 +22,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   placeholder = "Buscar...",
   className,
 }) => (
-  <div className={cn("flex-1 min-w-[200px]", className)}>
+  <div className={cn("flex-1 min-w-50", className)}>
     <div className="relative">
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
       <Input

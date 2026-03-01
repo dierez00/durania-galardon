@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SpreadsheetColumn } from "../../src/shared/ui/spreadsheet";
-import { buildCsv, validateRows } from "../../src/shared/ui/spreadsheet/utils";
+import { buildExcelBuffer, validateRows } from "../../src/shared/ui/spreadsheet/utils";
+import * as XLSX from "xlsx";
 
 interface ProductorRow {
   email: string;
@@ -49,9 +50,16 @@ describe("spreadsheet utils", () => {
     expect(result.normalizedRows[0].curp).toBe("ABCD1234");
   });
 
-  it("genera CSV con escaping", () => {
-    const csv = buildCsv(["nombre", "nota"], [["Juan", "Dice \"hola\""]]);
-    expect(csv).toContain("\"nombre\",\"nota\"");
-    expect(csv).toContain("\"Juan\",\"Dice \"\"hola\"\"\"");
+  it("genera Excel buffer con datos correctos", () => {
+    const buffer = buildExcelBuffer(["nombre", "nota"], [["Juan", 'Dice "hola"']]);
+    expect(buffer).toBeInstanceOf(ArrayBuffer);
+    expect(buffer.byteLength).toBeGreaterThan(0);
+
+    // Parse the generated buffer and verify contents
+    const workbook = XLSX.read(buffer, { type: "array" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1 });
+    expect(rows[0]).toEqual(["nombre", "nota"]);
+    expect(rows[1]).toEqual(["Juan", 'Dice "hola"']);
   });
 });

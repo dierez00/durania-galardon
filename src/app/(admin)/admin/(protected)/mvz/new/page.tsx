@@ -1,17 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { ArrowLeft, Download } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select";
 import {
   Table,
   TableBody,
@@ -21,12 +13,9 @@ import {
   TableRow,
 } from "@/shared/ui/table";
 import { SpreadsheetBatchEditor } from "@/shared/ui/spreadsheet";
-import { buildCsv, downloadCsv } from "@/shared/ui/spreadsheet/utils";
+import { buildExcelBuffer, downloadExcel } from "@/shared/ui/spreadsheet/utils";
 import type { SpreadsheetColumn } from "@/shared/ui/spreadsheet";
-import type {
-  AdminMvzBatchRowInput,
-  AdminMvzRoleKey,
-} from "@/modules/admin/mvz/domain/repositories/adminMvzRepository";
+import type { AdminMvzBatchRowInput } from "@/modules/admin/mvz/domain/repositories/adminMvzRepository";
 import { useCreateAdminMvzBatch } from "@/modules/admin/mvz/presentation/hooks/useCreateAdminMvzBatch";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -54,22 +43,21 @@ const MVZ_COLUMNS: SpreadsheetColumn<AdminMvzBatchRowInput>[] = [
 ];
 
 export default function AdminMvzBatchCreatePage() {
-  const [roleKey, setRoleKey] = useState<AdminMvzRoleKey>("mvz_government");
   const { creating, error, createdRows, handleCreateBatch } = useCreateAdminMvzBatch();
 
   const handleDownloadCredentials = () => {
     if (createdRows.length === 0) return;
-    const csv = buildCsv(
-      ["rowIndex", "entityId", "tenantId", "email", "temporaryPassword"],
+    const buffer = buildExcelBuffer(
+      ["Fila", "ID entidad", "Tenant", "Email", "Password temporal"],
       createdRows.map((row) => [
-        String(row.rowIndex),
+        String(row.rowIndex + 1),
         row.entityId,
         row.tenantId,
         row.email,
         row.temporaryPassword,
       ])
     );
-    downloadCsv("mvz-credenciales.csv", csv);
+    downloadExcel("mvz-credenciales.xlsx", buffer);
   };
 
   return (
@@ -78,7 +66,7 @@ export default function AdminMvzBatchCreatePage() {
         <div>
           <h1 className="text-2xl font-bold">Alta masiva de MVZ</h1>
           <p className="text-sm text-muted-foreground">
-            Pega filas desde Excel, define el rol del lote y crea hasta 100 registros.
+            Pega filas desde Excel o importa un archivo .xlsx para crear hasta 100 registros.
           </p>
         </div>
         <Button asChild variant="outline">
@@ -89,23 +77,6 @@ export default function AdminMvzBatchCreatePage() {
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Rol tenant para el lote</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Select value={roleKey} onValueChange={(value) => setRoleKey(value as AdminMvzRoleKey)}>
-            <SelectTrigger className="w-64">
-              <SelectValue placeholder="Selecciona un rol" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="mvz_government">MVZ Gobierno</SelectItem>
-              <SelectItem value="mvz_internal">MVZ Interno</SelectItem>
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
-
       <SpreadsheetBatchEditor<AdminMvzBatchRowInput>
         entityLabel="MVZ"
         columns={MVZ_COLUMNS}
@@ -113,7 +84,7 @@ export default function AdminMvzBatchCreatePage() {
         submitLabel="Crear MVZ"
         submitting={creating}
         externalError={error}
-        onSubmit={(rows) => handleCreateBatch(rows, roleKey)}
+        onSubmit={(rows) => handleCreateBatch(rows, "mvz_government")}
       />
 
       {createdRows.length > 0 && (
@@ -123,7 +94,7 @@ export default function AdminMvzBatchCreatePage() {
               <CardTitle>Credenciales temporales generadas</CardTitle>
               <Button variant="outline" size="sm" onClick={handleDownloadCredentials}>
                 <Download className="h-4 w-4" />
-                Descargar CSV
+                Descargar Excel
               </Button>
             </div>
           </CardHeader>

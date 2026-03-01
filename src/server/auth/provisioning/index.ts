@@ -1,3 +1,4 @@
+import { getServerEnv, publicEnv } from "@/shared/config";
 import { getSupabaseProvisioningClient } from "@/server/auth/supabase";
 
 export interface ProvisionUserInput {
@@ -25,4 +26,46 @@ export async function updateAuthUserStatus(userId: string, bannedUntil?: string)
   return provisioning.auth.admin.updateUserById(userId, {
     ban_duration: bannedUntil,
   });
+}
+
+/**
+ * Verifica si un email ya está registrado en Supabase Auth.
+ * Llama directamente a la API REST de GoTrue con el service role key.
+ * Retorna `true` si el email ya existe, `false` si está disponible.
+ */
+export async function authEmailExists(email: string): Promise<boolean> {
+  const { supabaseServiceRoleKey } = getServerEnv();
+  const url = new URL(`${publicEnv.supabaseUrl}/auth/v1/admin/users`);
+  url.searchParams.set("page", "1");
+  url.searchParams.set("per_page", "1");
+  // GoTrue filtra por email con el parámetro filter (partial match)
+  url.searchParams.set("filter", email);
+
+  const resp = await fetch(url.toString(), {
+    headers: {
+      Authorization: `Bearer ${supabaseServiceRoleKey}`,
+      apikey: supabaseServiceRoleKey,
+    },
+  });
+
+  if (!resp.ok) return false;
+  const data = (await resp.json()) as { users?: Array<{ email?: string }> };
+  // Verificación exacta: el filter de GoTrue puede ser un partial match
+  return (data.users ?? []).some(
+    (u) => u.email?.toLowerCase() === email.toLowerCase()
+  );
+}
+
+/**
+ * Verifica, en paralelo, cuáles emails de un arreglo ya existen en Supabase Auth.
+ * Retorna un Set con los emails que ya están registrados (en minúsculas).
+ */
+export async function authEmailsExistBulk(emails: string[]): Promise<Set<string>> {
+  const results = await Promise.all(
+    emails.map(async (email) => {
+      const exists = await authEmailExists(email);
+      return exists ? email.toLowerCase() : null;
+    })
+  );
+  return new Set(results.filter((e): e is string => e !== null));
 }

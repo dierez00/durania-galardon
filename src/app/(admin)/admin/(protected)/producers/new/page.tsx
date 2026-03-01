@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/shared/ui/table";
 import { SpreadsheetBatchEditor } from "@/shared/ui/spreadsheet";
-import { buildCsv, downloadCsv } from "@/shared/ui/spreadsheet/utils";
+import { buildExcelBuffer, downloadExcel } from "@/shared/ui/spreadsheet/utils";
 import type { SpreadsheetColumn } from "@/shared/ui/spreadsheet";
 import type { AdminProductorBatchRowInput } from "@/modules/admin/productores/domain/repositories/adminProductoresRepository";
 import { useCreateAdminProductoresBatch } from "@/modules/admin/productores/presentation/hooks/useCreateAdminProductoresBatch";
@@ -52,17 +52,17 @@ export default function AdminProducersBatchCreatePage() {
 
   const handleDownloadCredentials = () => {
     if (createdRows.length === 0) return;
-    const csv = buildCsv(
-      ["rowIndex", "entityId", "tenantId", "email", "temporaryPassword"],
+    const buffer = buildExcelBuffer(
+      ["Fila", "ID entidad", "Tenant", "Email", "Password temporal"],
       createdRows.map((row) => [
-        String(row.rowIndex),
+        String(row.rowIndex + 1),
         row.entityId,
         row.tenantId,
         row.email,
         row.temporaryPassword,
       ])
     );
-    downloadCsv("productores-credenciales.csv", csv);
+    downloadExcel("productores-credenciales.xlsx", buffer);
   };
 
   return (
@@ -99,7 +99,7 @@ export default function AdminProducersBatchCreatePage() {
               <CardTitle>Credenciales temporales generadas</CardTitle>
               <Button variant="outline" size="sm" onClick={handleDownloadCredentials}>
                 <Download className="h-4 w-4" />
-                Descargar CSV
+                Descargar Excel
               </Button>
             </div>
           </CardHeader>

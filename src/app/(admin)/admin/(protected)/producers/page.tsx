@@ -6,6 +6,7 @@ import { Button } from "@/shared/ui/button";
 import { AdminProductoresFilters } from "@/modules/admin/productores/presentation/AdminProductoresFilters";
 import { AdminProductoresList } from "@/modules/admin/productores/presentation/AdminProductoresList";
 import { useAdminProductores } from "@/modules/admin/productores/presentation/hooks/useAdminProductores";
+import { PaginationControls } from "@/shared/ui/pagination-controls";
 
 export default function AdminProducersPage() {
   const {
@@ -65,29 +66,15 @@ export default function AdminProducersPage() {
           )}
 
           {!loading && totalPages > 1 && (
-            <div className="flex items-center justify-between pt-2">
-              <p className="text-sm text-muted-foreground">
-                Pagina {page} de {totalPages}
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!canPrev}
-                  onClick={() => setPage((currentPage) => currentPage - 1)}
-                >
-                  Anterior
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!canNext}
-                  onClick={() => setPage((currentPage) => currentPage + 1)}
-                >
-                  Siguiente
-                </Button>
-              </div>
-            </div>
+            <PaginationControls
+              page={page}
+              totalPages={totalPages}
+              canPrev={canPrev}
+              canNext={canNext}
+              onPrev={() => setPage((p) => p - 1)}
+              onNext={() => setPage((p) => p + 1)}
+              onPageChange={setPage}
+            />
           )}
         </CardContent>
       </Card>

@@ -3,6 +3,7 @@ import { requireAuthorized } from "@/server/authz";
 import { getSupabaseProvisioningClient } from "@/server/auth/supabase";
 import { createAuthUser, deleteAuthUser } from "@/server/auth/provisioning";
 import { logAuditEvent } from "@/server/audit";
+import { generateTemporaryPassword } from "@/server/admin/provisioning";
 
 interface ProducerBody {
   id?: string;
@@ -269,14 +270,14 @@ export async function POST(request: Request) {
   }
 
   const email = body.email?.trim().toLowerCase();
-  const password = body.password?.trim();
+  const password = body.password?.trim() || generateTemporaryPassword();
   const fullName = body.fullName?.trim();
   const curp = body.curp?.trim() || null;
 
-  if (!email || !password || !fullName) {
+  if (!email || !fullName) {
     return apiError(
       "INVALID_PAYLOAD",
-      "Debe enviar email, password y fullName para crear productor."
+      "Debe enviar email y fullName para crear productor."
     );
   }
 
