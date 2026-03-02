@@ -1,6 +1,28 @@
-import type { AdminMvz } from "../entities/AdminMvzEntity";
+import type {
+  AdminMvz,
+  AdminMvzSortDir,
+  AdminMvzSortField,
+} from "../entities/AdminMvzEntity";
 
 export type AdminMvzRoleKey = "mvz_government" | "mvz_internal";
+
+export interface ListAdminMvzParams {
+  search?: string;
+  status?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: AdminMvzSortField;
+  sortDir?: AdminMvzSortDir;
+}
+
+export interface ListAdminMvzResult {
+  mvzProfiles: AdminMvz[];
+  total: number;
+  page: number;
+  limit: number;
+}
 
 export interface AdminMvzBatchRowInput {
   email: string;
@@ -30,6 +52,6 @@ export interface AdminMvzBatchCreateResult {
 }
 
 export interface AdminMvzRepository {
-  list(): Promise<AdminMvz[]>;
+  list(params: ListAdminMvzParams): Promise<ListAdminMvzResult>;
   createBatch(input: AdminMvzBatchCreateInput): Promise<AdminMvzBatchCreateResult>;
 }

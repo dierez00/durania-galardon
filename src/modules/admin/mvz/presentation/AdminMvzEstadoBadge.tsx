@@ -9,7 +9,6 @@ interface Props {
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
   active:   { label: "Activo",   className: "bg-emerald-100 text-emerald-700" },
   inactive: { label: "Inactivo", className: "bg-gray-100 text-gray-500" },
-  suspended:{ label: "Suspendido", className: "bg-amber-100 text-amber-700" },
 };
 
 export function AdminMvzEstadoBadge({ status }: Readonly<Props>) {

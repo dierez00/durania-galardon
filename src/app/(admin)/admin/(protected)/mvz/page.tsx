@@ -1,40 +1,84 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@/shared/ui/button";
-import { AdminMvzFilters } from "@/modules/admin/mvz/presentation/AdminMvzFilters";
-import { AdminMvzList } from "@/modules/admin/mvz/presentation/AdminMvzList";
-import { useAdminMvz } from "@/modules/admin/mvz/presentation/hooks/useAdminMvz";
+import { Card, CardContent, CardHeader, CardTitle, Button, PaginationControls } from "@/shared/ui";
+import {
+  AdminMvzFilters,
+  AdminMvzList,
+  useAdminMvz,
+} from "@/modules/admin/mvz/presentation";
 
 export default function AdminMvzPage() {
-  const { items, total, loading, error, filters, setFilters } = useAdminMvz();
+  const {
+    mvzProfiles,
+    total,
+    totalPages,
+    page,
+    canPrev,
+    canNext,
+    setPage,
+    loading,
+    error,
+    filters,
+    sort,
+    handleFiltersChange,
+    handleSortChange,
+  } = useAdminMvz();
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Gestion de MVZ</h1>
+          <h1 className="text-2xl font-bold">Gestión de MVZ</h1>
           <p className="text-sm text-muted-foreground">
-            Alta, suspension, asignacion territorial e historial de pruebas.
+            Alta, suspensión, asignación territorial e historial de pruebas.
           </p>
         </div>
         <Button asChild>
-          <Link href="/admin/mvz/new">Nuevo MVZ (lote)</Link>
+          <Link href="/admin/mvz/new">Nuevo MVZ</Link>
         </Button>
       </div>
 
-      <AdminMvzFilters filters={filters} onChange={setFilters} />
+      <AdminMvzFilters filters={filters} onChange={handleFiltersChange} />
 
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            MVZ registrados
+            {!loading && (
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                ({total} en total)
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-      {loading ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">Cargando...</p>
-      ) : (
-        <>
-          <p className="text-sm text-muted-foreground">{total} registros</p>
-          <AdminMvzList mvzList={items} />
-        </>
-      )}
+          {loading ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">Cargando...</p>
+          ) : (
+            <AdminMvzList
+              mvzList={mvzProfiles}
+              sort={sort}
+              onSortChange={handleSortChange}
+            />
+          )}
+
+          {!loading && totalPages > 1 && (
+            <PaginationControls
+              page={page}
+              totalPages={totalPages}
+              canPrev={canPrev}
+              canNext={canNext}
+              onPrev={() => setPage((p) => p - 1)}
+              onNext={() => setPage((p) => p + 1)}
+              onPageChange={setPage}
+            />
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
+

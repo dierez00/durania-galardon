@@ -1,6 +1,17 @@
 export { AdminMvzList } from "./AdminMvzList";
 export { AdminMvzFilters } from "./AdminMvzFilters";
 export { AdminMvzEstadoBadge } from "./AdminMvzEstadoBadge";
-export type { AdminMvzFiltersState } from "@/modules/admin/mvz/domain/entities/AdminMvzEntity";
+export type { AdminMvzFiltersState, AdminMvzSortState } from "@/modules/admin/mvz/domain/entities/AdminMvzEntity";
 export { useAdminMvz } from "./hooks/useAdminMvz";
 export { useCreateAdminMvzBatch } from "./hooks/useCreateAdminMvzBatch";
+export { useAdminMvzDetail } from "./hooks/useAdminMvzDetail";
+export type { MvzDetailTab, UppSubTab } from "./hooks/useAdminMvzDetail";
+export { AdminMvzDetailContent } from "./AdminMvzDetailContent";
+export { AdminMvzInfoTab } from "./AdminMvzInfoTab";
+export { AdminMvzUppCard } from "./AdminMvzUppCard";
+export { AdminMvzAvailableUppCard } from "./AdminMvzAvailableUppCard";
+export { AdminMvzUppsList } from "./AdminMvzUppsList";
+export { AdminMvzUppsTab } from "./AdminMvzUppsTab";
+export { AdminMvzTestCard } from "./AdminMvzTestCard";
+export { AdminMvzTestsList } from "./AdminMvzTestsList";
+export { AdminMvzVisitsTable } from "./AdminMvzVisitsTable";

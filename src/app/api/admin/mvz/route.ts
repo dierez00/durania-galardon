@@ -34,6 +34,12 @@ interface MvzUpdateBody {
   status?: "active" | "inactive";
 }
 
+const ALLOWED_SORT_FIELDS: Record<string, string> = {
+  registered_at: "registered_at",
+  active_assignments: "active_assignments",
+  tests_last_year: "tests_last_year",
+};
+
 export async function GET(request: Request) {
   const auth = await requireAuthorized(request, {
     roles: ["tenant_admin"],
@@ -44,11 +50,41 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
+  const url = new URL(request.url);
+  const search = url.searchParams.get("search")?.trim() ?? "";
+  const status = url.searchParams.get("status")?.trim() ?? "";
+  const dateFrom = url.searchParams.get("dateFrom")?.trim() ?? "";
+  const dateTo = url.searchParams.get("dateTo")?.trim() ?? "";
+  const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10));
+  const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get("limit") ?? "20", 10)));
+  const sortByRaw = url.searchParams.get("sortBy") ?? "registered_at";
+  const sortDir = url.searchParams.get("sortDir") === "asc" ? "asc" : "desc";
+  const orderColumn = ALLOWED_SORT_FIELDS[sortByRaw] ?? "registered_at";
+  const offset = (page - 1) * limit;
+
   const supabaseAdmin = getSupabaseProvisioningClient();
-  const rowsResult = await supabaseAdmin
+  let query = supabaseAdmin
     .from("v_mvz_admin")
-    .select("mvz_profile_id,user_id,full_name,license_number,mvz_status,active_assignments,tests_last_year,registered_at")
-    .order("registered_at", { ascending: false });
+    .select("mvz_profile_id,user_id,full_name,license_number,mvz_status,active_assignments,tests_last_year,registered_at", { count: "exact" });
+
+  if (search) {
+    query = query.ilike("full_name", `%${search}%`);
+  }
+  if (status === "active" || status === "inactive") {
+    query = query.eq("mvz_status", status);
+  }
+  if (dateFrom) {
+    query = query.gte("registered_at", dateFrom);
+  }
+  if (dateTo) {
+    query = query.lte("registered_at", dateTo);
+  }
+
+  query = query
+    .order(orderColumn, { ascending: sortDir === "asc" })
+    .range(offset, offset + limit - 1);
+
+  const rowsResult = await query;
 
   if (rowsResult.error) {
     return apiError("ADMIN_MVZ_QUERY_FAILED", rowsResult.error.message, 500);
@@ -65,6 +101,9 @@ export async function GET(request: Request) {
       registeredTests: row.tests_last_year ?? 0,
       created_at: row.registered_at,
     })),
+    total: rowsResult.count ?? 0,
+    page,
+    limit,
   });
 }
 

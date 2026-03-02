@@ -1,8 +1,14 @@
-import type { AdminMvz } from "@/modules/admin/mvz/domain/entities/AdminMvzEntity";
+import type {
+  AdminMvz,
+  AdminMvzSortDir,
+  AdminMvzSortField,
+} from "@/modules/admin/mvz/domain/entities/AdminMvzEntity";
 import type {
   AdminMvzBatchCreateInput,
   AdminMvzBatchCreateResult,
   AdminMvzRepository,
+  ListAdminMvzParams,
+  ListAdminMvzResult,
 } from "@/modules/admin/mvz/domain/repositories/adminMvzRepository";
 import { getAccessToken } from "@/shared/lib/auth-session";
 
@@ -11,10 +17,21 @@ const BATCH_URL = "/api/admin/mvz/batch";
 
 interface FetchAdminMvzParams {
   accessToken: string;
+  search?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: AdminMvzSortField;
+  sortDir?: AdminMvzSortDir;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 interface FetchAdminMvzResult {
   mvzProfiles: AdminMvz[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 interface CreateAdminMvzBatchParams extends AdminMvzBatchCreateInput {
@@ -28,9 +45,40 @@ function authHeaders(accessToken: string): HeadersInit {
   };
 }
 
+function buildQueryString(params: Record<string, string | number | undefined>): string {
+  const entries = Object.entries(params).filter(
+    ([, v]) => v !== undefined && v !== ""
+  ) as [string, string | number][];
+  if (entries.length === 0) return "";
+  return "?" + entries.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
+}
+
 export async function fetchAdminMvz(params: FetchAdminMvzParams): Promise<FetchAdminMvzResult> {
-  const response = await fetch(BASE_URL, {
-    headers: authHeaders(params.accessToken),
+  const {
+    accessToken,
+    search,
+    status,
+    page = 1,
+    limit = 20,
+    sortBy,
+    sortDir,
+    dateFrom,
+    dateTo,
+  } = params;
+
+  const queryString = buildQueryString({
+    search,
+    status,
+    page,
+    limit,
+    sortBy,
+    sortDir,
+    dateFrom,
+    dateTo,
+  });
+
+  const response = await fetch(`${BASE_URL}${queryString}`, {
+    headers: authHeaders(accessToken),
   });
   const body = await response.json();
 
@@ -40,6 +88,9 @@ export async function fetchAdminMvz(params: FetchAdminMvzParams): Promise<FetchA
 
   return {
     mvzProfiles: (body.data.mvzProfiles ?? []) as AdminMvz[],
+    total: body.data.total ?? body.data.mvzProfiles?.length ?? 0,
+    page: body.data.page ?? page,
+    limit: body.data.limit ?? limit,
   };
 }
 
@@ -65,11 +116,10 @@ export async function createAdminMvzBatch(
 }
 
 export class AdminMvzApiRepository implements AdminMvzRepository {
-  async list(): Promise<AdminMvz[]> {
+  async list(params: ListAdminMvzParams): Promise<ListAdminMvzResult> {
     const accessToken = await getAccessToken();
     if (!accessToken) throw new Error("No existe sesion activa.");
-    const result = await fetchAdminMvz({ accessToken });
-    return result.mvzProfiles;
+    return fetchAdminMvz({ accessToken, ...params });
   }
 
   async createBatch(input: AdminMvzBatchCreateInput): Promise<AdminMvzBatchCreateResult> {
