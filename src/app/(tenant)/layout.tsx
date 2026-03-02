@@ -6,7 +6,7 @@ import Sidebar from "@/shared/ui/layout/Sidebar";
 import Topbar from "@/shared/ui/layout/Topbar";
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase-browser";
 import { resolveClientRole } from "@/shared/lib/auth-client";
-import { MvzRanchProvider } from "@/shared/hooks";
+import { MvzRanchProvider, ProducerUppProvider } from "@/shared/hooks";
 import {
   ROLE_DEFAULT_PERMISSIONS,
   isPermissionKey,
@@ -148,7 +148,11 @@ export default function TenantLayout({
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar />
         <main className="flex-1 p-6 overflow-auto">
-          <MvzRanchProvider>{children}</MvzRanchProvider>
+          {pathname.startsWith("/producer") ? (
+            <ProducerUppProvider>{children}</ProducerUppProvider>
+          ) : (
+            <MvzRanchProvider>{children}</MvzRanchProvider>
+          )}
         </main>
       </div>
     </div>

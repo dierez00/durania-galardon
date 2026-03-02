@@ -34,7 +34,7 @@ export async function GET(request: Request) {
   const rowsResult = await supabaseAdmin
     .from("producer_documents")
     .select(
-      "id,producer_id,document_type_id,file_storage_key,file_hash,uploaded_at,status,is_current,expiry_date,ocr_validated_at,document_type:document_types(key,name)"
+      "id,producer_id,document_type_id,file_storage_key,file_hash,uploaded_at,status,is_current,expiry_date,ocr_confidence,ocr_validated_at,document_type:document_types(key,name)"
     )
     .eq("tenant_id", auth.context.user.tenantId)
     .eq("producer_id", producerId)
