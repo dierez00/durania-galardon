@@ -15,21 +15,18 @@ import type { FilterOption, DateRangeValue } from "@/shared/ui/filters";
 import type { AdminProductoresFiltersState } from "@/modules/admin/productores/domain/entities/AdminProductorEntity";
 
 const STATUS_OPTIONS: FilterOption[] = [
-  { value: "active",    label: "Activo" },
-  { value: "suspended", label: "Suspendido" },
-  { value: "inactive",  label: "Inactivo" },
+  { value: "active",   label: "Activo" },
+  { value: "inactive", label: "Inactivo" },
 ];
 
 const STATUS_LABELS: Record<string, string> = {
-  active:    "Activo",
-  suspended: "Suspendido",
-  inactive:  "Inactivo",
+  active:   "Activo",
+  inactive: "Inactivo",
 };
 
 function statusColor(value: string): string {
-  if (value === "active")    return "text-emerald-600";
-  if (value === "suspended") return "text-amber-500";
-  if (value === "inactive")  return "text-gray-400";
+  if (value === "active")   return "text-emerald-600";
+  if (value === "inactive") return "text-gray-400";
   return "";
 }
 

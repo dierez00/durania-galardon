@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
-import { Button } from "@/shared/ui/button";
-import { AdminProductoresFilters } from "@/modules/admin/productores/presentation/AdminProductoresFilters";
-import { AdminProductoresList } from "@/modules/admin/productores/presentation/AdminProductoresList";
-import { useAdminProductores } from "@/modules/admin/productores/presentation/hooks/useAdminProductores";
-import { PaginationControls } from "@/shared/ui/pagination-controls";
+import { Card, CardContent, CardHeader, CardTitle, Button, PaginationControls } from "@/shared/ui";
+import {
+  AdminProductoresFilters,
+  AdminProductoresList,
+  useAdminProductores,
+} from "@/modules/admin/productores/presentation";
 
 export default function AdminProducersPage() {
   const {
@@ -35,7 +35,7 @@ export default function AdminProducersPage() {
           </p>
         </div>
         <Button asChild>
-          <Link href="/admin/producers/new">Nuevo productor (lote)</Link>
+          <Link href="/admin/producers/new">Nuevo productor</Link>
         </Button>
       </div>
 

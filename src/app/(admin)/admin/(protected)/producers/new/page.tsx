@@ -2,21 +2,17 @@
 
 import Link from "next/link";
 import { ArrowLeft, Download } from "lucide-react";
-import { Button } from "@/shared/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/shared/ui/table";
-import { SpreadsheetBatchEditor } from "@/shared/ui/spreadsheet";
-import { buildExcelBuffer, downloadExcel } from "@/shared/ui/spreadsheet/utils";
-import type { SpreadsheetColumn } from "@/shared/ui/spreadsheet";
+  Button,
+  Card, CardContent, CardHeader, CardTitle,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  SpreadsheetBatchEditor,
+  buildExcelBuffer,
+  downloadExcel,
+} from "@/shared/ui";
+import type { SpreadsheetColumn } from "@/shared/ui";
 import type { AdminProductorBatchRowInput } from "@/modules/admin/productores/domain/repositories/adminProductoresRepository";
-import { useCreateAdminProductoresBatch } from "@/modules/admin/productores/presentation/hooks/useCreateAdminProductoresBatch";
+import { useCreateAdminProductoresBatch } from "@/modules/admin/productores/presentation";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CURP_REGEX = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/;
@@ -42,7 +38,8 @@ const PRODUCTOR_COLUMNS: SpreadsheetColumn<AdminProductorBatchRowInput>[] = [
     normalize: (value) => value.trim().toUpperCase(),
     validate: (value) => {
       if (!value) return null;
-      return CURP_REGEX.test(value) ? null : "CURP invalida.";
+      if (value.length > 18) return "La CURP no puede exceder 18 caracteres.";
+      return CURP_REGEX.test(value) ? null : "CURP inválida (formato: AAAA000000HAAAAAA0).";
     },
   },
 ];

@@ -3,4 +3,5 @@ export interface UpdateAdminProductorDTO {
   status?: "active" | "inactive";
   fullName?: string;
   curp?: string | null;
+  email?: string;
 }

@@ -1,8 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Eye } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/shared/ui/card";
+import { Button } from "@/shared/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/shared/ui/table";
@@ -59,6 +61,7 @@ function SortableHead({ field, sort, onSortChange, children, className }: Readon
 }
 
 export function AdminProductoresList({ productores, sort, onSortChange }: Readonly<Props>) {
+  const router = useRouter();
   return (
     <Card>
       <CardContent className="pt-0">
@@ -80,12 +83,13 @@ export function AdminProductoresList({ productores, sort, onSortChange }: Readon
               <SortableHead field="registered_at" sort={sort} onSortChange={onSortChange}>
                 Registrado
               </SortableHead>
+              <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {productores.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                   No se encontraron productores.
                 </TableCell>
               </TableRow>
@@ -102,6 +106,16 @@ export function AdminProductoresList({ productores, sort, onSortChange }: Readon
                   <TableCell className="text-center">{p.documents.expired}</TableCell>
                   <TableCell className="text-muted-foreground text-sm">
                     {new Date(p.created_at).toLocaleDateString("es-MX")}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => router.push(`/admin/producers/${p.id}`)}
+                      title="Ver detalle"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))
