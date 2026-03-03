@@ -167,6 +167,8 @@ export async function PATCH(
   if (body.fullName?.trim()) updatePayload.full_name = body.fullName.trim();
   if (body.curp !== undefined) updatePayload.curp = body.curp?.trim() || null;
 
+  const supabaseAdmin = getSupabaseProvisioningClient();
+
   // Handle email change via GoTrue (requires user_id)
   if (body.email?.trim()) {
     const producerForEmail = await supabaseAdmin
@@ -183,7 +185,6 @@ export async function PATCH(
     return apiError("INVALID_PAYLOAD", "Debe enviar al menos un campo para actualizar.");
   }
 
-  const supabaseAdmin = getSupabaseProvisioningClient();
   const updateResult = await supabaseAdmin
     .from("producers")
     .update(updatePayload)

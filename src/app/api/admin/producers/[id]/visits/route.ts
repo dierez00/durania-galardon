@@ -47,8 +47,8 @@ export async function GET(
     scheduled_at: string;
     finished_at: string | null;
     created_at: string;
-    upps: { name: string } | null;
-    mvz_profiles: { full_name: string; license_number: string } | null;
+    upps: { name: string }[] | null;
+    mvz_profiles: { full_name: string; license_number: string }[] | null;
   };
 
   const visitsResult = await supabaseAdmin
@@ -68,9 +68,9 @@ export async function GET(
   const visits = (visitsResult.data as VisitRow[] ?? []).map((v) => ({
     id: v.id,
     uppId: v.upp_id,
-    uppName: v.upps?.name ?? "—",
-    mvzFullName: v.mvz_profiles?.full_name ?? "—",
-    mvzLicense: v.mvz_profiles?.license_number ?? "—",
+    uppName: v.upps?.[0]?.name ?? "—",
+    mvzFullName: v.mvz_profiles?.[0]?.full_name ?? "—",
+    mvzLicense: v.mvz_profiles?.[0]?.license_number ?? "—",
     visitType: v.visit_type,
     status: v.status,
     scheduledAt: v.scheduled_at,

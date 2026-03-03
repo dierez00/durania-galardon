@@ -2,13 +2,19 @@ import type {
   AdminMvzBatchCreateInput,
   AdminMvzBatchCreateResult,
   AdminMvzRepository,
+  ListAdminMvzParams,
+  ListAdminMvzResult,
 } from "../../domain/repositories/adminMvzRepository";
-import type { AdminMvz } from "../../domain/entities/AdminMvzEntity";
 import { adminMvzMock } from "./adminMvz.mock";
 
 export class MockAdminMvzRepository implements AdminMvzRepository {
-  async list(): Promise<AdminMvz[]> {
-    return adminMvzMock;
+  async list(_params: ListAdminMvzParams): Promise<ListAdminMvzResult> {
+    return {
+      mvzProfiles: adminMvzMock,
+      total: adminMvzMock.length,
+      page: 1,
+      limit: 20,
+    };
   }
 
   async createBatch(_input: AdminMvzBatchCreateInput): Promise<AdminMvzBatchCreateResult> {
