@@ -1,17 +1,16 @@
+// ─── CLEAN ROUTE — duplicate POST + old PATCH removed to [id]/route.ts ────────
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
+import { getSupabaseProvisioningClient } from "@/server/auth/supabase";
 import { logAuditEvent } from "@/server/audit";
 
 interface QuarantineBody {
-  id?: string;
   uppId?: string;
   title?: string;
   reason?: string;
   quarantineType?: "state" | "operational";
   geojson?: Record<string, unknown>;
   epidemiologicalNote?: string;
-  status?: "active" | "released" | "suspended";
 }
 
 export async function GET(request: Request) {
@@ -24,20 +23,67 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
-  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
-  const rowsResult = await supabase
+  const { searchParams } = new URL(request.url);
+  const search   = searchParams.get("search")?.trim() ?? "";
+  const status   = searchParams.get("status") ?? "";
+  const qType    = searchParams.get("quarantineType") ?? "";
+  const dateFrom = searchParams.get("dateFrom") ?? "";
+  const dateTo   = searchParams.get("dateTo") ?? "";
+  const page     = Math.max(1, Number.parseInt(searchParams.get("page") ?? "1", 10));
+  const limit    = Math.min(100, Math.max(1, Number.parseInt(searchParams.get("limit") ?? "20", 10)));
+  const sortBy   = searchParams.get("sortBy") ?? "created_at";
+  const sortDir  = searchParams.get("sortDir") === "asc";
+
+  const supabase = getSupabaseProvisioningClient();
+
+  let query = supabase
     .from("state_quarantines")
     .select(
-      "id,upp_id,status,quarantine_type,title,reason,geojson,started_at,released_at,epidemiological_note,created_at"
+      "id,upp_id,status,quarantine_type,title,reason,started_at,released_at,created_at,upps(id,upp_code,name,address_text,producers(full_name))",
+      { count: "exact" }
     )
     .eq("declared_by_tenant_id", auth.context.user.tenantId)
-    .order("created_at", { ascending: false });
+    .order(sortBy, { ascending: sortDir })
+    .range((page - 1) * limit, page * limit - 1);
 
-  if (rowsResult.error) {
-    return apiError("ADMIN_QUARANTINES_QUERY_FAILED", rowsResult.error.message, 500);
+  if (search)
+    query = query.or(`title.ilike.%${search}%`);
+  if (status)
+    query = query.eq("status", status);
+  if (qType)
+    query = query.eq("quarantine_type", qType);
+  if (dateFrom)
+    query = query.gte("started_at", dateFrom);
+  if (dateTo)
+    query = query.lte("started_at", `${dateTo}T23:59:59`);
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    return apiError("ADMIN_QUARANTINES_QUERY_FAILED", error.message, 500);
   }
 
-  return apiSuccess({ quarantines: rowsResult.data ?? [] });
+  type Row = {
+    id: string; upp_id: string | null; status: string; quarantine_type: string;
+    title: string; reason: string | null; started_at: string; released_at: string | null;
+    created_at: string;
+    upps: { id: string; upp_code: string | null; name: string; address_text: string | null;
+      producers: { full_name: string } | null } | null;
+  };
+
+  const quarantines = (data as unknown as Row[]).map((r) => ({
+    id: r.id,
+    title: r.title,
+    uppId: r.upp_id,
+    uppName: r.upps?.name ?? null,
+    producerName: r.upps?.producers?.full_name ?? null,
+    status: r.status,
+    quarantineType: r.quarantine_type,
+    startedAt: r.started_at,
+    releasedAt: r.released_at,
+  }));
+
+  return apiSuccess({ quarantines, total: count ?? 0, page, limit });
 }
 
 export async function POST(request: Request) {
@@ -62,8 +108,8 @@ export async function POST(request: Request) {
     return apiError("INVALID_PAYLOAD", "Debe enviar title.");
   }
 
-  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
-  const createResult = await supabase
+  const supabase = getSupabaseProvisioningClient();
+  const { data, error } = await supabase
     .from("state_quarantines")
     .insert({
       declared_by_tenant_id: auth.context.user.tenantId,
@@ -76,15 +122,13 @@ export async function POST(request: Request) {
       epidemiological_note: body.epidemiologicalNote?.trim() || null,
       created_by_user_id: auth.context.user.id,
     })
-    .select(
-      "id,upp_id,status,quarantine_type,title,reason,geojson,started_at,released_at,epidemiological_note,created_at"
-    )
+    .select("id,upp_id,status,quarantine_type,title,reason,started_at,released_at,created_at")
     .single();
 
-  if (createResult.error || !createResult.data) {
+  if (error ?? !data) {
     return apiError(
       "ADMIN_QUARANTINE_CREATE_FAILED",
-      createResult.error?.message ?? "No fue posible crear cuarentena.",
+      error?.message ?? "No fue posible crear cuarentena.",
       400
     );
   }
@@ -94,7 +138,7 @@ export async function POST(request: Request) {
     user: auth.context.user,
     action: "create",
     resource: "admin.quarantines",
-    resourceId: createResult.data.id,
+    resourceId: data.id,
     payload: {
       title,
       uppId: body.uppId?.trim() || null,
@@ -102,77 +146,5 @@ export async function POST(request: Request) {
     },
   });
 
-  return apiSuccess({ quarantine: createResult.data }, { status: 201 });
-}
-
-export async function PATCH(request: Request) {
-  const auth = await requireAuthorized(request, {
-    roles: ["tenant_admin"],
-    permissions: ["admin.quarantines.write"],
-    resource: "admin.quarantines",
-  });
-  if (!auth.ok) {
-    return auth.response;
-  }
-
-  let body: QuarantineBody;
-  try {
-    body = (await request.json()) as QuarantineBody;
-  } catch {
-    return apiError("INVALID_BODY", "El cuerpo de la solicitud no es JSON valido.");
-  }
-
-  const id = body.id?.trim();
-  if (!id) {
-    return apiError("INVALID_PAYLOAD", "Debe enviar id de cuarentena.");
-  }
-
-  const updatePayload: Record<string, unknown> = {};
-  if (body.status) {
-    updatePayload.status = body.status;
-    if (body.status === "released") {
-      updatePayload.released_at = new Date().toISOString();
-      updatePayload.released_by_user_id = auth.context.user.id;
-    }
-  }
-  if (body.epidemiologicalNote !== undefined) {
-    updatePayload.epidemiological_note = body.epidemiologicalNote?.trim() || null;
-  }
-  if (body.geojson !== undefined) {
-    updatePayload.geojson = body.geojson;
-  }
-
-  if (Object.keys(updatePayload).length === 0) {
-    return apiError("INVALID_PAYLOAD", "Debe enviar al menos un campo para actualizar.");
-  }
-
-  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
-  const updateResult = await supabase
-    .from("state_quarantines")
-    .update(updatePayload)
-    .eq("declared_by_tenant_id", auth.context.user.tenantId)
-    .eq("id", id)
-    .select(
-      "id,upp_id,status,quarantine_type,title,reason,geojson,started_at,released_at,epidemiological_note,created_at"
-    )
-    .maybeSingle();
-
-  if (updateResult.error) {
-    return apiError("ADMIN_QUARANTINE_UPDATE_FAILED", updateResult.error.message, 400);
-  }
-
-  if (!updateResult.data) {
-    return apiError("ADMIN_QUARANTINE_NOT_FOUND", "No existe cuarentena con ese id.", 404);
-  }
-
-  await logAuditEvent({
-    request,
-    user: auth.context.user,
-    action: body.status ? "status_change" : "update",
-    resource: "admin.quarantines",
-    resourceId: id,
-    payload: updatePayload,
-  });
-
-  return apiSuccess({ quarantine: updateResult.data });
+  return apiSuccess({ quarantine: data }, { status: 201 });
 }

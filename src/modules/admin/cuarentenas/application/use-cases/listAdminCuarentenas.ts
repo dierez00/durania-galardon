@@ -1,6 +1,14 @@
-import type { AdminCuarentena } from "../../domain/entities/AdminCuarentenaEntity";
-import type { AdminCuarentenasRepository } from "../../domain/repositories/adminCuarentenasRepository";
+import type {
+  AdminCuarentenasRepository,
+  ListAdminCuarentenasParams,
+  ListAdminCuarentenasResult,
+} from "../../domain/repositories/adminCuarentenasRepository";
 
-export function listAdminCuarentenas(repository: AdminCuarentenasRepository): AdminCuarentena[] {
-  return repository.list();
+export class ListAdminCuarentenas {
+  constructor(private readonly repository: AdminCuarentenasRepository) {}
+
+  execute(params: ListAdminCuarentenasParams): Promise<ListAdminCuarentenasResult> {
+    return this.repository.list(params);
+  }
 }
+

@@ -455,21 +455,21 @@ model users {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model animals {
-  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenant_id        String        @db.Uuid
-  upp_id           String        @db.Uuid
-  siniiga_tag      String        @unique
-  sex              String
-  birth_date       DateTime?     @db.Date
-  status           String        @default("active")
-  mother_animal_id String?       @db.Uuid
-  created_at       DateTime      @default(now()) @db.Timestamptz(6)
-  animals          animals?      @relation("animalsToanimals", fields: [mother_animal_id], references: [id], onUpdate: NoAction)
-  other_animals    animals[]     @relation("animalsToanimals")
-  tenants          tenants       @relation(fields: [tenant_id], references: [id], onUpdate: NoAction)
-  upps             upps          @relation(fields: [upp_id], references: [id], onUpdate: NoAction)
-  field_tests      field_tests[]
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id           String                @db.Uuid
+  upp_id              String                @db.Uuid
+  siniiga_tag         String                @unique
+  sex                 String
+  birth_date          DateTime?             @db.Date
+  status              String                @default("active")
+  mother_animal_id    String?               @db.Uuid
+  created_at          DateTime              @default(now()) @db.Timestamptz(6)
   animal_vaccinations animal_vaccinations[]
+  animals             animals?              @relation("animalsToanimals", fields: [mother_animal_id], references: [id], onUpdate: NoAction)
+  other_animals       animals[]             @relation("animalsToanimals")
+  tenants             tenants               @relation(fields: [tenant_id], references: [id], onUpdate: NoAction)
+  upps                upps                  @relation(fields: [upp_id], references: [id], onUpdate: NoAction)
+  field_tests         field_tests[]
   sanitary_incidents  sanitary_incidents[]
 
   @@index([status], map: "idx_animals_status")
@@ -644,12 +644,12 @@ model mvz_profiles {
   license_number      String                @unique
   status              String                @default("active")
   created_at          DateTime              @default(now()) @db.Timestamptz(6)
+  animal_vaccinations animal_vaccinations[]
   field_tests         field_tests[]
   tenants             tenants               @relation(fields: [owner_tenant_id], references: [id], onUpdate: NoAction)
   profiles            profiles              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   mvz_upp_assignments mvz_upp_assignments[]
   mvz_visits          mvz_visits[]
-  animal_vaccinations animal_vaccinations[]
   sanitary_incidents  sanitary_incidents[]
 
   @@index([owner_tenant_id], map: "idx_mvz_profiles_owner_tenant")
@@ -795,6 +795,7 @@ model profiles {
   movement_requests                                                   movement_requests[]
   mvz_profiles                                                        mvz_profiles?
   mvz_upp_assignments                                                 mvz_upp_assignments[]
+  mvz_visits_created_by                                               mvz_visits[]             @relation("mvz_visits_created_by_user_idToprofiles")
   normative_settings                                                  normative_settings[]
   notification_events                                                 notification_events[]
   producers                                                           producers[]
@@ -805,10 +806,9 @@ model profiles {
   tenant_memberships_tenant_memberships_user_idToprofiles             tenant_memberships[]     @relation("tenant_memberships_user_idToprofiles")
   tenant_user_roles                                                   tenant_user_roles[]
   tenants                                                             tenants[]
+  upp_documents_uploaded_by                                           upp_documents[]          @relation("upp_documents_uploaded_by_user_idToprofiles")
   user_upp_access_user_upp_access_granted_by_user_idToprofiles        user_upp_access[]        @relation("user_upp_access_granted_by_user_idToprofiles")
   user_upp_access_user_upp_access_user_idToprofiles                   user_upp_access[]        @relation("user_upp_access_user_idToprofiles")
-  mvz_visits_created_by                                               mvz_visits[]             @relation("mvz_visits_created_by_user_idToprofiles")
-  upp_documents_uploaded_by                                           upp_documents[]          @relation("upp_documents_uploaded_by_user_idToprofiles")
 
   @@schema("public")
 }
@@ -915,6 +915,7 @@ model tenants {
   status                                                            String                 @default("active")
   created_by_user_id                                                String?                @db.Uuid
   created_at                                                        DateTime               @default(now()) @db.Timestamptz(6)
+  animal_vaccinations                                               animal_vaccinations[]
   animals                                                           animals[]
   appointment_requests                                              appointment_requests[]
   audit_logs                                                        audit_logs[]
@@ -922,21 +923,20 @@ model tenants {
   field_tests                                                       field_tests[]
   movement_requests                                                 movement_requests[]
   mvz_profiles                                                      mvz_profiles?
+  mvz_visits                                                        mvz_visits[]
   normative_settings                                                normative_settings[]
   notification_events_notification_events_sender_tenant_idTotenants notification_events[]  @relation("notification_events_sender_tenant_idTotenants")
   notification_events_notification_events_target_tenant_idTotenants notification_events[]  @relation("notification_events_target_tenant_idTotenants")
   producer_documents                                                producer_documents[]
   producers                                                         producers?
+  sanitary_incidents                                                sanitary_incidents[]
   state_quarantines                                                 state_quarantines[]
   tenant_memberships                                                tenant_memberships[]
   tenant_roles                                                      tenant_roles[]
   profiles                                                          profiles?              @relation(fields: [created_by_user_id], references: [id], onUpdate: NoAction)
+  upp_documents                                                     upp_documents[]
   upps                                                              upps[]
   user_upp_access                                                   user_upp_access[]
-  mvz_visits                                                        mvz_visits[]
-  animal_vaccinations                                                animal_vaccinations[]
-  sanitary_incidents                                                 sanitary_incidents[]
-  upp_documents                                                     upp_documents[]
 
   @@index([type], map: "idx_tenants_type")
   @@schema("public")
@@ -968,20 +968,20 @@ model upps {
   herd_limit          Int?
   status              String                @default("active")
   created_at          DateTime              @default(now()) @db.Timestamptz(6)
+  animal_vaccinations animal_vaccinations[]
   animals             animals[]
   export_requests     export_requests[]
   field_tests         field_tests[]
   movement_requests   movement_requests[]
   mvz_upp_assignments mvz_upp_assignments[]
+  mvz_visits          mvz_visits[]
   notification_events notification_events[]
+  sanitary_incidents  sanitary_incidents[]
   state_quarantines   state_quarantines[]
+  upp_documents       upp_documents[]
   producers           producers             @relation(fields: [producer_id], references: [id], onUpdate: NoAction)
   tenants             tenants               @relation(fields: [tenant_id], references: [id], onUpdate: NoAction)
   user_upp_access     user_upp_access[]
-  mvz_visits          mvz_visits[]
-  animal_vaccinations animal_vaccinations[]
-  sanitary_incidents  sanitary_incidents[]
-  upp_documents       upp_documents[]
 
   @@index([producer_id], map: "idx_upps_producer")
   @@index([tenant_id], map: "idx_upps_tenant")
@@ -1004,10 +1004,10 @@ model mvz_visits {
   created_by_user_id String?      @db.Uuid
   created_at         DateTime     @default(now()) @db.Timestamptz(6)
   updated_at         DateTime     @default(now()) @db.Timestamptz(6)
+  profiles           profiles?    @relation("mvz_visits_created_by_user_idToprofiles", fields: [created_by_user_id], references: [id], onUpdate: NoAction)
+  mvz_profiles       mvz_profiles @relation(fields: [mvz_profile_id], references: [id], onUpdate: NoAction)
   tenants            tenants      @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   upps               upps         @relation(fields: [upp_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  mvz_profiles       mvz_profiles @relation(fields: [mvz_profile_id], references: [id], onUpdate: NoAction)
-  profiles           profiles?    @relation("mvz_visits_created_by_user_idToprofiles", fields: [created_by_user_id], references: [id], onUpdate: NoAction)
 
   @@index([upp_id, status], map: "idx_mvz_visits_upp_status")
   @@index([mvz_profile_id, scheduled_at(sort: Desc)], map: "idx_mvz_visits_profile_date")
@@ -1030,10 +1030,10 @@ model animal_vaccinations {
   notes                     String?
   created_at                DateTime      @default(now()) @db.Timestamptz(6)
   updated_at                DateTime      @default(now()) @db.Timestamptz(6)
-  tenants                   tenants       @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  upps                      upps          @relation(fields: [upp_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   animals                   animals       @relation(fields: [animal_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   mvz_profiles              mvz_profiles? @relation(fields: [applied_by_mvz_profile_id], references: [id], onUpdate: NoAction)
+  tenants                   tenants       @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  upps                      upps          @relation(fields: [upp_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([upp_id, status], map: "idx_animal_vaccinations_upp_status")
   @@index([animal_id], map: "idx_animal_vaccinations_animal")
@@ -1058,10 +1058,10 @@ model sanitary_incidents {
   reported_by_mvz_profile_id String?       @db.Uuid
   created_at                 DateTime      @default(now()) @db.Timestamptz(6)
   updated_at                 DateTime      @default(now()) @db.Timestamptz(6)
-  tenants                    tenants       @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  upps                       upps          @relation(fields: [upp_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   animals                    animals       @relation(fields: [animal_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   mvz_profiles               mvz_profiles? @relation(fields: [reported_by_mvz_profile_id], references: [id], onUpdate: NoAction)
+  tenants                    tenants       @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  upps                       upps          @relation(fields: [upp_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([upp_id, status], map: "idx_sanitary_incidents_upp_status")
   @@index([animal_id], map: "idx_sanitary_incidents_animal")
@@ -1086,8 +1086,8 @@ model upp_documents {
   uploaded_at         DateTime  @default(now()) @db.Timestamptz(6)
   updated_at          DateTime  @default(now()) @db.Timestamptz(6)
   tenants             tenants   @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  upps                upps      @relation(fields: [upp_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   profiles            profiles? @relation("upp_documents_uploaded_by_user_idToprofiles", fields: [uploaded_by_user_id], references: [id], onUpdate: NoAction)
+  upps                upps      @relation(fields: [upp_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([upp_id, status], map: "idx_upp_documents_upp_status")
   @@schema("public")

@@ -1,4 +1,9 @@
 export { AdminCuarentenasList } from "./AdminCuarentenasList";
 export { AdminCuarentenasFilters } from "./AdminCuarentenasFilters";
 export { AdminCuarentenaEstadoBadge } from "./AdminCuarentenaEstadoBadge";
-export type { AdminCuarentenasFiltersState } from "@/modules/admin/cuarentenas/domain/entities/AdminCuarentenaEntity";
+export { AdminCuarentenasMapSection } from "./AdminCuarentenasMapSection";
+export { AdminCuarentenaActivacionForm } from "./AdminCuarentenaActivacionForm";
+export { AdminCuarentenaDetailContent } from "./AdminCuarentenaDetailContent";
+export { useAdminCuarentenas } from "./hooks/useAdminCuarentenas";
+export { useAdminCuarentenaActivacion } from "./hooks/useAdminCuarentenaActivacion";
+export { useAdminCuarentenaDetail } from "./hooks/useAdminCuarentenaDetail";

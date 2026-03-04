@@ -7,9 +7,9 @@ interface Props {
 }
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
-  active:   { label: "Activa",    className: "bg-red-100 text-red-700" },
-  released: { label: "Liberada",  className: "bg-emerald-100 text-emerald-700" },
-  pending:  { label: "Pendiente", className: "bg-amber-100 text-amber-700" },
+  active:    { label: "Activa",      className: "bg-emerald-100 text-emerald-700" },
+  released:  { label: "Liberada",    className: "bg-gray-100 text-gray-500" },
+  suspended: { label: "Suspendida",  className: "bg-orange-100 text-orange-700" },
 };
 
 export function AdminCuarentenaEstadoBadge({ status }: Readonly<Props>) {

@@ -1,5 +1,7 @@
 export interface CreateAdminCuarentenaDTO {
   title: string;
   uppId?: string;
-  quarantineType: string;
+  quarantineType: "state" | "operational";
+  reason?: string;
+  epidemiologicalNote?: string;
 }
