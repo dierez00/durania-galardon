@@ -1,43 +1,35 @@
-export interface BovinoPrueba {
-  fecha: string;
-  tuberculosis: string;
-  brucelosis: string;
-  mvz: string;
-  resultado: string;
-}
-
-export interface BovinoCuarentena {
-  inicio: string;
-  motivo: string;
-  estado: string;
-}
-
-export interface BovinoExportacion {
-  solicitud: string;
-  fecha: string;
-  destino: string;
-  estado: string;
+export interface BovinoSanitary {
+  tb_date: string | null;
+  tb_result: string | null;
+  tb_valid_until: string | null;
+  tb_status: string | null;
+  br_date: string | null;
+  br_result: string | null;
+  br_valid_until: string | null;
+  br_status: string | null;
+  sanitary_alert: string | null;
 }
 
 export interface Bovino {
-  id: number;
-  arete: string;
-  sexo: string;
-  raza: string;
-  peso: number;
-  nacimiento: string;
-  rancho: string;
-  productor: string;
-  sanitario: string;
-  pruebas?: BovinoPrueba[];
-  cuarentenas?: BovinoCuarentena[];
-  exportaciones?: BovinoExportacion[];
+  id: string;
+  upp_id: string;
+  siniiga_tag: string;
+  sex: "M" | "F";
+  birth_date: string | null;
+  status: string;
+  mother_animal_id: string | null;
+  upp_name: string;
+  upp_code: string | null;
+  upp_status: string;
+  sanitary: BovinoSanitary;
+  canExport: boolean;
 }
 
 export interface BovinosFiltersState {
   search: string;
   sexo: string;
   sanitario: string;
+  exportable: string;
   fechaDesde: string;
   fechaHasta: string;
 }

@@ -43,42 +43,69 @@ export async function GET(request: Request) {
   const animalsResult = await supabaseAdmin
     .from("v_animals_sanitary")
     .select(
-      "animal_id,upp_id,siniiga_tag,sex,birth_date,animal_status,mother_animal_id,tb_result,tb_status,br_result,br_status,sanitary_alert"
+      "animal_id,upp_id,upp_name,upp_code,siniiga_tag,sex,birth_date,animal_status,mother_animal_id,tb_date,tb_result,tb_valid_until,tb_status,br_date,br_result,br_valid_until,br_status,sanitary_alert"
     )
     .eq("tenant_id", auth.context.user.tenantId)
     .in("upp_id", accessibleUppIds)
-    .order("animal_id", { ascending: false });
+    .order("siniiga_tag", { ascending: true });
 
   if (animalsResult.error) {
     return apiError("PRODUCER_BOVINOS_QUERY_FAILED", animalsResult.error.message, 500);
+  }
+
+  // Fetch upp statuses for quarantine check
+  const uppStatusMap: Record<string, string> = {};
+  if (accessibleUppIds.length > 0) {
+    const uppsResult = await supabaseAdmin
+      .from("upps")
+      .select("id,status")
+      .in("id", accessibleUppIds);
+    if (!uppsResult.error && uppsResult.data) {
+      for (const u of uppsResult.data) {
+        uppStatusMap[u.id as string] = u.status as string;
+      }
+    }
   }
 
   return apiSuccess({
     bovinos: (animalsResult.data ?? []).map((row: {
       animal_id: string;
       upp_id: string;
+      upp_name: string;
+      upp_code: string | null;
       siniiga_tag: string;
       sex: "M" | "F";
       birth_date: string | null;
       animal_status: string;
       mother_animal_id: string | null;
+      tb_date: string | null;
       tb_result: string | null;
+      tb_valid_until: string | null;
       tb_status: string | null;
+      br_date: string | null;
       br_result: string | null;
+      br_valid_until: string | null;
       br_status: string | null;
       sanitary_alert: string | null;
     }) => ({
       id: row.animal_id,
       upp_id: row.upp_id,
+      upp_name: row.upp_name,
+      upp_code: row.upp_code,
+      upp_status: uppStatusMap[row.upp_id] ?? "active",
       siniiga_tag: row.siniiga_tag,
       sex: row.sex,
       birth_date: row.birth_date,
       status: row.animal_status,
       mother_animal_id: row.mother_animal_id,
       sanitary: {
+        tb_date: row.tb_date,
         tb_result: row.tb_result,
+        tb_valid_until: row.tb_valid_until,
         tb_status: row.tb_status,
+        br_date: row.br_date,
         br_result: row.br_result,
+        br_valid_until: row.br_valid_until,
         br_status: row.br_status,
         alert: row.sanitary_alert,
       },
