@@ -7,7 +7,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/shared/ui/table";
 import { Eye, Pencil } from "lucide-react";
-import type { Productor } from "@/modules/productores/domain/entities/ProductoresEntity";
+import type { Productor } from "@/modules/producer/productores/domain/entities/ProductoresEntity";
 
 interface ProductoresListProps {
   productores: Productor[];

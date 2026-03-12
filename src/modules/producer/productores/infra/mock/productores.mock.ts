@@ -1,4 +1,4 @@
-import type { Productor } from "@/modules/productores/domain/entities/ProductoresEntity";
+import type { Productor } from "../../domain/entities/ProductoresEntity";
 
 export const productoresMock: Productor[] = [
   { id: 1, nombre: "Juan Perez Ramirez",    curp: "PERJ800515HCHRM09", rfc: "PERJ800515XX1", municipio: "Chihuahua",   ranchos: 3, bovinos: 245, estado: "Activo",   fechaRegistro: "2023-03-10" },

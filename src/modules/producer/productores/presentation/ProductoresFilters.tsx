@@ -17,7 +17,7 @@ import {
   type FilterOption,
   type ActionButtonConfig,
 } from "@/shared/ui/filters/index";
-import type { ProductoresFiltersState } from "@/modules/productores/domain/entities/ProductoresEntity";
+import type { ProductoresFiltersState } from "@/modules/producer/productores/domain/entities/ProductoresEntity";
 
 interface ProductoresFiltersProps {
   filters: ProductoresFiltersState;
