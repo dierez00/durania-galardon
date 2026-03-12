@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
   const uppsResult = await supabase
     .from("upps")
-    .select("id,producer_id,upp_code,name,address_text,hectares_total,herd_limit,status,created_at")
+    .select("id,producer_id,upp_code,name,address_text,location_lat,location_lng,hectares_total,herd_limit,status,created_at")
     .eq("tenant_id", auth.context.user.tenantId)
     .in("id", accessibleUppIds)
     .order("created_at", { ascending: false });
