@@ -59,7 +59,8 @@ export async function GET(request: Request) {
   const uppsQ = supabase
     .from("upps")
     .select("*", { count: "exact", head: true })
-    .eq("tenant_id", tenantId);
+    .eq("tenant_id", tenantId)
+    .eq("status", "active");  // Modificación: Agregar filtro por status 'active' para contar solo UPPs activos
 
   const [uppsRes, animalsActiveRes, animalsTransitRes, movementsRes, exportsRes, docsRes] =
     await Promise.all([uppsQ, animalsActiveQ, animalsTransitQ, movementsQ, exportsQ, docsQ]);
