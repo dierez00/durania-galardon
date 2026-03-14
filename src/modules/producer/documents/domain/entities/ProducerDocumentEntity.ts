@@ -1,0 +1,25 @@
+export interface ProducerDocument {
+  id: string;
+  tenantId: string;
+  producerId: string;
+  documentTypeId: string;
+  documentTypeName: string;
+  documentTypeKey: string;
+  fileStorageKey: string;
+  fileHash: string;
+  status: DocumentStatus;
+  isCurrent: boolean;
+  expiryDate: string | null;
+  uploadedAt: string;
+  ocrConfidence: number | null;
+}
+
+export type DocumentStatus = "pending" | "validated" | "expired" | "rejected";
+
+export const PRODUCER_PERSONAL_DOCUMENT_TYPES = [
+  { key: "ine", name: "INE", requiresExpiry: true },
+  { key: "curp", name: "CURP", requiresExpiry: false },
+  { key: "comprobante_domicilio", name: "Comprobante de Domicilio", requiresExpiry: true },
+] as const;
+
+export type ProducerPersonalDocumentType = typeof PRODUCER_PERSONAL_DOCUMENT_TYPES[number];

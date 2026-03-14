@@ -1,7 +1,6 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
 import { getSupabaseAdminClient } from "@/server/auth/supabase";
-import { resolveProducerId } from "@/server/authz/profiles";
 import { logAuditEvent } from "@/server/audit";
 import { createHash } from "crypto";
 
@@ -17,6 +16,14 @@ interface ProducerDocumentBody {
 }
 
 const SUPABASE_BUCKET = "Documents_producer";
+
+// Mapa estático de tipos de documento personales del productor.
+// Es la fuente de verdad para auto-crear entradas en document_types si no existen.
+const PERSONAL_DOCUMENT_TYPE_META: Record<string, { name: string; requiresExpiry: boolean }> = {
+  ine: { name: "INE", requiresExpiry: true },
+  curp: { name: "CURP", requiresExpiry: false },
+  comprobante_domicilio: { name: "Comprobante de Domicilio", requiresExpiry: true },
+};
 
 async function uploadFileToSupabase(file: File, filePath: string) {
   const supabaseAdmin = getSupabaseAdminClient();
@@ -68,6 +75,33 @@ async function ensureBucketExists(bucketName: string): Promise<void> {
   }
 }
 
+async function findProducerIdForUserOrTenant(tenantId: string, userId: string): Promise<string | null> {
+  const supabaseAdmin = getSupabaseAdminClient();
+
+  // Prefer explicit mapping of user -> producer profile (owner)
+  const byUser = await supabaseAdmin
+    .from("producers")
+    .select("id")
+    .eq("owner_tenant_id", tenantId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (byUser.data?.id) return byUser.data.id;
+
+  // Fallback: tenant has exactly one producer row; allow employees to act on it
+  const byTenant = await supabaseAdmin
+    .from("producers")
+    .select("id")
+    .eq("owner_tenant_id", tenantId)
+    .maybeSingle();
+
+  if (byTenant.error) {
+    throw new Error(byTenant.error.message);
+  }
+
+  return byTenant.data?.id ?? null;
+}
+
 export async function GET(request: Request) {
   const auth = await requireAuthorized(request, {
     roles: ["producer", "employee"],
@@ -78,7 +112,7 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
-  const producerId = await resolveProducerId(auth.context.user);
+  const producerId = await findProducerIdForUserOrTenant(auth.context.user.tenantId, auth.context.user.id);
   if (!producerId) {
     return apiSuccess({ documents: [] });
   }
@@ -119,8 +153,6 @@ export async function POST(request: Request) {
     return apiError("INVALID_PAYLOAD", "Debe enviar un archivo y documentTypeKey.");
   }
 
-  const fileStorageKey = `${auth.context.user.tenantId}/${Date.now()}_${file.name}`;
-
   try {
     await ensureBucketExists(SUPABASE_BUCKET);
 
@@ -131,40 +163,45 @@ export async function POST(request: Request) {
       return apiError("HASH_MISMATCH", "El hash proporcionado no coincide con el archivo subido.");
     }
 
-    await uploadFileToSupabase(file, fileStorageKey);
-
     // Use admin client to bypass RLS issues when resolving the producer profile
     const supabaseAdmin = getSupabaseAdminClient();
-    const producerLookup = await supabaseAdmin
-      .from("producers")
-      .select("id")
-      .eq("owner_tenant_id", auth.context.user.tenantId)
-      .eq("user_id", auth.context.user.id)
-      .maybeSingle();
+    const producerId = await findProducerIdForUserOrTenant(auth.context.user.tenantId, auth.context.user.id);
 
-    if (producerLookup.error) {
-      return apiError("PRODUCER_LOOKUP_FAILED", producerLookup.error.message, 500);
-    }
-    if (!producerLookup.data) {
+    if (!producerId) {
       return apiError(
         "PRODUCER_NOT_FOUND",
-        `No existe perfil productor para user_id=${auth.context.user.id} en tenant=${auth.context.user.tenantId}.`,
+        `No existe perfil productor para tenant=${auth.context.user.tenantId}.`,
         404
       );
     }
-    const producerId = producerLookup.data.id;
 
-    const typeByKey = await supabaseAdmin
-      .from("document_types")
-      .select("id")
-      .eq("key", documentTypeKey.toLowerCase())
-      .maybeSingle();
-
-    if (typeByKey.error || !typeByKey.data) {
-      return apiError("DOCUMENT_TYPE_NOT_FOUND", "No existe tipo de documento para ese key.", 404);
+    const normalizedKey = documentTypeKey.toLowerCase();
+    const typeMeta = PERSONAL_DOCUMENT_TYPE_META[normalizedKey];
+    if (!typeMeta) {
+      return apiError("INVALID_DOCUMENT_TYPE", "Tipo de documento no reconocido.", 400);
     }
 
-    const documentTypeId = typeByKey.data.id;
+    // Upsert garantiza que el tipo exista aunque no haya sido sembrado en la BD
+    const typeUpsertResult = await supabaseAdmin
+      .from("document_types")
+      .upsert(
+        { key: normalizedKey, name: typeMeta.name, requires_expiry: typeMeta.requiresExpiry },
+        { onConflict: "key", ignoreDuplicates: false }
+      )
+      .select("id")
+      .single();
+
+    if (typeUpsertResult.error || !typeUpsertResult.data) {
+      return apiError("DOCUMENT_TYPE_UPSERT_FAILED", typeUpsertResult.error?.message ?? "No se pudo resolver el tipo de documento.", 500);
+    }
+
+    const documentTypeId = typeUpsertResult.data.id;
+
+    // Storage path: Documents_producer/[tenant_id]/personal/[producer_id]/[document_type]/[timestamp]_[filename]
+    const timestamp = Date.now();
+    const fileStorageKey = `${auth.context.user.tenantId}/personal/${producerId}/${normalizedKey}/${timestamp}_${file.name}`;
+
+    await uploadFileToSupabase(file, fileStorageKey);
 
     // Deactivate previous current document of the same type before inserting
     await supabaseAdmin
@@ -187,7 +224,7 @@ export async function POST(request: Request) {
         is_current: true,
         expiry_date: expiryDate || null,
       })
-      .select("id,producer_id,document_type_id,file_storage_key,file_hash,uploaded_at,status,is_current,expiry_date")
+      .select("id,producer_id,document_type_id,file_storage_key,file_hash,uploaded_at,status,is_current,expiry_date,document_type:document_types(key,name)")
       .single();
 
     if (insertResult.error || !insertResult.data) {
@@ -241,7 +278,7 @@ export async function PATCH(request: Request) {
     return apiError("INVALID_PAYLOAD", "Debe enviar id del documento.");
   }
 
-  const producerId = await resolveProducerId(auth.context.user);
+  const producerId = await findProducerIdForUserOrTenant(auth.context.user.tenantId, auth.context.user.id);
   if (!producerId) {
     return apiError("PRODUCER_NOT_FOUND", "No existe perfil productor asociado.", 404);
   }
