@@ -135,7 +135,12 @@ export function DocumentUploadCard({ upps, onSuccess }: Props) {
               PRODUCER_PERSONAL_DOCUMENT_TYPES.find((t) => t.key === personalDocType)
                 ?.requiresExpiry && (
                 <div className="space-y-2">
-                  <Label>Fecha de Vigencia</Label>
+                  <Label>
+                    {PRODUCER_PERSONAL_DOCUMENT_TYPES.find((t) => t.key === personalDocType)
+                      ?.issueDateBased
+                      ? "Fecha de Emisión"
+                      : "Fecha de Vigencia"}
+                  </Label>
                   <Input
                     type="date"
                     value={personalExpiryDate}

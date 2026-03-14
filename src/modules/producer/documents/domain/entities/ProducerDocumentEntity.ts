@@ -17,9 +17,9 @@ export interface ProducerDocument {
 export type DocumentStatus = "pending" | "validated" | "expired" | "rejected";
 
 export const PRODUCER_PERSONAL_DOCUMENT_TYPES = [
-  { key: "ine", name: "INE", requiresExpiry: true },
-  { key: "curp", name: "CURP", requiresExpiry: false },
-  { key: "comprobante_domicilio", name: "Comprobante de Domicilio", requiresExpiry: true },
+  { key: "ine", name: "INE", requiresExpiry: true, issueDateBased: false },
+  { key: "curp", name: "CURP", requiresExpiry: false, issueDateBased: false },
+  { key: "comprobante_domicilio", name: "Comprobante de Domicilio", requiresExpiry: true, issueDateBased: true },
 ] as const;
 
 export type ProducerPersonalDocumentType = typeof PRODUCER_PERSONAL_DOCUMENT_TYPES[number];
