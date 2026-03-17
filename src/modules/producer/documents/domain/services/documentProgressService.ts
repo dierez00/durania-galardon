@@ -49,7 +49,7 @@ export function calculateDocumentProgress(
     pending,
     rejected,
     expired,
-    percentComplete: totalRequired > 0 ? Math.round((completed / totalRequired) * 100) : 0,
+    percentComplete: totalRequired > 0 ? Math.round(((completed + uploaded) / totalRequired) * 100) : 0,
     items
   };
 }

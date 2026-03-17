@@ -55,6 +55,7 @@ export class DocumentChangeDetector {
           data: {
             documentId: docId,
             documentType,
+            documentLevel: level,
             uploadedAt: currDoc.uploadedAt,
           }
         });
@@ -70,6 +71,7 @@ export class DocumentChangeDetector {
             data: {
               documentId: docId,
               documentType,
+              documentLevel: level,
               daysUntilExpiry,
               expiryDate: currDoc.expiryDate,
             }
@@ -82,6 +84,7 @@ export class DocumentChangeDetector {
             data: {
               documentId: docId,
               documentType,
+              documentLevel: level,
               daysUntilExpiry,
               expiryDate: currDoc.expiryDate,
             }

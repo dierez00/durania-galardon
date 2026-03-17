@@ -11,6 +11,7 @@ export interface DocumentStatusChangeEvent {
 export interface DocumentExpiringEvent {
   documentId: string;
   documentType: string;
+  documentLevel: 'personal' | 'upp';
   daysUntilExpiry: number;
   expiryDate: string;
 }
@@ -18,6 +19,7 @@ export interface DocumentExpiringEvent {
 export interface DocumentUploadedEvent {
   documentId: string;
   documentType: string;
+  documentLevel: 'personal' | 'upp';
   uploadedAt: string;
 }
 

@@ -19,7 +19,10 @@ export function DocumentProgressIndicator({ progress }: Props) {
             <span>Completitud del expediente</span>
             <span className="font-medium">{progress.percentComplete}%</span>
           </div>
-          <Progress value={progress.percentComplete} />
+          <Progress
+            value={progress.percentComplete}
+            className="bg-green-100 [&>[data-slot='progress-indicator']]:bg-green-500"
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-2 text-sm">
