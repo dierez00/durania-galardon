@@ -1,6 +1,6 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
+import { getSupabaseAdminClient } from "@/server/auth/supabase";
 import { logAuditEvent } from "@/server/audit";
 
 interface NormativeBody {
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
-  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const supabase = getSupabaseAdminClient();
   const rowsResult = await supabase
     .from("normative_settings")
     .select("id,key,value_json,effective_from,effective_until,status,created_at")
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     return apiError("INVALID_PAYLOAD", "Debe enviar key y valueJson.");
   }
 
-  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const supabase = getSupabaseAdminClient();
   const insertResult = await supabase
     .from("normative_settings")
     .insert({
@@ -135,7 +135,7 @@ export async function PATCH(request: Request) {
     updatePayload.effective_until = body.effectiveUntil || null;
   }
 
-  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const supabase = getSupabaseAdminClient();
   const updateResult = await supabase
     .from("normative_settings")
     .update(updatePayload)

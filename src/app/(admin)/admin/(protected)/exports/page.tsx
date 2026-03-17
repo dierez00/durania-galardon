@@ -1,133 +1,73 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/shared/ui/table";
-import { Button } from "@/shared/ui/button";
-import { getAccessToken } from "@/shared/lib/auth-session";
-
-interface ExportItem {
-  id: string;
-  upp_id: string | null;
-  status: string;
-  compliance_60_rule: boolean | null;
-  tb_br_validated: boolean | null;
-  blue_tag_assigned: boolean | null;
-  blocked_reason: string | null;
-  created_at: string;
-}
+import { AdminExportacionesList } from "@/modules/admin/exportaciones/presentation/AdminExportacionesList";
+import { AdminExportacionesFilters } from "@/modules/admin/exportaciones/presentation/AdminExportacionesFilters";
+import { AdminRegla60Config } from "@/modules/admin/exportaciones/presentation/AdminRegla60Config";
+import { useAdminExportaciones } from "@/modules/admin/exportaciones/presentation/hooks/useAdminExportaciones";
+import { AlertTriangle } from "lucide-react";
 
 export default function AdminExportsPage() {
-  const [items, setItems] = useState<ExportItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setErrorMessage("");
-
-    const accessToken = await getAccessToken();
-    if (!accessToken) {
-      setErrorMessage("No existe sesion activa.");
-      setLoading(false);
-      return;
-    }
-
-    const response = await fetch("/api/admin/exports", {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-    const body = await response.json();
-
-    if (!response.ok || !body.ok) {
-      setErrorMessage(body.error?.message ?? "No fue posible cargar exportaciones.");
-      setLoading(false);
-      return;
-    }
-
-    setItems(body.data.exports ?? []);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    void loadData();
-  }, [loadData]);
-
-  const approve = async (id: string) => {
-    const accessToken = await getAccessToken();
-    if (!accessToken) {
-      return;
-    }
-
-    await fetch("/api/admin/exports", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        id,
-        status: "final_approved",
-      }),
-    });
-
-    await loadData();
-  };
+  const {
+    exportaciones,
+    total,
+    totalPages,
+    page,
+    setPage,
+    loading,
+    error,
+    filters,
+    handleFiltersChange,
+    sort,
+    handleSortChange,
+  } = useAdminExportaciones();
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Exportaciones - Autorizacion final</h1>
-        <p className="text-sm text-muted-foreground">Validacion final de tramites y bloqueo por incumplimiento.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Solicitudes de Exportación</h1>
+          <p className="text-sm text-muted-foreground">
+            Validación y aprobación final de exportaciones ganaderas.
+          </p>
+        </div>
+        <div className="w-full max-w-xs">
+          <AdminRegla60Config />
+        </div>
       </div>
+
+      <AdminExportacionesFilters filters={filters} onChange={handleFiltersChange} />
 
       <Card>
         <CardHeader>
-          <CardTitle>Solicitudes de exportacion</CardTitle>
+          <CardTitle>
+            Solicitudes registradas
+            {!loading && (
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                ({total} en total)
+              </span>
+            )}
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          {errorMessage ? <p className="mb-3 text-sm text-destructive">{errorMessage}</p> : null}
+        <CardContent className="space-y-4">
+          {error ? (
+            <div className="flex items-center gap-2 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              {error}
+            </div>
+          ) : null}
+
           {loading ? (
-            <p className="text-sm text-muted-foreground">Cargando...</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">Cargando...</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>UPP</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Regla 60%</TableHead>
-                  <TableHead>TB/BR</TableHead>
-                  <TableHead>Arete Azul</TableHead>
-                  <TableHead>Accion</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-mono text-xs">{item.id.slice(0, 8)}</TableCell>
-                    <TableCell>{item.upp_id ?? "-"}</TableCell>
-                    <TableCell>{item.status}</TableCell>
-                    <TableCell>{item.compliance_60_rule ? "SI" : "NO"}</TableCell>
-                    <TableCell>{item.tb_br_validated ? "SI" : "NO"}</TableCell>
-                    <TableCell>{item.blue_tag_assigned ? "SI" : "NO"}</TableCell>
-                    <TableCell>
-                      <Button size="sm" variant="outline" onClick={() => approve(item.id)}>
-                        Aprobar
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <AdminExportacionesList
+              exportaciones={exportaciones}
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              sort={sort}
+              onSortChange={handleSortChange}
+            />
           )}
         </CardContent>
       </Card>
