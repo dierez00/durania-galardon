@@ -18,6 +18,7 @@ interface MvzRanchAccessOk {
   };
   mvzProfileId: string;
   supabase: ReturnType<typeof createSupabaseRlsServerClient>;
+  supabaseAdmin: ReturnType<typeof getSupabaseAdminClient>;
 }
 
 interface MvzRanchAccessFail {
@@ -75,5 +76,6 @@ export async function requireMvzRanchAccess(
     upp: uppResult.data,
     mvzProfileId,
     supabase: createSupabaseRlsServerClient(auth.context.user.accessToken),
+    supabaseAdmin,
   };
 }

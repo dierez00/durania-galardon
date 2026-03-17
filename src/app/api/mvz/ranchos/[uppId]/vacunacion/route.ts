@@ -27,7 +27,7 @@ export async function GET(
     return access.response;
   }
 
-  const rowsResult = await access.supabase
+  const rowsResult = await access.supabaseAdmin
     .from("animal_vaccinations")
     .select(
       "id,tenant_id,upp_id,animal_id,vaccine_name,dose,status,applied_at,due_at,applied_by_mvz_profile_id,notes,created_at,updated_at"
@@ -70,7 +70,7 @@ export async function POST(
     return apiError("INVALID_PAYLOAD", "Debe enviar animalId y vaccineName.");
   }
 
-  const animalResult = await access.supabase
+  const animalResult = await access.supabaseAdmin
     .from("animals")
     .select("id")
     .eq("id", animalId)
@@ -81,7 +81,7 @@ export async function POST(
     return apiError("ANIMAL_NOT_FOUND", "El animal no pertenece a la UPP seleccionada.", 404);
   }
 
-  const insertResult = await access.supabase
+  const insertResult = await access.supabaseAdmin
     .from("animal_vaccinations")
     .insert({
       tenant_id: access.upp.tenant_id,
@@ -139,7 +139,7 @@ export async function PATCH(
     return apiError("INVALID_PAYLOAD", "Debe enviar id de vacunacion.");
   }
 
-  const lookup = await access.supabase
+  const lookup = await access.supabaseAdmin
     .from("animal_vaccinations")
     .select("id")
     .eq("id", id)
@@ -177,7 +177,7 @@ export async function PATCH(
     updatePayload.vaccine_name = vaccineName;
   }
 
-  const updateResult = await access.supabase
+  const updateResult = await access.supabaseAdmin
     .from("animal_vaccinations")
     .update(updatePayload)
     .eq("id", id)
@@ -197,5 +197,6 @@ export async function PATCH(
 
   return apiSuccess({ vaccination: updateResult.data });
 }
+
 
 
