@@ -69,3 +69,45 @@ export async function authEmailsExistBulk(emails: string[]): Promise<Set<string>
   );
   return new Set(results.filter((e): e is string => e !== null));
 }
+
+export async function fetchAuthUserEmail(userId: string): Promise<string | null> {
+  try {
+    const { supabaseServiceRoleKey } = getServerEnv();
+    const url = `${publicEnv.supabaseUrl}/auth/v1/admin/users/${userId}`;
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${supabaseServiceRoleKey}`,
+        apikey: supabaseServiceRoleKey,
+      },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = (await response.json()) as { email?: string };
+    return data.email ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function updateAuthUserEmail(userId: string, email: string): Promise<boolean> {
+  try {
+    const { supabaseServiceRoleKey } = getServerEnv();
+    const url = `${publicEnv.supabaseUrl}/auth/v1/admin/users/${userId}`;
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${supabaseServiceRoleKey}`,
+        apikey: supabaseServiceRoleKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    return response.ok;
+  } catch {
+    return false;
+  }
+}

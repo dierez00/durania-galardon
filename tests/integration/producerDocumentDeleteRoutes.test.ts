@@ -22,6 +22,7 @@ function createSupabaseMock(document: Record<string, unknown>, hasOtherVersion: 
   const docSelectBuilder = {
     eq: vi.fn().mockReturnThis(),
     single: vi.fn().mockResolvedValue({ data: document, error: null }),
+    maybeSingle: vi.fn().mockResolvedValue({ data: document, error: null }),
   };
 
   const otherSelectBuilder = {
@@ -45,6 +46,9 @@ function createSupabaseMock(document: Record<string, unknown>, hasOtherVersion: 
     })
     .mockReturnValueOnce({
       select: vi.fn(() => otherSelectBuilder),
+    })
+    .mockReturnValueOnce({
+      select: vi.fn(() => docSelectBuilder),
     })
     .mockReturnValue({
       delete: vi.fn(() => deleteBuilder),

@@ -1,5 +1,33 @@
 # API endpoints
 
+`src/app/api` conserva los contratos HTTP publicos y privados, pero sus archivos deben limitarse a reexportar handlers desde los modulos duenos.
+
+## Regla de trabajo
+
+- Cada `route.ts` debe ser un entrypoint delgado.
+- La logica de negocio y los queries viven en `src/modules/*`.
+- Si un helper es transversal de backend, va en `src/server/*`.
+- Cuando agregues o muevas una familia API, actualiza este archivo y `docs/architecture.md`.
+
+## Ownership por capacidad
+
+- `admin/producers` -> `src/modules/admin/productores`
+- `admin/mvz` -> `src/modules/admin/mvz`
+- `admin/appointments` y `public/appointments` -> `src/modules/admin/citas`
+- `admin/audit` -> `src/modules/admin/auditoria`
+- `producer/bovinos` -> `src/modules/bovinos`
+- `producer/documents` y `producer/upp-documents` -> `src/modules/producer/documents`
+- `producer/upp` -> `src/modules/producer/ranchos`
+- `mvz/assignments` -> `src/modules/ranchos`
+
+## Patron esperado
+
+```ts
+export { GET, POST, PATCH } from "@/modules/<owner>/<feature>";
+```
+
+Si el modulo aun no expone alias desde `index.ts`, el reexport puede apuntar temporalmente a `infra/http/*Handlers`.
+
 ## Auth/Tenant
 
 - `GET /api/auth/me`
@@ -28,6 +56,7 @@
 - `GET|POST /api/producer/movements`
 - `GET|POST /api/producer/exports`
 - `GET|POST|PATCH /api/producer/documents`
+- `GET|POST /api/producer/upp-documents`
 - `GET|POST|PATCH /api/producer/employees`
 
 ## MVZ

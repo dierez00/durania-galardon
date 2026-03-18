@@ -1,4 +1,8 @@
 import type { Bovino } from "../../domain/entities/Bovino";
+import type { BovinoExport } from "../../domain/entities/BovinoExport";
+import type { BovinoFieldTest } from "../../domain/entities/BovinoFieldTest";
+import type { BovinoSanitaryIncident } from "../../domain/entities/BovinoSanitaryIncident";
+import type { BovinoVaccination } from "../../domain/entities/BovinoVaccination";
 import type { BovinoRepository } from "../../domain/repositories/BovinoRepository";
 
 export class PrismaBovinoRepository implements BovinoRepository {
@@ -6,27 +10,27 @@ export class PrismaBovinoRepository implements BovinoRepository {
     return Promise.reject(new Error("PrismaBovinoRepository.list is not implemented in this phase."));
   }
 
-  getById(id: string): Promise<Bovino | null> {
+  getById(_id: string): Promise<Bovino | null> {
     return Promise.reject(new Error("PrismaBovinoRepository.getById is not implemented in this phase."));
   }
 
-  listFieldTests(animalId: string): Promise<any[]> {
+  listFieldTests(_animalId: string): Promise<BovinoFieldTest[]> {
     return Promise.reject(new Error("PrismaBovinoRepository.listFieldTests is not implemented in this phase."));
   }
 
-  listIncidents(animalId: string): Promise<any[]> {
+  listIncidents(_animalId: string): Promise<BovinoSanitaryIncident[]> {
     return Promise.reject(new Error("PrismaBovinoRepository.listIncidents is not implemented in this phase."));
   }
 
-  listVaccinations(animalId: string): Promise<any[]> {
+  listVaccinations(_animalId: string): Promise<BovinoVaccination[]> {
     return Promise.reject(new Error("PrismaBovinoRepository.listVaccinations is not implemented in this phase."));
   }
 
-  listExports(animalId: string): Promise<any[]> {
+  listExports(_animalId: string): Promise<BovinoExport[]> {
     return Promise.reject(new Error("PrismaBovinoRepository.listExports is not implemented in this phase."));
   }
 
-  listOffspring(animalId: string): Promise<Bovino[]> {
+  listOffspring(_animalId: string): Promise<Bovino[]> {
     return Promise.reject(new Error("PrismaBovinoRepository.listOffspring is not implemented in this phase."));
   }
 }

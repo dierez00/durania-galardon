@@ -2,11 +2,14 @@
 
 ## Lectura recomendada
 
-1. [Setup y comandos](./setup.md)
-2. [Multi-tenant](./multitenancy.md)
-3. [Auth y Tenant IAM](./auth-admin.md)
-4. [Rutas y guards](./routing.md)
-5. [MVZ jerarquico](./mvz-hierarchy.md)
+1. [Arquitectura](./architecture.md)
+2. [Setup y comandos](./setup.md)
+3. [Multi-tenant](./multitenancy.md)
+4. [Auth y Tenant IAM](./auth-admin.md)
+5. [Rutas y guards](./routing.md)
+6. [MVZ jerarquico](./mvz-hierarchy.md)
+
+Si vas a tocar estructura o APIs, lee tambien [src/app/api/README.md](../src/app/api/README.md).
 
 ## Indice de documentos
 
@@ -31,7 +34,33 @@
 - Resolucion de tenant: subdominio -> `x-tenant-slug` -> fallback local.
 - Login unico: `/login`.
 - Jerarquia MVZ: dashboard global + panel contextual por rancho (`UPP`).
-- Refactor estructural activa: `src/app` y `src/app/api` como entrypoints delgados; `src/modules` como owner de negocio.
+- Refactor estructural completada en las rutas objetivo: `src/app` y `src/app/api` quedan como entrypoints delgados; `src/modules` es el owner de negocio.
+
+## Que quedo hecho
+
+- La logica de negocio pendiente salio de las familias API documentadas en la refactor:
+  - `admin/producers`
+  - `admin/mvz`
+  - `producer/bovinos`
+  - `producer/documents`
+  - `producer/upp`
+  - `producer/upp-documents`
+  - `admin/appointments`
+  - `public/appointments`
+  - `admin/audit`
+  - `mvz/assignments`
+- Los handlers HTTP viven ahora en `infra/http` dentro del modulo dueno.
+- Las implementaciones server-side de repositorios viven en `infra/supabase` cuando dependen de Supabase.
+- `src/server/auth/provisioning` concentra helpers transversales de Auth/GoTrue.
+- Se eliminaron residuos locales archivados y archivos UI duplicados `* copy.tsx`.
+
+## Referencia rapida para trabajar
+
+- `src/app` y `src/app/api` no deben volver a acumular logica de negocio.
+- Antes de crear archivos nuevos, decide primero el owner: `src/modules/admin`, `src/modules/producer`, `src/modules/mvz` o `src/modules/<capability>`.
+- Usa `src/server` solo para concerns transversales de backend.
+- Si cambias ownership o agregas una nueva familia de rutas, actualiza `docs/architecture.md`, [src/app/api/README.md](../src/app/api/README.md) y `docs/CHANGELOG.md` en el mismo cambio.
+- Valida con `npm run typecheck`, `npm run lint` y `npm run test:integration`.
 
 Rutas principales:
 

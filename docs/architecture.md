@@ -1,4 +1,4 @@
-﻿# Arquitectura
+# Arquitectura
 
 ## Estructura principal
 
@@ -9,15 +9,8 @@ src/
     (admin)/admin/(protected)/*
     (tenant)/producer/*
     (tenant)/mvz/*
-    _components/
-      AppSidebar.tsx
-    api/
-      auth/*
-      public/*
-      tenant/*
-      admin/*
-      producer/*
-      mvz/*
+    _components/*
+    api/*
   modules/
     admin/
       auditoria/
@@ -37,12 +30,8 @@ src/
       dashboard/
     bovinos/
     cuarentenas/
-      admin/
     exportaciones/
-      admin/
-      mvz/
     pruebas/
-      mvz/
     ranchos/
     usuarios/
   server/
@@ -60,13 +49,33 @@ src/
 sql/
 ```
 
-## Reglas de ownership
+## Regla central
 
-- `src/app` contiene entrypoints, layouts, redirects y composición local de ruta.
-- `src/app/api` contiene entrypoints HTTP delgados que reexportan handlers desde `src/modules`.
-- `src/modules` es el dueño de la lógica de negocio, la presentación feature-owned y los handlers HTTP por capacidad.
-- `src/shared` queda reservado para utilidades, config y UI neutral sin dependencia hacia módulos.
-- `src/server` conserva solo infraestructura transversal de backend.
+- `src/app` contiene entrypoints de paginas, layouts, redirects y composicion local.
+- `src/app/api` contiene entrypoints HTTP delgados y reexports.
+- `src/modules` contiene negocio, presentacion feature-owned, handlers HTTP y adaptadores por capacidad.
+- `src/server` contiene infraestructura transversal de backend.
+- `src/shared` contiene utilidades, config y UI neutral sin ownership de negocio.
+
+## Que quedo hecho
+
+La normalizacion pendiente quedo cerrada en estas familias:
+
+- `src/app/api/admin/producers/*` -> `src/modules/admin/productores/infra/http`
+- `src/app/api/admin/mvz/*` -> `src/modules/admin/mvz/infra/http`
+- `src/app/api/producer/bovinos/*` -> `src/modules/bovinos/infra/http`
+- `src/app/api/producer/documents/*` -> `src/modules/producer/documents/infra/http`
+- `src/app/api/producer/upp-documents/*` -> `src/modules/producer/documents/infra/http`
+- `src/app/api/producer/upp/*` -> `src/modules/producer/ranchos/infra/http`
+- `src/app/api/admin/appointments` y `src/app/api/public/appointments` -> `src/modules/admin/citas/infra/http`
+- `src/app/api/admin/audit` -> `src/modules/admin/auditoria/infra/http`
+- `src/app/api/mvz/assignments` -> `src/modules/ranchos/infra/http`
+
+Tambien quedaron consolidados estos owners transversales:
+
+- `src/server/auth/provisioning` para helpers compartidos de Auth/GoTrue.
+- `src/server/admin/provisioning` solo para utilidades genericas de tenant, membership y roles.
+- `src/modules/ranchos/infra/api/mvzAssignments.ts` como query compartido entre `mvz/assignments` y `src/modules/mvz/dashboard`.
 
 ## Owners activos
 
@@ -79,33 +88,103 @@ sql/
 - `src/modules`
   - `bovinos`
   - `cuarentenas`
-    - `admin/*` concentra la slice específica de admin dentro del owner compartido
   - `exportaciones`
-    - `admin/*` y `mvz/*` concentran slices específicas por actor dentro del owner compartido
   - `pruebas`
-    - `mvz/*` concentra handlers y flujos MVZ del dominio sanitario
   - `ranchos`
-    - contiene acceso MVZ, contexto MVZ y presentación compartida por actor
   - `usuarios`
 
-## Cambios relevantes de esta refactorización
+## Estructura de carpetas esperada
 
-- El estado actor-specific de MVZ y producer salió de `src/shared/hooks` y ahora vive en sus módulos dueños.
-- El sidebar dejó de mezclar UI neutral con permisos y navegación; la shell reusable vive en `src/shared/ui/layout/SidebarShell.tsx` y la configuración en `src/app/_components/AppSidebar.tsx`.
-- Producer dashboard, empleados, movilización y exportaciones dejaron de vivir directamente en `src/app` y `src/app/api`.
-- MVZ dashboard, exportaciones, pruebas y el helper de acceso a ranchos salieron de `src/app/api` hacia `src/modules/mvz`, `src/modules/exportaciones`, `src/modules/pruebas` y `src/modules/ranchos`.
-- Admin dashboard dejó `src/app`, y las capacidades compartidas `exportaciones` y `cuarentenas` ya no viven bajo `src/modules/admin`; sus entrypoints HTTP ahora delegan a `src/modules/exportaciones/*/infra/http` y `src/modules/cuarentenas/admin/infra/http`.
-- Los módulos scaffold archivados se documentan en `docs/archived-modules.md` y salen del código activo.
+### Modulo actor-owned o capability-owned
 
-## Pendiente para completar la normalización
+```text
+src/modules/<owner>/<feature>/
+  application/
+    dto/
+    use-cases/
+  domain/
+    entities/
+    repositories/
+    services/
+  infra/
+    api/
+    http/
+    mock/
+    supabase/
+    prisma/
+  presentation/
+    components/
+    hooks/
+  index.ts
+```
 
-- `src/app/api/admin/producers/*` y `src/app/api/admin/mvz/*` todavía contienen lógica de negocio y queries directas; falta mover esos handlers hacia `src/modules/admin/productores` y `src/modules/admin/mvz`.
-- `src/app/api/producer/bovinos/*`, `src/app/api/producer/documents/*`, `src/app/api/producer/upp*` y `src/app/api/producer/upp-documents*` siguen mezclando entrypoint y lógica feature-owned; falta delegarlos a `src/modules/bovinos`, `src/modules/producer/documents` y `src/modules/producer/ranchos`.
-- `src/app/api/admin/appointments/route.ts`, `src/app/api/admin/audit/route.ts`, `src/app/api/mvz/assignments/route.ts` y `src/app/api/public/appointments/route.ts` siguen inline; falta decidir si permanecen como infraestructura o si conviene darles owner explícito en `src/modules`.
-- La limpieza de módulos archivados quedó completa en código versionado, pero si algunos directorios vacíos siguen apareciendo localmente deben eliminarse del filesystem para que el árbol local refleje exactamente la arquitectura documentada.
-- La refactor ya dejó `index.ts` en paquetes actor como `src/modules/producer` y `src/modules/mvz`, pero todavía hay imports profundos que pueden simplificarse en una pasada posterior para reforzar las superficies públicas de módulo.
+No todos los subdirectorios son obligatorios, pero el significado si es estable:
 
-## Notas MVZ legacy
+- `application`: casos de uso y DTOs.
+- `domain`: entidades, contratos y reglas puras.
+- `infra/api`: adaptadores cliente o repositorios que consumen HTTP desde frontend.
+- `infra/http`: handlers que atienden rutas de `src/app/api`.
+- `infra/supabase`: repositorios server-side y queries directos a Supabase.
+- `presentation`: componentes, hooks y contexto feature-owned.
+- `index.ts`: superficie publica estable del modulo.
 
-- `/mvz/asignaciones`, `/mvz/pruebas` y `/mvz/exportaciones` se conservan como redirects funcionales.
-- La implementación de esos redirects vive en `src/modules/ranchos/presentation/mvz/LegacyMvzRedirect.tsx`.
+### Entry point HTTP esperado
+
+```text
+src/app/api/<...>/route.ts
+```
+
+Contenido esperado:
+
+```ts
+export { GET, POST } from "@/modules/<owner>/<feature>";
+```
+
+o reexport equivalente desde `infra/http` si el modulo aun no expone alias publicos.
+
+## Como se debe trabajar a futuro
+
+### 1. Elegir owner antes de codear
+
+- Si la capacidad es exclusiva de admin, producer o MVZ, va en `src/modules/admin/*`, `src/modules/producer/*` o `src/modules/mvz/*`.
+- Si la capacidad es compartida entre actores o es actor-neutral, va en `src/modules/<capability>`.
+- Si el problema es transversal de auth, audit, db, tenant, middleware o infraestructura, va en `src/server/*`.
+
+### 2. No meter negocio en entrypoints
+
+- No agregues queries directas en `src/app/api`.
+- No pongas reglas de negocio en paginas de `src/app`.
+- Mantén `src/app` como capa de composicion y routing.
+
+### 3. Ubicar cada pieza en su capa
+
+- Caso de uso nuevo -> `application/use-cases`.
+- Contrato o entidad -> `domain`.
+- Handler HTTP -> `infra/http`.
+- Repositorio server-side -> `infra/supabase`.
+- Adaptador cliente que llama `/api/*` -> `infra/api`.
+- Hook o componente feature-owned -> `presentation`.
+
+### 4. Exponer surfaces publicas estables
+
+- Si una pagina, hook o ruta consume el modulo desde afuera, agrega export en `index.ts`.
+- Evita crear imports profundos nuevos cuando el modulo ya tiene una surface publica razonable.
+- Si necesitas un reexport temporal, usalo como compatibilidad corta, no como destino final.
+
+### 5. Documentar en el mismo cambio
+
+- Si cambias ownership o estructura, actualiza este archivo.
+- Si cambias familias HTTP o sus owners, actualiza `src/app/api/README.md`.
+- Si el cambio afecta trazabilidad de documentacion, agrega nota en `docs/CHANGELOG.md`.
+
+### 6. Validar siempre
+
+- `npm run typecheck`
+- `npm run lint`
+- `npm run test:integration`
+
+## Notas operativas
+
+- Los directorios archivados documentados en `docs/archived-modules.md` no deben reaparecer en el arbol activo.
+- Los duplicados locales como `src/shared/ui/* copy.tsx` no forman parte de la arquitectura activa.
+- Los redirects legacy de MVZ siguen vigentes, pero su implementacion vive en `src/modules/ranchos/presentation/mvz/LegacyMvzRedirect.tsx`.

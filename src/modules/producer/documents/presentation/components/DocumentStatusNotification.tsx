@@ -22,9 +22,8 @@ export function DocumentStatusNotification({ event, open, onOpenChange }: Props)
   const getContent = () => {
     switch (event.type) {
       case 'status-changed': {
-        const { previousStatus, newStatus, documentType } = event.data;
+        const { newStatus, documentType } = event.data;
         const isApproved = newStatus === 'validated';
-        const isRejected = newStatus === 'rejected';
 
         return {
           icon: isApproved ? (
