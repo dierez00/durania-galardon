@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
-import { AdminExportacionesList } from "@/modules/admin/exportaciones/presentation/AdminExportacionesList";
-import { AdminExportacionesFilters } from "@/modules/admin/exportaciones/presentation/AdminExportacionesFilters";
-import { AdminRegla60Config } from "@/modules/admin/exportaciones/presentation/AdminRegla60Config";
-import { useAdminExportaciones } from "@/modules/admin/exportaciones/presentation/hooks/useAdminExportaciones";
+import { AdminExportacionesList } from "@/modules/exportaciones/admin/presentation/AdminExportacionesList";
+import { AdminExportacionesFilters } from "@/modules/exportaciones/admin/presentation/AdminExportacionesFilters";
+import { AdminRegla60Config } from "@/modules/exportaciones/admin/presentation/AdminRegla60Config";
+import { useAdminExportaciones } from "@/modules/exportaciones/admin/presentation/hooks/useAdminExportaciones";
 import { AlertTriangle } from "lucide-react";
 
 export default function AdminExportsPage() {
@@ -26,9 +26,9 @@ export default function AdminExportsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Solicitudes de Exportación</h1>
+          <h1 className="text-2xl font-bold">Solicitudes de ExportaciÃ³n</h1>
           <p className="text-sm text-muted-foreground">
-            Validación y aprobación final de exportaciones ganaderas.
+            ValidaciÃ³n y aprobaciÃ³n final de exportaciones ganaderas.
           </p>
         </div>
         <div className="w-full max-w-xs">
@@ -74,3 +74,4 @@ export default function AdminExportsPage() {
     </div>
   );
 }
+

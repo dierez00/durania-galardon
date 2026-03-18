@@ -11,6 +11,7 @@
 ## Indice de documentos
 
 - [Arquitectura](./architecture.md)
+- [Modulos archivados](./archived-modules.md)
 - [Auth y Tenant IAM](./auth-admin.md)
 - [Tenant IAM](./tenant-iam.md)
 - [Rutas y guards](./routing.md)
@@ -30,6 +31,7 @@
 - Resolucion de tenant: subdominio -> `x-tenant-slug` -> fallback local.
 - Login unico: `/login`.
 - Jerarquia MVZ: dashboard global + panel contextual por rancho (`UPP`).
+- Refactor estructural activa: `src/app` y `src/app/api` como entrypoints delgados; `src/modules` como owner de negocio.
 
 Rutas principales:
 

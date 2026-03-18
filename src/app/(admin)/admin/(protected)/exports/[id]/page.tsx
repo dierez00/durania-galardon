@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { use } from "react";
-import { useAdminExportacionDetail } from "@/modules/admin/exportaciones/presentation/hooks/useAdminExportacionDetail";
-import { AdminExportacionDetailContent } from "@/modules/admin/exportaciones/presentation/AdminExportacionDetailContent";
+import { useAdminExportacionDetail } from "@/modules/exportaciones/admin/presentation/hooks/useAdminExportacionDetail";
+import { AdminExportacionDetailContent } from "@/modules/exportaciones/admin/presentation/AdminExportacionDetailContent";
 
 export default function AdminExportacionDetailPage({
   params,
@@ -26,7 +26,7 @@ export default function AdminExportacionDetailPage({
   if (loadingDetail) {
     return (
       <div className="flex items-center justify-center h-64 text-sm text-muted-foreground">
-        Cargando exportación...
+        Cargando exportaciÃ³n...
       </div>
     );
   }
@@ -34,7 +34,7 @@ export default function AdminExportacionDetailPage({
   if (errorDetail || !detail) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-2">
-        <p className="text-sm text-destructive">{errorDetail || "Exportación no encontrada."}</p>
+        <p className="text-sm text-destructive">{errorDetail || "ExportaciÃ³n no encontrada."}</p>
       </div>
     );
   }
@@ -53,3 +53,4 @@ export default function AdminExportacionDetailPage({
     />
   );
 }
+

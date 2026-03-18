@@ -1,5 +1,5 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
-import { requireMvzRanchAccess } from "@/app/api/mvz/ranchos/_utils";
+import { requireMvzRanchAccess } from "@/modules/ranchos/infra/api/mvzRanchAccess";
 
 export async function GET(
   request: Request,

@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import Sidebar from "@/shared/ui/layout/Sidebar";
+import AppSidebar from "@app/_components/AppSidebar";
 import Topbar from "@/shared/ui/layout/Topbar";
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase-browser";
 import { resolveClientRole } from "@/shared/lib/auth-client";
-import { MvzRanchProvider, ProducerUppProvider } from "@/shared/hooks";
+import { MvzRanchProvider } from "@/modules/ranchos/presentation/mvz";
+import { ProducerUppProvider } from "@/modules/producer/ranchos/presentation";
 import {
   ROLE_DEFAULT_PERMISSIONS,
   isPermissionKey,
@@ -144,7 +145,7 @@ export default function TenantLayout({
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar />
+      <AppSidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar />
         <main className="flex-1 p-6 overflow-auto">

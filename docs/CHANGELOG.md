@@ -7,11 +7,12 @@
 - `docs/mvz-hierarchy.md`: guia funcional y tecnica del flujo MVZ jerarquico (dashboard global + panel por rancho).
 - Documentacion de APIs jerarquicas en `docs/auth-admin.md` y `docs/bd/database.md`.
 - Seccion de actualizacion v6 en `docs/bd/database.md` con tablas, vistas, permisos, RLS y realtime.
+- `docs/archived-modules.md`: registro de modulos scaffold retirados del codigo activo y criterio para archivarlos.
 
 ### Changed
 
-- `docs/README.md`: indice actualizado con jerarquia MVZ.
-- `docs/architecture.md`: estructura real de rutas MVZ por rancho y nuevos hooks/contexto.
+- `docs/README.md`: indice actualizado con jerarquia MVZ, referencia a modulos archivados y estado actual de la refactor estructural.
+- `docs/architecture.md`: estructura real de rutas MVZ por rancho, nuevos hooks/contexto y ownership actualizado para la refactor estructural con backlog pendiente de normalizacion.
 - `docs/routing.md`: rutas nuevas `/mvz/ranchos/[uppId]/*` y politica de redirects legacy.
 - `docs/setup.md`: orden de migraciones actualizado (`migration_001`, `migration_002`, `views`, `seeds`).
 - `docs/multitenancy.md`: separacion entre contexto tenant y contexto de rancho MVZ.

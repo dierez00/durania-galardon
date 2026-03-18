@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 
 import { use, useCallback, useEffect, useState } from "react";
-import { getExportacionAnimalUseCase } from "@/modules/admin/exportaciones/infra/container";
-import { AdminExportacionBovinoDetailContent } from "@/modules/admin/exportaciones/presentation/AdminExportacionBovinoDetailContent";
-import type { AdminExportacionAnimalDetail } from "@/modules/admin/exportaciones/domain/entities/AdminExportacionAnimalEntity";
+import { getExportacionAnimalUseCase } from "@/modules/exportaciones/admin/infra/container";
+import { AdminExportacionBovinoDetailContent } from "@/modules/exportaciones/admin/presentation/AdminExportacionBovinoDetailContent";
+import type { AdminExportacionAnimalDetail } from "@/modules/exportaciones/admin/domain/entities/AdminExportacionAnimalEntity";
 
 export default function AdminExportacionAnimalDetailPage({
   params,
@@ -24,7 +24,7 @@ export default function AdminExportacionAnimalDetailPage({
       if (data) {
         setAnimal(data);
       } else {
-        setError("No se encontró el animal.");
+        setError("No se encontrÃ³ el animal.");
       }
     } catch {
       setError("Error al cargar los datos del animal.");
@@ -55,3 +55,4 @@ export default function AdminExportacionAnimalDetailPage({
 
   return <AdminExportacionBovinoDetailContent exportId={id} animal={animal} />;
 }
+

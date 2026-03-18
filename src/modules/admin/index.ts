@@ -1,6 +1,5 @@
+﻿export * from "./dashboard";
 export * from "./productores";
-export * from "./cuarentenas";
-export * from "./exportaciones";
 export * from "./mvz";
 export * from "./auditoria";
 export * from "./normativa";

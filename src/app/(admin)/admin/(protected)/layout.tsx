@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import Sidebar from "@/shared/ui/layout/Sidebar";
+import AppSidebar from "@app/_components/AppSidebar";
 import Topbar from "@/shared/ui/layout/Topbar";
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase-browser";
 import { resolveClientRole } from "@/shared/lib/auth-client";
@@ -54,7 +54,7 @@ export default function AdminProtectedLayout({
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar />
+      <AppSidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar />
         <main className="flex-1 overflow-y-auto p-6">{children}</main>

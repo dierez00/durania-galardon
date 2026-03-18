@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { use } from "react";
-import { useAdminCuarentenaDetail } from "@/modules/admin/cuarentenas/presentation/hooks/useAdminCuarentenaDetail";
-import { AdminCuarentenaDetailContent } from "@/modules/admin/cuarentenas/presentation/AdminCuarentenaDetailContent";
+import { useAdminCuarentenaDetail } from "@/modules/cuarentenas/admin/presentation/hooks/useAdminCuarentenaDetail";
+import { AdminCuarentenaDetailContent } from "@/modules/cuarentenas/admin/presentation/AdminCuarentenaDetailContent";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -13,3 +13,4 @@ export default function AdminQuarantineDetailPage({ params }: Readonly<Props>) {
   const detailProps = useAdminCuarentenaDetail(id);
   return <AdminCuarentenaDetailContent {...detailProps} />;
 }
+

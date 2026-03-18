@@ -1,3 +1,4 @@
-export { default as Sidebar } from './Sidebar';
-export { default as Topbar } from './Topbar';
+export { SidebarShell } from "./SidebarShell";
+export type { SidebarNavigationItem } from "./SidebarShell";
+export { default as Topbar } from "./Topbar";
 

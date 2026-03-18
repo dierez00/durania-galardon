@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
@@ -10,7 +10,7 @@ import {
   AdminCuarentenasMapSection,
   AdminCuarentenaActivacionForm,
   useAdminCuarentenas,
-} from "@/modules/admin/cuarentenas/presentation";
+} from "@/modules/cuarentenas/admin/presentation";
 
 export default function AdminQuarantinesPage() {
   const [activarOpen, setActivarOpen] = useState(false);
@@ -40,7 +40,7 @@ export default function AdminQuarantinesPage() {
         <div>
           <h1 className="text-2xl font-bold">Cuarentenas Estatales</h1>
           <p className="text-sm text-muted-foreground">
-            Mapa global de geocercas, liberación e historial epidemiológico.
+            Mapa global de geocercas, liberaciÃ³n e historial epidemiolÃ³gico.
           </p>
         </div>
         <Button onClick={() => { setActivarOpen(true); }}>
@@ -48,7 +48,7 @@ export default function AdminQuarantinesPage() {
         </Button>
       </div>
 
-      {/* Activación contextual (controlada desde el header) */}
+      {/* ActivaciÃ³n contextual (controlada desde el header) */}
       <AdminCuarentenaActivacionForm
         open={activarOpen}
         onOpenChange={setActivarOpen}
@@ -80,7 +80,7 @@ export default function AdminQuarantinesPage() {
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
           {loading ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">Cargando…</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">Cargandoâ€¦</p>
           ) : (
             <AdminCuarentenasList
               cuarentenas={cuarentenas}
@@ -105,5 +105,6 @@ export default function AdminQuarantinesPage() {
     </div>
   );
 }
+
 
 
