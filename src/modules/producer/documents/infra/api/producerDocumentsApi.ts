@@ -74,18 +74,33 @@ export class ProducerDocumentsApiRepository implements IProducerDocumentsReposit
     const token = await getAccessToken();
     if (!token) throw new Error("No existe sesión activa.");
 
-    const response = await fetch(`${this.BASE_URL}/${documentId}`, {
+    const response = await fetch(this.BASE_URL, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ id: documentId, status }),
     });
 
     const body = await response.json();
     if (!response.ok || !body.ok) {
       throw new Error(body.error?.message ?? "Error al actualizar documento.");
+    }
+  }
+
+  async delete(documentId: string): Promise<void> {
+    const token = await getAccessToken();
+    if (!token) throw new Error("No existe sesión activa.");
+
+    const response = await fetch(`${this.BASE_URL}/${documentId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const body = await response.json();
+    if (!response.ok || !body.ok) {
+      throw new Error(body.error?.message ?? "Error al eliminar documento.");
     }
   }
 

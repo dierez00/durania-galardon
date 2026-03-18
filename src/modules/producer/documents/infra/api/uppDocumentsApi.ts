@@ -87,6 +87,21 @@ export class UppDocumentsApiRepository implements IUppDocumentsRepository {
     }
   }
 
+  async delete(documentId: string): Promise<void> {
+    const token = await getAccessToken();
+    if (!token) throw new Error("No existe sesión activa.");
+
+    const response = await fetch(`${this.BASE_URL}/${documentId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const body = await response.json();
+    if (!response.ok || !body.ok) {
+      throw new Error(body.error?.message ?? "Error al eliminar documento de UPP.");
+    }
+  }
+
   private mapToEntity(raw: UppDocumentDTO): UppDocument {
     return {
       id: raw.id,
