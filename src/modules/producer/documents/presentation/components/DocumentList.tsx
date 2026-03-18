@@ -3,6 +3,8 @@ import type { ProducerDocument } from "../../domain/entities/ProducerDocumentEnt
 import type { UppDocument } from "../../domain/entities/UppDocumentEntity";
 import { UPP_DOCUMENT_TYPES } from "../../domain/entities/UppDocumentEntity";
 import type { DocumentChangeEvent } from "../../domain/types/DocumentEvents";
+import { documentDeletionPolicy } from "../../domain/services/documentDeletionPolicy";
+import { useDocumentDelete } from "../hooks/useDocumentDelete";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import {
   Table,
@@ -16,6 +18,16 @@ import { Badge } from "@/shared/ui/badge";
 import { Empty, EmptyTitle, EmptyDescription } from "@/shared/ui/empty";
 import { FileText, Loader2 } from "lucide-react";
 import { Button } from "@/shared/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/shared/ui/alert-dialog";
 import { getAccessToken } from "@/shared/lib/auth-session";
 
 interface Props {
@@ -25,6 +37,7 @@ interface Props {
   recentChanges?: DocumentChangeEvent[];
   isUpdating?: boolean;
   lastUpdate?: Date | null;
+  onDeleteSuccess: () => void;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -58,6 +71,31 @@ function getTimeAgo(date: Date): string {
   return `hace ${days}d`;
 }
 
+interface ChangeWithDocumentId {
+  documentId: string;
+}
+
+interface DisplayDocumentBase {
+  id: string;
+  status: ProducerDocument["status"];
+  isCurrent: boolean;
+  expiryDate: string | null;
+  uploadedAt: string;
+  level: "Personal" | "Rancho";
+  categoryKey: string;
+  documentTypeName: string;
+  documentTypeKey: string;
+  source: ProducerDocument | UppDocument;
+}
+
+type DisplayDocument = DisplayDocumentBase;
+
+function hasDocumentId(data: unknown): data is ChangeWithDocumentId {
+  if (typeof data !== "object" || data === null) return false;
+  const candidate = data as Record<string, unknown>;
+  return typeof candidate.documentId === "string";
+}
+
 export function DocumentList({
   producerDocuments,
   uppDocuments,
@@ -65,47 +103,67 @@ export function DocumentList({
   recentChanges,
   isUpdating,
   lastUpdate,
+  onDeleteSuccess,
 }: Props) {
   // Memoizar Set de IDs recientemente cambiados para busca O(1)
   const recentChangeIds = useMemo(() => {
     if (!recentChanges?.length) return new Set<string>();
-    return new Set(
-      recentChanges.map(c => {
-        const data = c.data as any;
-        return data?.documentId;
-      }).filter(Boolean) as string[]
+    return new Set<string>(
+      recentChanges
+        .map((c) => (hasDocumentId(c.data) ? c.data.documentId : null))
+        .filter((id): id is string => Boolean(id))
     );
   }, [recentChanges]);
 
-  // Mostrar solo documentos vigentes (isCurrent) para evitar duplicados
-  const currentProducerDocs = useMemo(
-    () => producerDocuments.filter((d) => d.isCurrent),
-    [producerDocuments]
-  );
+  const allDocs = useMemo<DisplayDocument[]>(() => {
+    const personal: DisplayDocument[] = producerDocuments.map((d) => ({
+      id: d.id,
+      status: d.status,
+      isCurrent: d.isCurrent,
+      expiryDate: d.expiryDate,
+      uploadedAt: d.uploadedAt,
+      level: "Personal",
+      categoryKey: `personal:${d.documentTypeId}`,
+      documentTypeName: d.documentTypeName || d.documentTypeKey,
+      documentTypeKey: d.documentTypeKey,
+      source: d,
+    }));
 
-  const currentUppDocs = useMemo(
-    () => uppDocuments.filter((d) => d.isCurrent),
-    [uppDocuments]
-  );
+    const ranch: DisplayDocument[] = uppDocuments.map((d) => ({
+      id: d.id,
+      status: d.status,
+      isCurrent: d.isCurrent,
+      expiryDate: d.expiryDate,
+      uploadedAt: d.uploadedAt,
+      level: "Rancho",
+      categoryKey: `upp:${d.uppId}:${d.documentType}`,
+      documentTypeName: UPP_DOC_TYPE_NAME[d.documentType] ?? d.documentType,
+      documentTypeKey: d.documentType,
+      source: d,
+    }));
 
-  const allDocs = useMemo(
-    () =>
-      [
-        ...currentProducerDocs.map((d) => ({ ...d, level: "Personal" as const })),
-        ...currentUppDocs.map((d) => ({
-          ...d,
-          level: "Rancho" as const,
-          documentTypeName: UPP_DOC_TYPE_NAME[d.documentType] ?? d.documentType,
-          documentTypeKey: d.documentType,
-          ocrConfidence: null,
-        })),
-      ].sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()),
-    [currentProducerDocs, currentUppDocs]
-  );
+    return [...personal, ...ranch].sort(
+      (a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+    );
+  }, [producerDocuments, uppDocuments]);
 
+  const [showAll, setShowAll] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const [pendingDeleteDoc, setPendingDeleteDoc] = useState<DisplayDocument | null>(null);
+  const { deletingId, deleteDocument } = useDocumentDelete();
+  const categoryVersionCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const doc of allDocs) {
+      counts.set(doc.categoryKey, (counts.get(doc.categoryKey) ?? 0) + 1);
+    }
+    return counts;
+  }, [allDocs]);
+  const visibleDocs = useMemo(
+    () => (showAll ? allDocs : allDocs.filter((d) => d.isCurrent)),
+    [allDocs, showAll]
+  );
 
-  const handleOpen = async (doc: { id: string; level: "Personal" | "Rancho" }) => {
+  const handleOpen = async (doc: DisplayDocument) => {
     setOpeningId(doc.id);
     try {
       const token = await getAccessToken();
@@ -128,6 +186,18 @@ export function DocumentList({
       console.error(err);
     } finally {
       setOpeningId(null);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!pendingDeleteDoc) return;
+    const hasOtherVersion = (categoryVersionCounts.get(pendingDeleteDoc.categoryKey) ?? 0) > 1;
+    try {
+      await deleteDocument(pendingDeleteDoc.source, pendingDeleteDoc.level, hasOtherVersion);
+      onDeleteSuccess();
+      setPendingDeleteDoc(null);
+    } catch {
+      // Error handled in hook with toast
     }
   };
 
@@ -165,19 +235,28 @@ export function DocumentList({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <div className="space-y-1">
-          <CardTitle>Documentos Cargados ({allDocs.length})</CardTitle>
+          <CardTitle>Documentos Cargados ({visibleDocs.length})</CardTitle>
           {lastUpdate && (
             <p className="text-xs text-muted-foreground">
               Actualizado {getTimeAgo(lastUpdate)}
             </p>
           )}
         </div>
-        {isUpdating && (
-          <div className="flex items-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-            <span className="text-xs text-muted-foreground">Actualizando...</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowAll((prev) => !prev)}
+          >
+            {showAll ? "Mostrar solo vigentes" : "Mostrar todos"}
+          </Button>
+          {isUpdating && (
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+              <span className="text-xs text-muted-foreground">Actualizando...</span>
+            </div>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <Table>
@@ -185,63 +264,132 @@ export function DocumentList({
             <TableRow>
               <TableHead>Documento</TableHead>
               <TableHead>Nivel</TableHead>
+              <TableHead>Version</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Vigencia</TableHead>
               <TableHead>Fecha de Carga</TableHead>
-              <TableHead>Archivo</TableHead>
+              <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {allDocs.map((doc) => {
-              const hasRecentChange = recentChangeIds.has(doc.id);
-              return (
-                <TableRow
-                  key={doc.id}
-                  className={`transition-colors ${
-                    hasRecentChange
-                      ? 'bg-blue-50 border-l-4 border-l-blue-500'
-                      : ''
-                  }`}
-                >
-                  <TableCell className="font-medium">
-                    {doc.documentTypeName || doc.documentTypeKey}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{doc.level}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={statusVariant(doc.status)}>
-                      {STATUS_LABELS[doc.status] ?? doc.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {doc.expiryDate ? (
-                      <span className={doc.status === "expired" ? "text-destructive" : ""}>
-                        {new Date(doc.expiryDate).toLocaleDateString("es-MX")}
-                      </span>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {new Date(doc.uploadedAt).toLocaleDateString("es-MX")}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void handleOpen(doc)}
-                      disabled={openingId === doc.id}
-                    >
-                      {openingId === doc.id ? "Abriendo..." : "Ver"}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+            {visibleDocs.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                  No hay documentos vigentes. Usa "Mostrar todos" para ver el historial.
+                </TableCell>
+              </TableRow>
+            ) : (
+              visibleDocs.map((doc) => {
+                const hasRecentChange = recentChangeIds.has(doc.id);
+                const hasOtherVersion = (categoryVersionCounts.get(doc.categoryKey) ?? 0) > 1;
+                const canDelete = documentDeletionPolicy.canDelete({
+                  isCurrent: doc.isCurrent,
+                  status: doc.status,
+                  hasOtherVersion,
+                });
+                const isOpening = openingId === doc.id;
+                const isDeleting = deletingId === doc.id;
+
+                return (
+                  <TableRow
+                    key={doc.id}
+                    className={`transition-colors ${
+                      hasRecentChange
+                        ? 'bg-blue-50 border-l-4 border-l-blue-500'
+                        : ''
+                    }`}
+                  >
+                    <TableCell className="font-medium">
+                      {doc.documentTypeName || doc.documentTypeKey}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{doc.level}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={doc.isCurrent ? "default" : "secondary"}>
+                        {doc.isCurrent ? "Vigente" : "Historico"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={statusVariant(doc.status)}>
+                        {STATUS_LABELS[doc.status] ?? doc.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {doc.expiryDate ? (
+                        <span className={doc.status === "expired" ? "text-destructive" : ""}>
+                          {new Date(doc.expiryDate).toLocaleDateString("es-MX")}
+                        </span>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {new Date(doc.uploadedAt).toLocaleDateString("es-MX")}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void handleOpen(doc)}
+                          disabled={isOpening || isDeleting}
+                        >
+                          {isOpening ? "Abriendo..." : "Ver"}
+                        </Button>
+                        {canDelete && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setPendingDeleteDoc(doc)}
+                            disabled={isDeleting || isOpening}
+                          >
+                            {isDeleting ? "Eliminando..." : "Eliminar"}
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
           </TableBody>
         </Table>
       </CardContent>
+
+      <AlertDialog
+        open={pendingDeleteDoc !== null}
+        onOpenChange={(open) => {
+          if (!open && !deletingId) {
+            setPendingDeleteDoc(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar eliminacion</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta accion eliminara el documento{" "}
+              <strong className="text-foreground">
+                {pendingDeleteDoc?.documentTypeName ?? ""}
+              </strong>
+              . Deseas continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={Boolean(deletingId)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void handleDeleteConfirm()}
+              disabled={Boolean(deletingId)}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {deletingId ? "Eliminando..." : "Eliminar documento"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

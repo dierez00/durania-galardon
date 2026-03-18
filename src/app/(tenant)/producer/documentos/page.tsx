@@ -41,6 +41,11 @@ export default function ProducerDocumentosPage() {
     reloadUpp();
   };
 
+  const handleDeleteSuccess = () => {
+    reloadProducer();
+    reloadUpp();
+  };
+
   // Agregar cambios a la cola de alertas (con límite)
   useEffect(() => {
     if (allChanges.length > 0) {
@@ -90,6 +95,7 @@ export default function ProducerDocumentosPage() {
         recentChanges={allChanges}
         isUpdating={loadingProducer || loadingUpp}
         lastUpdate={producerLastUpdate || uppLastUpdate}
+        onDeleteSuccess={handleDeleteSuccess}
       />
 
       {/* Alert Dialog para cambios importantes */}
