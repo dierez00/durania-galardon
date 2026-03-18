@@ -5,66 +5,7 @@ import { getSupabaseAdminClient } from "@/server/auth/supabase";
 import { logAuditEvent } from "@/server/audit";
 import { documentDeletionPolicy } from "@/modules/producer/documents/domain/services/documentDeletionPolicy";
 
-const BUCKET = "Documents_producer";
-
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-
-  const auth = await requireAuthorized(request, {
-    roles: ["producer", "employee"],
-    permissions: ["producer.documents.write"],
-    resource: "producer.documents",
-  });
-  if (!auth.ok) return auth.response;
-  let body: { status?: string };
-
-  try {
-    body = await request.json();
-  } catch {
-    return apiError("INVALID_BODY", "El cuerpo de la solicitud no es JSON válido.");
-  }
-
-  if (!body.status) {
-    return apiError("INVALID_PAYLOAD", "Debe enviar status.");
-  }
-
-  const supabaseAdmin = getSupabaseAdminClient();
-
-  // Verify document exists and belongs to tenant
-  const docResult = await supabaseAdmin
-    .from("upp_documents")
-    .select("upp_id")
-    .eq("id", id)
-    .eq("tenant_id", auth.context.user.tenantId)
-    .single();
-
-  if (docResult.error || !docResult.data) {
-    return apiError("NOT_FOUND", "Documento no encontrado.", 404);
-  }
-
-  // Verify UPP access
-  const canAccess = await auth.context.canAccessUpp(docResult.data.upp_id);
-  if (!canAccess) {
-    return apiError("FORBIDDEN", "No tiene acceso a este documento.", 403);
-  }
-
-  // Update status
-  const updateResult = await supabaseAdmin
-    .from("upp_documents")
-    .update({ status: body.status })
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (updateResult.error) {
-    return apiError("UPDATE_FAILED", updateResult.error.message, 500);
-  }
-
-  return apiSuccess({ document: updateResult.data });
-}
+const SUPABASE_BUCKET = "Documents_producer";
 
 export async function DELETE(
   request: NextRequest,
@@ -82,8 +23,8 @@ export async function DELETE(
   const supabaseAdmin = getSupabaseAdminClient();
 
   const docResult = await supabaseAdmin
-    .from("upp_documents")
-    .select("id, upp_id, document_type, file_storage_key, is_current, status, tenant_id")
+    .from("producer_documents")
+    .select("id, producer_id, document_type_id, file_storage_key, is_current, status, tenant_id")
     .eq("id", id)
     .eq("tenant_id", auth.context.user.tenantId)
     .single();
@@ -93,18 +34,12 @@ export async function DELETE(
   }
 
   const document = docResult.data;
-
-  const canAccess = await auth.context.canAccessUpp(document.upp_id);
-  if (!canAccess) {
-    return apiError("FORBIDDEN", "No tiene acceso a este documento.", 403);
-  }
-
   const otherVersionsResult = await supabaseAdmin
-    .from("upp_documents")
+    .from("producer_documents")
     .select("id")
     .eq("tenant_id", auth.context.user.tenantId)
-    .eq("upp_id", document.upp_id)
-    .eq("document_type", document.document_type)
+    .eq("producer_id", document.producer_id)
+    .eq("document_type_id", document.document_type_id)
     .neq("id", id)
     .limit(1);
 
@@ -132,7 +67,7 @@ export async function DELETE(
 
   try {
     const { error: storageError } = await supabaseAdmin.storage
-      .from(BUCKET)
+      .from(SUPABASE_BUCKET)
       .remove([document.file_storage_key]);
 
     if (storageError) {
@@ -140,7 +75,7 @@ export async function DELETE(
     }
 
     const { error: deleteError } = await supabaseAdmin
-      .from("upp_documents")
+      .from("producer_documents")
       .delete()
       .eq("id", id);
 
@@ -152,10 +87,10 @@ export async function DELETE(
       request,
       user: auth.context.user,
       action: "delete",
-      resource: "producer.upp_documents",
+      resource: "producer.documents",
       resourceId: id,
       payload: {
-        uppId: document.upp_id,
+        producerId: document.producer_id,
         fileStorageKey: document.file_storage_key,
       },
     });
