@@ -11,7 +11,7 @@ export async function GET(
     return access.response;
   }
 
-  const overviewResult = await access.supabase
+  const overviewResult = await access.supabaseAdmin
     .from("v_mvz_ranch_overview")
     .select(
       "mvz_profile_id,assignment_id,upp_id,upp_name,upp_code,upp_status,producer_id,producer_name,address_text,location_lat,location_lng,sanitary_alert,total_animals,active_animals,animals_in_treatment,pending_vaccinations,incidents_registered,active_incidents,total_visits,last_visit_at,last_inspection_at"
@@ -30,5 +30,6 @@ export async function GET(
 
   return apiSuccess({ overview: overviewResult.data });
 }
+
 
 

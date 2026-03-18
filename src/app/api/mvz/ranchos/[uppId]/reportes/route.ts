@@ -16,7 +16,7 @@ export async function GET(
     return access.response;
   }
 
-  const reportResult = await access.supabase
+  const reportResult = await access.supabaseAdmin
     .from("v_mvz_ranch_reports")
     .select(
       "mvz_profile_id,upp_id,upp_name,exports_requested,exports_validated,exports_blocked,movements_requested,movements_approved,tests_total_90d,positive_tests_90d,incidents_open,incidents_resolved_30d"
@@ -35,5 +35,6 @@ export async function GET(
 
   return apiSuccess({ report: reportResult.data });
 }
+
 
 

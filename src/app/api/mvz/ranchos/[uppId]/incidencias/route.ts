@@ -28,7 +28,7 @@ export async function GET(
     return access.response;
   }
 
-  const rowsResult = await access.supabase
+  const rowsResult = await access.supabaseAdmin
     .from("sanitary_incidents")
     .select(
       "id,tenant_id,upp_id,animal_id,incident_type,severity,status,detected_at,resolved_at,description,resolution_notes,reported_by_mvz_profile_id,created_at,updated_at"
@@ -71,7 +71,7 @@ export async function POST(
     return apiError("INVALID_PAYLOAD", "Debe enviar animalId e incidentType.");
   }
 
-  const animalResult = await access.supabase
+  const animalResult = await access.supabaseAdmin
     .from("animals")
     .select("id")
     .eq("id", animalId)
@@ -82,7 +82,7 @@ export async function POST(
     return apiError("ANIMAL_NOT_FOUND", "El animal no pertenece a la UPP seleccionada.", 404);
   }
 
-  const insertResult = await access.supabase
+  const insertResult = await access.supabaseAdmin
     .from("sanitary_incidents")
     .insert({
       tenant_id: access.upp.tenant_id,
@@ -139,7 +139,7 @@ export async function PATCH(
     return apiError("INVALID_PAYLOAD", "Debe enviar id de incidencia.");
   }
 
-  const lookup = await access.supabase
+  const lookup = await access.supabaseAdmin
     .from("sanitary_incidents")
     .select("id")
     .eq("id", id)
@@ -183,7 +183,7 @@ export async function PATCH(
     updatePayload.resolution_notes = body.resolutionNotes?.trim() || null;
   }
 
-  const updateResult = await access.supabase
+  const updateResult = await access.supabaseAdmin
     .from("sanitary_incidents")
     .update(updatePayload)
     .eq("id", id)
@@ -203,5 +203,6 @@ export async function PATCH(
 
   return apiSuccess({ incident: updateResult.data });
 }
+
 
 

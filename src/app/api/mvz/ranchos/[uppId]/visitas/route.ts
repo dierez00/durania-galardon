@@ -26,7 +26,7 @@ export async function GET(
     return access.response;
   }
 
-  const rowsResult = await access.supabase
+  const rowsResult = await access.supabaseAdmin
     .from("mvz_visits")
     .select(
       "id,tenant_id,upp_id,mvz_profile_id,visit_type,status,scheduled_at,started_at,finished_at,notes,created_by_user_id,created_at,updated_at"
@@ -68,7 +68,7 @@ export async function POST(
     return apiError("INVALID_PAYLOAD", "Debe enviar scheduledAt para crear una visita.");
   }
 
-  const insertResult = await access.supabase
+  const insertResult = await access.supabaseAdmin
     .from("mvz_visits")
     .insert({
       tenant_id: access.upp.tenant_id,
@@ -126,7 +126,7 @@ export async function PATCH(
     return apiError("INVALID_PAYLOAD", "Debe enviar id de visita.");
   }
 
-  const lookup = await access.supabase
+  const lookup = await access.supabaseAdmin
     .from("mvz_visits")
     .select("id")
     .eq("id", id)
@@ -164,7 +164,7 @@ export async function PATCH(
     updatePayload.notes = body.notes?.trim() || null;
   }
 
-  const updateResult = await access.supabase
+  const updateResult = await access.supabaseAdmin
     .from("mvz_visits")
     .update(updatePayload)
     .eq("id", id)
@@ -184,5 +184,6 @@ export async function PATCH(
 
   return apiSuccess({ visit: updateResult.data });
 }
+
 
 

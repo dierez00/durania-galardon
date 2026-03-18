@@ -25,7 +25,7 @@ export async function GET(
     return access.response;
   }
 
-  const rowsResult = await access.supabase
+  const rowsResult = await access.supabaseAdmin
     .from("upp_documents")
     .select(
       "id,tenant_id,upp_id,document_type,file_storage_key,file_hash,status,issued_at,expiry_date,uploaded_by_user_id,is_current,uploaded_at,updated_at"
@@ -70,7 +70,7 @@ export async function POST(
     return apiError("INVALID_PAYLOAD", "Debe enviar documentType, fileStorageKey y fileHash.");
   }
 
-  const currentResult = await access.supabase
+  const currentResult = await access.supabaseAdmin
     .from("upp_documents")
     .update({ is_current: false, updated_at: new Date().toISOString() })
     .eq("upp_id", uppId)
@@ -81,7 +81,7 @@ export async function POST(
     return apiError("MVZ_RANCH_DOCUMENTS_PREPARE_FAILED", currentResult.error.message, 400);
   }
 
-  const insertResult = await access.supabase
+  const insertResult = await access.supabaseAdmin
     .from("upp_documents")
     .insert({
       tenant_id: access.upp.tenant_id,
@@ -111,5 +111,6 @@ export async function POST(
 
   return apiSuccess({ document: insertResult.data }, { status: 201 });
 }
+
 
 

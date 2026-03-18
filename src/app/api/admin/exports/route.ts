@@ -1,6 +1,6 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
+import { getSupabaseAdminClient } from "@/server/auth/supabase";
 import { logAuditEvent } from "@/server/audit";
 
 interface ExportBody {
@@ -25,42 +25,94 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
-  const tenantId = auth.context.user.tenantId;
-  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
-  const rowsResult = await supabase
-    .from("export_requests")
-    .select(
-      "id,producer_id,upp_id,status,compliance_60_rule,tb_br_validated,blue_tag_assigned,monthly_bucket,metrics_json,blocked_reason,created_at,updated_at"
-    )
-    .eq("tenant_id", tenantId)
-    .order("created_at", { ascending: false });
+  const url = new URL(request.url);
+  const page = Math.max(1, Number(url.searchParams.get("page") || "1") || 1);
+  const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit") || "20") || 20));
+  const sortBy = url.searchParams.get("sortBy") ?? "created_at";
+  const sortDir = url.searchParams.get("sortDir") ?? "desc";
+  const search = url.searchParams.get("search")?.trim() ?? "";
+  const statusFilter = url.searchParams.get("status")?.trim() ?? "";
+  const dateFrom = url.searchParams.get("dateFrom")?.trim() ?? "";
+  const dateTo = url.searchParams.get("dateTo")?.trim() ?? "";
 
-  if (rowsResult.error) {
-    return apiError("ADMIN_EXPORTS_QUERY_FAILED", rowsResult.error.message, 500);
+  const VALID_SORT = ["created_at", "status", "monthly_bucket"];
+  const orderField = VALID_SORT.includes(sortBy) ? sortBy : "created_at";
+  const ascending = sortDir === "asc";
+
+  const supabase = getSupabaseAdminClient();
+
+  // If search provided, first resolve matching UPP IDs
+  let uppIdFilter: string[] | null = null;
+  if (search) {
+    const uppSearch = await supabase
+      .from("upps")
+      .select("id")
+      .or(`name.ilike.%${search}%,upp_code.ilike.%${search}%`);
+    uppIdFilter = (uppSearch.data ?? []).map((u: { id: string }) => u.id);
+    if (uppIdFilter.length === 0) {
+      return apiSuccess({ exports: [], total: 0, page, limit });
+    }
   }
 
-  const exportsRows = rowsResult.data ?? [];
-  const metrics = exportsRows.reduce(
-    (acc, row) => {
-      acc.total += 1;
-      acc.byStatus[row.status] = (acc.byStatus[row.status] ?? 0) + 1;
-      if (row.status === "blocked") {
-        acc.blocked += 1;
-      }
-      if (row.status === "final_approved") {
-        acc.approved += 1;
-      }
-      return acc;
-    },
-    {
-      total: 0,
-      approved: 0,
-      blocked: 0,
-      byStatus: {} as Record<string, number>,
-    }
-  );
+  let query = supabase
+    .from("export_requests")
+    .select(
+      "id,producer_id,upp_id,status,compliance_60_rule,tb_br_validated,blue_tag_assigned,monthly_bucket,metrics_json,blocked_reason,created_at,updated_at,producers(full_name),upps(upp_code,name)",
+      { count: "exact" }
+    );
 
-  return apiSuccess({ exports: exportsRows, metrics });
+  if (statusFilter) query = query.eq("status", statusFilter);
+  if (dateFrom) query = query.gte("created_at", dateFrom);
+  if (dateTo) query = query.lte("created_at", `${dateTo}T23:59:59Z`);
+  if (uppIdFilter !== null) query = query.in("upp_id", uppIdFilter);
+
+  const from = (page - 1) * limit;
+  const result = await query
+    .order(orderField, { ascending })
+    .range(from, from + limit - 1);
+
+  if (result.error) {
+    return apiError("ADMIN_EXPORTS_QUERY_FAILED", result.error.message, 500);
+  }
+
+  type ExportRow = {
+    id: string;
+    producer_id: string | null;
+    upp_id: string | null;
+    status: string;
+    compliance_60_rule: boolean | null;
+    tb_br_validated: boolean | null;
+    blue_tag_assigned: boolean | null;
+    monthly_bucket: string | null;
+    metrics_json: Record<string, unknown> | null;
+    blocked_reason: string | null;
+    created_at: string;
+    updated_at: string | null;
+    producers?: { full_name?: string } | null;
+    upps?: { upp_code?: string; name?: string } | null;
+  };
+
+  const exports = (result.data ?? []).map((row) => {
+    const r = row as ExportRow;
+    return {
+      id: r.id,
+      producer_id: r.producer_id,
+      upp_id: r.upp_id,
+      producer_name: r.producers?.full_name ?? null,
+      upp_name: r.upps?.name ?? null,
+      status: r.status,
+      compliance_60_rule: r.compliance_60_rule,
+      tb_br_validated: r.tb_br_validated,
+      blue_tag_assigned: r.blue_tag_assigned,
+      monthly_bucket: r.monthly_bucket,
+      metrics_json: r.metrics_json ?? null,
+      blocked_reason: r.blocked_reason,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+    };
+  });
+
+  return apiSuccess({ exports, total: result.count ?? exports.length, page, limit });
 }
 
 export async function POST(request: Request) {
@@ -85,7 +137,7 @@ export async function POST(request: Request) {
     return apiError("INVALID_PAYLOAD", "Debe enviar uppId.");
   }
 
-  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const supabase = getSupabaseAdminClient();
   const createResult = await supabase
     .from("export_requests")
     .insert({
@@ -175,7 +227,7 @@ export async function PATCH(request: Request) {
   }
   updatePayload.updated_at = new Date().toISOString();
 
-  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const supabase = getSupabaseAdminClient();
   const updateResult = await supabase
     .from("export_requests")
     .update(updatePayload)
