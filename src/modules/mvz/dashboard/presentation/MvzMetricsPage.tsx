@@ -7,7 +7,6 @@ export default function MvzMetricsPage() {
     <MvzDashboardPageContent
       title="Metricas de la organizacion"
       description="Resumen agregado del tenant MVZ con indicadores de campo y seguimiento."
-      showAssignmentsSelector={false}
     />
   );
 }

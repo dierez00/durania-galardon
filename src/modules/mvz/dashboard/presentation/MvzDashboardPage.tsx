@@ -1,11 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Button } from "@/shared/ui/button";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { getAccessToken } from "@/shared/lib/auth-session";
-import { useMvzRanchContext, useMvzRealtime } from "@/modules/ranchos/presentation/mvz";
+import { useMvzRealtime } from "@/modules/ranchos/presentation/mvz";
 
 interface MvzGlobalKpis {
   totalRanchosAsignados: number;
@@ -16,16 +15,6 @@ interface MvzGlobalKpis {
   incidenciasRecientes: number;
 }
 
-interface AssignmentRow {
-  assignment_id: string;
-  upp_id: string;
-  upp_name: string;
-  upp_code: string | null;
-  producer_name: string;
-  sanitary_alert: string;
-  active_animals: number;
-}
-
 export default function MvzDashboardPage() {
   return <MvzDashboardPageContent />;
 }
@@ -33,20 +22,14 @@ export default function MvzDashboardPage() {
 interface MvzDashboardPageProps {
   title?: string;
   description?: string;
-  showAssignmentsSelector?: boolean;
 }
 
 export function MvzDashboardPageContent({
   title = "Dashboard MVZ",
-  description = "Resumen global y selector de ranchos asignados.",
-  showAssignmentsSelector = true,
+  description = "Resumen global de la operacion sanitaria MVZ.",
 }: MvzDashboardPageProps) {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const { selectedUppId, setSelectedUppId } = useMvzRanchContext();
   const [kpis, setKpis] = useState<MvzGlobalKpis | null>(null);
-  const [ranchos, setRanchos] = useState<AssignmentRow[]>([]);
-  const [localSelectedUppId, setLocalSelectedUppId] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState("");
 
   const loadDashboard = useCallback(async () => {
@@ -70,16 +53,8 @@ export function MvzDashboardPageContent({
       return;
     }
 
-    const rows = (body.data.ranchosAsignados ?? []) as AssignmentRow[];
     setKpis(body.data.kpisGlobales ?? null);
-    setRanchos(rows);
-
-    const preferred = selectedUppId && rows.some((row) => row.upp_id === selectedUppId)
-      ? selectedUppId
-      : rows[0]?.upp_id ?? "";
-
-    setLocalSelectedUppId(preferred);
-  }, [selectedUppId]);
+  }, []);
 
   useEffect(() => {
     void loadDashboard();
@@ -91,15 +66,6 @@ export function MvzDashboardPageContent({
     },
   });
 
-  const openRancho = (uppId: string) => {
-    if (!uppId) {
-      return;
-    }
-
-    setSelectedUppId(uppId);
-    router.push(`/mvz/ranchos/${uppId}`);
-  };
-
   const showSelectionHint = searchParams.get("selectRancho") === "1";
 
   return (
@@ -110,55 +76,12 @@ export function MvzDashboardPageContent({
       </div>
 
       {showSelectionHint ? (
-        <p className="text-sm text-amber-700">Seleccione un rancho para continuar con el panel contextual.</p>
+        <p className="text-sm text-amber-700">
+          Abre un rancho desde Inicio para continuar con el panel contextual.
+        </p>
       ) : null}
 
       {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
-
-      {showAssignmentsSelector ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Selector de ranchos asignados</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <select
-                value={localSelectedUppId}
-                onChange={(event) => setLocalSelectedUppId(event.target.value)}
-                className="h-10 rounded-md border bg-background px-3 text-sm"
-              >
-                <option value="">Selecciona un rancho</option>
-                {ranchos.map((rancho) => (
-                  <option key={rancho.assignment_id} value={rancho.upp_id}>
-                    {rancho.upp_name} - {rancho.producer_name}
-                  </option>
-                ))}
-              </select>
-              <Button onClick={() => openRancho(localSelectedUppId)} disabled={!localSelectedUppId}>
-                Abrir panel del rancho
-              </Button>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {ranchos.map((rancho) => (
-                <button
-                  key={rancho.assignment_id}
-                  type="button"
-                  onClick={() => openRancho(rancho.upp_id)}
-                  className="rounded-lg border p-4 text-left hover:bg-accent"
-                >
-                  <p className="font-semibold">{rancho.upp_name}</p>
-                  <p className="text-xs text-muted-foreground">Productor: {rancho.producer_name}</p>
-                  <p className="text-xs text-muted-foreground">Alerta: {rancho.sanitary_alert}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Animales activos: {rancho.active_animals ?? 0}
-                  </p>
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Card>

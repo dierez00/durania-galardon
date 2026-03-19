@@ -75,7 +75,15 @@ Responsabilidades:
 - cargar `auth/me` y el tenant visible para el shell
 - resolver lista de proyectos accesibles (`/api/producer/upp` o `/api/mvz/assignments`)
 - persistir proyecto activo y ultimo modulo visitado
-- construir breadcrumb, topbar, selector de proyecto y sidebar por permisos
+- construir breadcrumb, topbar, selector inline de proyecto y sidebar por permisos
+
+Comportamiento UI actual del workspace:
+
+- En modo organizacion el breadcrumb muestra `Inicio`.
+- En modo proyecto el breadcrumb muestra `Inicio > <proyecto actual>`.
+- El cambio de proyecto/ranchos entre contextos ya no usa un selector separado bajo la topbar; usa un dropdown inline sobre el segundo item del breadcrumb.
+- El sidebar tenant es compacto y no repite el contexto actual en una card lateral.
+- La persistencia cliente no cambia: el proyecto activo y el ultimo modulo siguen viviendo en `sessionStorage`.
 
 ## Endpoint de prueba
 

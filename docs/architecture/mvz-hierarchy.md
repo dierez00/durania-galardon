@@ -9,17 +9,20 @@ Source of Truth: Canonical description of the active MVZ global-to-ranch workflo
 
 Implementar una experiencia jerarquica para MVZ:
 
-1. Panel global (`/mvz/dashboard`) con selector de ranchos y KPIs agregados.
+1. Home organizacional (`/mvz`) con lista de ranchos asignados.
+2. Vista global de metricas (`/mvz/metrics`) con KPIs agregados.
+3. Cambio de rancho desde el shell contextual (`Inicio > rancho actual`) una vez dentro del panel por rancho.
 2. Panel contextual por rancho (`/mvz/ranchos/[uppId]/*`) con modulos internos.
 
 ## Flujo de usuario
 
 1. Login.
-2. Entrada a `/mvz/dashboard`.
-3. Visualizacion de KPIs globales + ranchos asignados.
-4. Seleccion de rancho.
+2. Entrada a `/mvz`.
+3. Visualizacion de ranchos asignados o KPIs globales en `/mvz/metrics`.
+4. Apertura de un rancho.
 5. Navegacion a `/mvz/ranchos/[uppId]`.
-6. Uso de tabs internas del rancho.
+6. Cambio de rancho desde el breadcrumb inline cuando ya existe contexto activo.
+7. Uso de tabs internas del rancho.
 
 ## Persistencia de seleccion
 
@@ -72,5 +75,7 @@ Rutas previas MVZ siguen accesibles pero redirigen:
 - `/mvz/asignaciones`
 - `/mvz/pruebas`
 - `/mvz/exportaciones`
+- `/mvz/dashboard`
 
-Si no hay rancho seleccionado, redirigen a `/mvz/dashboard?selectRancho=1`.
+- `/mvz/dashboard` redirige a `/mvz/metrics`.
+- Si no hay rancho seleccionado, las rutas legacy contextuales redirigen a `/mvz?selectRancho=1`.

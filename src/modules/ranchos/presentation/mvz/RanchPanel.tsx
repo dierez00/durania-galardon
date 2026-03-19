@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { Badge } from "@/shared/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { getAccessToken } from "@/shared/lib/auth-session";
 import { useMvzRanchContext, useMvzRealtime } from "@/modules/ranchos/presentation/mvz";
@@ -157,25 +156,13 @@ export default function RanchPanel({ tab }: { tab: string }) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Panel de Rancho</h1>
-        <p className="text-sm text-muted-foreground">Contexto operativo de UPP seleccionada por MVZ Gobierno.</p>
+        <h1 className="text-2xl font-bold">Operacion del rancho</h1>
+        <p className="text-sm text-muted-foreground">
+          Monitorea actividad sanitaria, visitas y movimientos del rancho seleccionado.
+        </p>
       </div>
 
       {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{overview?.upp_name ?? "Rancho"}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <Badge variant="secondary">UPP: {overview?.upp_code ?? overview?.upp_id?.slice(0, 8) ?? "-"}</Badge>
-            <Badge variant="outline">Productor: {overview?.producer_name ?? "-"}</Badge>
-            <Badge variant="outline">Estado sanitario: {overview?.sanitary_alert ?? "-"}</Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">Ubicacion: {overview?.address_text ?? "Sin direccion"}</p>
-        </CardContent>
-      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Card>

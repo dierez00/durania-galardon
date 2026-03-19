@@ -35,10 +35,21 @@ export interface WorkspaceUser {
   permissions: PermissionKey[];
 }
 
-export interface WorkspaceBreadcrumbItem {
-  label: string;
-  href?: string;
-}
+export type WorkspaceBreadcrumbItem =
+  | {
+      type: "link";
+      label: string;
+      href: string;
+    }
+  | {
+      type: "page";
+      label: string;
+    }
+  | {
+      type: "project-selector";
+      label: string;
+      projectId: string | null;
+    };
 
 export interface ResolvedNavItem {
   key: string;

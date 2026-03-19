@@ -19,20 +19,11 @@ export function TenantWorkspaceShell({ children }: { children: React.ReactNode }
   return (
     <TenantAppShell
       brandIcon={Building2}
-      brandTitle="Durania"
       brandSubtitle={workspace.panel === "producer" ? "Operacion Productor" : "Operacion MVZ"}
-      mode={workspace.mode}
-      currentSectionLabel={workspace.currentSectionLabel}
       navigation={workspace.navigation}
       breadcrumbs={workspace.breadcrumbs}
-      organizationName={workspace.organization?.name ?? "Tenant"}
-      environmentLabel={workspace.environmentLabel}
       projects={workspace.projects}
       currentProjectId={workspace.currentProject?.id ?? workspace.selectedProjectId}
-      currentProjectName={workspace.currentProject?.name ?? null}
-      currentProjectSubtitle={
-        workspace.currentProject?.producerName ?? workspace.currentProject?.code ?? null
-      }
       userDisplayName={workspace.user?.displayName ?? "Usuario"}
       userEmail={workspace.user?.email ?? ""}
       userRoleLabel={workspace.user?.roleLabel ?? ""}

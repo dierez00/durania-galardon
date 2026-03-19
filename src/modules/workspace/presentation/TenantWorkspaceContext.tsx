@@ -89,7 +89,6 @@ interface TenantWorkspaceContextValue {
   projects: WorkspaceProject[];
   currentProject: WorkspaceProject | null;
   selectedProjectId: string | null;
-  environmentLabel: string | null;
   currentSectionLabel: string;
   navigation: ResolvedNavItem[];
   breadcrumbs: WorkspaceBreadcrumbItem[];
@@ -307,19 +306,35 @@ export function TenantWorkspaceProvider({
       return [];
     }
 
-    if (mode === "project" && currentProject) {
+    const homeHref = buildOrganizationHref(panel);
+
+    if (mode === "project") {
+      const projectId = currentProject?.id ?? location?.projectId ?? selectedProjectId ?? null;
+      const items: WorkspaceBreadcrumbItem[] = [
+        { type: "link", label: "Inicio", href: homeHref },
+        {
+          type: "project-selector",
+          label: currentProject?.name ?? "Seleccionar rancho",
+          projectId,
+        },
+      ];
+
+      if ((location?.moduleKey ?? getDefaultModuleKey()) !== getDefaultModuleKey()) {
+        items.push({ type: "page", label: currentSectionLabel });
+      }
+
+      return items;
+    }
+
+    if ((location?.sectionKey ?? "projects") !== "projects") {
       return [
-        { label: organization.name, href: buildOrganizationHref(panel) },
-        { label: currentProject.name, href: buildProjectHref(panel, currentProject.id, "overview") },
-        { label: currentSectionLabel },
+        { type: "link", label: "Inicio", href: homeHref },
+        { type: "page", label: currentSectionLabel },
       ];
     }
 
-    return [
-      { label: organization.name, href: buildOrganizationHref(panel) },
-      { label: currentSectionLabel },
-    ];
-  }, [currentProject, currentSectionLabel, mode, organization, panel]);
+    return [{ type: "page", label: "Inicio" }];
+  }, [currentProject, currentSectionLabel, location?.moduleKey, location?.projectId, location?.sectionKey, mode, organization, panel, selectedProjectId]);
 
   const setSelectedProjectId = (projectId: string | null) => {
     if (!organization) {
@@ -371,7 +386,6 @@ export function TenantWorkspaceProvider({
       projects,
       currentProject,
       selectedProjectId,
-      environmentLabel: organization?.slug ?? null,
       currentSectionLabel,
       navigation,
       breadcrumbs,

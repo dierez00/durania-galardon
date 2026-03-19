@@ -37,6 +37,8 @@ Todas las fechas usan formato YYYY-MM-DD.
 - Paginas legacy MVZ (`/mvz/asignaciones`, `/mvz/pruebas`, `/mvz/exportaciones`) ahora redirigen a la nueva jerarquia.
 - Layout tenant envuelve vistas con `MvzRanchProvider`.
 - `src/shared/lib/auth.ts` extendido con permisos nuevos de rancho.
+- Shell tenant de `producer` y `mvz` simplificado: sidebar compacto sin card contextual, breadcrumb `Inicio > proyecto actual` y selector inline de rancho/UPP en topbar.
+- Dashboard global MVZ ya no renderiza una card separada para seleccionar rancho; el cambio de contexto vive en la topbar del panel por rancho.
 
 ### Fixed
 

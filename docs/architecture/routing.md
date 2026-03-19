@@ -103,10 +103,19 @@ Si no hay `selectedUppId` persistido, redirigen a `/mvz`.
 
 `src/app/(tenant)/layout.tsx` monta un shell comun con dos modos:
 
-- Organizacion: sidebar global (`Projects`, `Metricas`, `Configuracion`) y home tenant.
-- Proyecto: breadcrumb contextual, selector de proyecto y sidebar por actor/permisos.
+- Organizacion: sidebar global por actor y breadcrumb compacto con `Inicio`.
+- Proyecto: breadcrumb `Inicio > rancho/UPP actual` y cambio de contexto inline desde la topbar.
 
 La composicion del shell vive en `src/modules/workspace/*` y `src/shared/ui/layout/*`.
+
+Reglas activas del shell:
+
+- El sidebar tenant ya no muestra el nombre `Durania` ni una card contextual del tenant/proyecto.
+- El sidebar conserva solo icono, descriptor del panel (`Operacion Productor` o `Operacion MVZ`) y opciones habilitadas por permisos.
+- La topbar ya no muestra `tenant.slug` como badge de entorno en paneles tenant.
+- El selector de proyecto/rancho ya no vive debajo del breadcrumb: en modo proyecto se renderiza inline dentro del breadcrumb.
+- En productor, el patron visible es `Inicio > <UPP actual>`.
+- En MVZ, el patron visible es `Inicio > <rancho actual>`.
 
 ## Guards principales
 

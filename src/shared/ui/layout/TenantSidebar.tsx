@@ -4,28 +4,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ComponentType } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Badge } from "@/shared/ui/badge";
 import { cn } from "@/shared/lib/utils";
-import type { ResolvedNavItem, WorkspaceMode } from "@/modules/workspace/domain/types";
+import type { ResolvedNavItem } from "@/modules/workspace/domain/types";
 
 interface TenantSidebarProps {
   brandIcon: ComponentType<{ className?: string }>;
-  brandTitle: string;
   brandSubtitle: string;
-  mode: WorkspaceMode;
   navigation: ResolvedNavItem[];
-  contextTitle: string;
-  contextSubtitle?: string | null;
 }
 
 export function TenantSidebar({
   brandIcon: BrandIcon,
-  brandTitle,
   brandSubtitle,
-  mode,
   navigation,
-  contextTitle,
-  contextSubtitle,
 }: TenantSidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
@@ -43,25 +34,9 @@ export function TenantSidebar({
             <BrandIcon className="h-5 w-5 text-sidebar-primary-foreground" />
           </div>
           {!collapsed ? (
-            <div className="min-w-0">
-              <h1 className="truncate text-base font-semibold">{brandTitle}</h1>
-              <p className="truncate text-xs text-sidebar-foreground/60">{brandSubtitle}</p>
-            </div>
+            <p className="truncate text-sm font-medium text-sidebar-foreground/80">{brandSubtitle}</p>
           ) : null}
         </div>
-        {!collapsed ? (
-          <div className="mt-4 rounded-xl border border-sidebar-border bg-sidebar-accent/35 p-3">
-            <div className="flex items-center justify-between gap-2">
-              <p className="truncate text-sm font-medium">{contextTitle}</p>
-              <Badge variant="secondary" className="border border-sidebar-border bg-transparent text-[10px] uppercase">
-                {mode === "organization" ? "Organizacion" : "Proyecto"}
-              </Badge>
-            </div>
-            {contextSubtitle ? (
-              <p className="mt-1 line-clamp-2 text-xs text-sidebar-foreground/60">{contextSubtitle}</p>
-            ) : null}
-          </div>
-        ) : null}
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
