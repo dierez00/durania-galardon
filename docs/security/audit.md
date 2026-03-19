@@ -1,3 +1,8 @@
+Status: Assessment
+Owner: Engineering
+Last Updated: 2026-03-19
+Source of Truth: Dated security assessment retained for prioritization history. Current security posture lives in `docs/security/security.md`.
+
 # Auditoria de seguridad (priorizada)
 
 Fecha de corte: 2026-03-03  

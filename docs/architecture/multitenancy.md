@@ -1,3 +1,8 @@
+Status: Canonical
+Owner: Engineering
+Last Updated: 2026-03-19
+Source of Truth: Canonical tenant resolution and MVZ ranch-context behavior for the current runtime.
+
 # Multi-tenant
 
 ## Resolver de tenant

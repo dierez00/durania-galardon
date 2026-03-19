@@ -1,3 +1,8 @@
+Status: Canonical
+Owner: Engineering
+Last Updated: 2026-03-19
+Source of Truth: Canonical tenant IAM entities, permissions, and MVZ ranch-scope rules.
+
 # Tenant IAM
 
 ## Alcance

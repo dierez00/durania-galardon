@@ -1,3 +1,8 @@
+Status: Canonical
+Owner: Engineering
+Last Updated: 2026-03-19
+Source of Truth: Canonical troubleshooting guide for login, tenant resolution, and UPP-access failures.
+
 # Troubleshooting login
 
 ## Objetivo

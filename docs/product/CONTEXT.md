@@ -1,3 +1,7 @@
+Status: Reference
+Owner: Product and Engineering
+Last Updated: 2026-03-19
+Source of Truth: Product background and onboarding context. Runtime behavior and implementation rules live in the canonical docs under `docs/architecture`, `docs/data`, and `docs/security`.
 # DURANIA 2026  
 ## Sistema Integral de Gestión Ganadera  
 

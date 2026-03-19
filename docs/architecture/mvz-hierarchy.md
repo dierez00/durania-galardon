@@ -1,3 +1,8 @@
+Status: Canonical
+Owner: Engineering
+Last Updated: 2026-03-19
+Source of Truth: Canonical description of the active MVZ global-to-ranch workflow and its API surface.
+
 # MVZ Jerarquico (Gobierno -> Rancho)
 
 ## Objetivo

@@ -1,3 +1,6 @@
+-- Deprecated working artifact retained for historical context only.
+-- Canonical replacement: sql/migration_003_fix_rls_politicies.sql
+-- Related active guide: docs/guides/troubleshooting-login.md
 -- ============================================================
 -- FIX: infinite recursion detected in policy for relation "tenants"
 --

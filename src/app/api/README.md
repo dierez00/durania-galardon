@@ -7,7 +7,7 @@
 - Cada `route.ts` debe ser un entrypoint delgado.
 - La logica de negocio y los queries viven en `src/modules/*`.
 - Si un helper es transversal de backend, va en `src/server/*`.
-- Cuando agregues o muevas una familia API, actualiza este archivo y `docs/architecture.md`.
+- Cuando agregues o muevas una familia API, actualiza este archivo y `docs/architecture/overview.md`.
 
 ## Ownership por capacidad
 

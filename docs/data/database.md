@@ -1,3 +1,7 @@
+Status: Canonical
+Owner: Engineering
+Last Updated: 2026-03-19
+Source of Truth: Canonical database reference for schema, IAM tables, views, RLS helpers, and MVZ hierarchy additions.
 # DURANIA MVP PRO — Documentación de Base de Datos
 
 > **Stack:** Supabase / PostgreSQL · **Versión:** v6  
@@ -1077,4 +1081,3 @@ Documentos asociados al rancho (`UPP`) en lugar de solo productor.
 - `GET /api/mvz/ranchos/:uppId/reportes`
 - `GET|POST /api/mvz/ranchos/:uppId/documentacion`
 - `GET|POST|PATCH /api/mvz/ranchos/:uppId/visitas`
-

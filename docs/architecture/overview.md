@@ -1,3 +1,8 @@
+Status: Canonical
+Owner: Engineering
+Last Updated: 2026-03-19
+Source of Truth: Active architecture, ownership rules, and layering conventions for the application.
+
 # Arquitectura
 
 ## Estructura principal
@@ -185,6 +190,6 @@ o reexport equivalente desde `infra/http` si el modulo aun no expone alias publi
 
 ## Notas operativas
 
-- Los directorios archivados documentados en `docs/archived-modules.md` no deben reaparecer en el arbol activo.
+- Los directorios archivados documentados en `docs/architecture/archived-modules.md` no deben reaparecer en el arbol activo.
 - Los duplicados locales como `src/shared/ui/* copy.tsx` no forman parte de la arquitectura activa.
 - Los redirects legacy de MVZ siguen vigentes, pero su implementacion vive en `src/modules/ranchos/presentation/mvz/LegacyMvzRedirect.tsx`.

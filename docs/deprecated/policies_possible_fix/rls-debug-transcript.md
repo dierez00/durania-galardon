@@ -1,3 +1,7 @@
+Status: Deprecated
+Owner: Engineering
+Last Updated: 2026-03-19
+Source of Truth: Historical debug transcript kept only for context. Use `docs/guides/troubleshooting-login.md`, `docs/security/security.md`, and `sql/migration_003_fix_rls_politicies.sql` for current guidance.
 La cadena IAM está completa. Hay que ir directo a la red — el problema está en algún punto del runtime, no en la BD. Déjame leer el código de permisos que aún no he visto:
 
 Encontré el problema. La función requirePermission llama a auth_has_tenant_permission vía RPC. Vamos a ver esa función:

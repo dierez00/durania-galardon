@@ -1,72 +1,59 @@
+Status: Canonical
+Owner: Engineering
+Last Updated: 2026-03-19
+Source of Truth: This index routes the team to the canonical documentation for each topic and classifies non-canonical material.
+
 # Durania Docs
 
-## Lectura recomendada
+## Start Here
 
-1. [Arquitectura](./architecture.md)
-2. [Setup y comandos](./setup.md)
-3. [Multi-tenant](./multitenancy.md)
-4. [Auth y Tenant IAM](./auth-admin.md)
-5. [Rutas y guards](./routing.md)
-6. [MVZ jerarquico](./mvz-hierarchy.md)
+1. [Canonical] [Architecture overview](./architecture/overview.md)
+2. [Canonical] [Setup and commands](./guides/setup.md)
+3. [Canonical] [Multi-tenant model](./architecture/multitenancy.md)
+4. [Canonical] [Auth and tenant IAM](./architecture/auth-admin.md)
+5. [Canonical] [Routing and guards](./architecture/routing.md)
+6. [Canonical] [Database reference](./data/database.md)
 
-Si vas a tocar estructura o APIs, lee tambien [src/app/api/README.md](../src/app/api/README.md).
+If you touch HTTP entrypoints or API ownership, also read [src/app/api/README.md](../src/app/api/README.md).
 
-## Indice de documentos
+## Architecture
 
-- [Arquitectura](./architecture.md)
-- [Modulos archivados](./archived-modules.md)
-- [Auth y Tenant IAM](./auth-admin.md)
-- [Tenant IAM](./tenant-iam.md)
-- [Rutas y guards](./routing.md)
-- [MVZ jerarquico](./mvz-hierarchy.md)
-- [Troubleshooting login](./troubleshooting-login.md)
-- [Prisma y SQL](./prisma-from-sql.md)
-- [Multi-tenant](./multitenancy.md)
-- [Setup y comandos](./setup.md)
-- [Base de datos](./bd/database.md)
-- [Contexto de producto](./product/CONTEXT.md)
-- [Changelog de documentacion](./CHANGELOG.md)
+- [Canonical] [Architecture overview](./architecture/overview.md)
+- [Canonical] [Routing and guards](./architecture/routing.md)
+- [Canonical] [Multi-tenant model](./architecture/multitenancy.md)
+- [Canonical] [Auth and tenant IAM](./architecture/auth-admin.md)
+- [Canonical] [Tenant IAM catalog](./architecture/tenant-iam.md)
+- [Canonical] [MVZ hierarchy](./architecture/mvz-hierarchy.md)
+- [Canonical] [Archived modules policy](./architecture/archived-modules.md)
 
-## Resumen rapido
+## Guides
 
-- Stack: Next.js App Router + Supabase Auth + Supabase PostgreSQL.
-- Tenant IAM: `tenant_memberships`, `tenant_roles`, `tenant_user_roles`.
-- Resolucion de tenant: subdominio -> `x-tenant-slug` -> fallback local.
-- Login unico: `/login`.
-- Jerarquia MVZ: dashboard global + panel contextual por rancho (`UPP`).
-- Refactor estructural completada en las rutas objetivo: `src/app` y `src/app/api` quedan como entrypoints delgados; `src/modules` es el owner de negocio.
+- [Canonical] [Setup and commands](./guides/setup.md)
+- [Canonical] [Troubleshooting login](./guides/troubleshooting-login.md)
 
-## Que quedo hecho
+## Data
 
-- La logica de negocio pendiente salio de las familias API documentadas en la refactor:
-  - `admin/producers`
-  - `admin/mvz`
-  - `producer/bovinos`
-  - `producer/documents`
-  - `producer/upp`
-  - `producer/upp-documents`
-  - `admin/appointments`
-  - `public/appointments`
-  - `admin/audit`
-  - `mvz/assignments`
-- Los handlers HTTP viven ahora en `infra/http` dentro del modulo dueno.
-- Las implementaciones server-side de repositorios viven en `infra/supabase` cuando dependen de Supabase.
-- `src/server/auth/provisioning` concentra helpers transversales de Auth/GoTrue.
-- Se eliminaron residuos locales archivados y archivos UI duplicados `* copy.tsx`.
+- [Canonical] [Database reference](./data/database.md)
+- [Canonical] [Prisma from SQL](./data/prisma-from-sql.md)
 
-## Referencia rapida para trabajar
+## Security
 
-- `src/app` y `src/app/api` no deben volver a acumular logica de negocio.
-- Antes de crear archivos nuevos, decide primero el owner: `src/modules/admin`, `src/modules/producer`, `src/modules/mvz` o `src/modules/<capability>`.
-- Usa `src/server` solo para concerns transversales de backend.
-- Si cambias ownership o agregas una nueva familia de rutas, actualiza `docs/architecture.md`, [src/app/api/README.md](../src/app/api/README.md) y `docs/CHANGELOG.md` en el mismo cambio.
-- Valida con `npm run typecheck`, `npm run lint` y `npm run test:integration`.
+- [Canonical] [Current security posture](./security/security.md)
+- [Assessment] [Security audit 2026-03-03](./security/audit.md)
 
-Rutas principales:
+## Product and Deep Reference
 
-- `/` landing publica con wizard de citas.
-- `/login` login unico para todos los perfiles.
-- `/admin/*` para `tenant_admin`.
-- `/producer/*` para `producer` y `employee`.
-- `/mvz/dashboard` dashboard global MVZ.
-- `/mvz/ranchos/[uppId]/*` panel jerarquico MVZ por rancho.
+- [Reference] [Product context](./product/CONTEXT.md)
+- [Reference] [Bovinos module technical reference](./reference/modules/bovinos.md)
+
+## History and Archive
+
+- [History] [Documentation changelog](./CHANGELOG.md)
+- [Deprecated] [Deprecated docs index](./deprecated/README.md)
+
+## Working Rules
+
+- Update the canonical doc for the area you changed; avoid duplicating long sections across files.
+- Keep `docs/CHANGELOG.md` as history of documentation changes, not as operational source of truth.
+- Move experiments, transcripts, and replaced material to `docs/deprecated/`.
+- If you change API ownership or route families, update [Architecture overview](./architecture/overview.md), [src/app/api/README.md](../src/app/api/README.md), and `docs/CHANGELOG.md` in the same change.

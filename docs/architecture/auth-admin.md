@@ -1,3 +1,8 @@
+Status: Canonical
+Owner: Engineering
+Last Updated: 2026-03-19
+Source of Truth: Canonical auth flow, role routing, and tenant-level authorization model.
+
 # Auth y Tenant IAM
 
 ## Objetivo

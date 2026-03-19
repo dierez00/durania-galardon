@@ -1,3 +1,8 @@
+Status: Canonical
+Owner: Engineering
+Last Updated: 2026-03-19
+Source of Truth: Current security posture, controls, and gaps for the repository.
+
 # Seguridad actual del proyecto
 
 Fecha de corte: 2026-03-03  

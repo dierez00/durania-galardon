@@ -1,3 +1,8 @@
+Status: Canonical
+Owner: Engineering
+Last Updated: 2026-03-19
+Source of Truth: Active route map, legacy redirects, and guard expectations for the current application.
+
 # Rutas y guards
 
 ## Vista general

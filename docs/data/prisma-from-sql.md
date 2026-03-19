@@ -1,3 +1,8 @@
+Status: Canonical
+Owner: Engineering
+Last Updated: 2026-03-19
+Source of Truth: Canonical guidance for how Prisma relates to the SQL-first Supabase schema in this repository.
+
 # Prisma y SQL
 
 ## Fuente de verdad
@@ -8,6 +13,7 @@ Migraciones activas:
 
 - `sql/migration_001_duraniaMVP.sql`
 - `sql/migration_002_mvz_hierarchy.sql`
+- `sql/migration_003_fix_rls_politicies.sql`
 - `sql/views.sql`
 - `sql/seeds.sql`
 

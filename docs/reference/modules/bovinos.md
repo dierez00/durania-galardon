@@ -1,3 +1,7 @@
+Status: Reference
+Owner: Engineering
+Last Updated: 2026-03-19
+Source of Truth: Deep technical reference for the live `bovinos` module. System-wide architecture and data rules live in `docs/architecture/overview.md` and `docs/data/database.md`.
 # Módulo Bovinos — Tenant/Producer
 
 > Documentación técnica del módulo `bovinos` implementado bajo arquitectura hexagonal.  
