@@ -5,8 +5,8 @@ import { filterBovinos } from "../../domain/services/filterBovinos";
 export class ListBovinos {
   constructor(private readonly repository: BovinoRepository) {}
 
-  async execute(filters?: Partial<BovinosFiltersState>): Promise<Bovino[]> {
-    const bovinos = await this.repository.list();
+  async execute(filters?: Partial<BovinosFiltersState>, uppId?: string | null): Promise<Bovino[]> {
+    const bovinos = await this.repository.list(uppId);
     if (!filters) return bovinos;
     const full: BovinosFiltersState = {
       search: filters.search ?? "",

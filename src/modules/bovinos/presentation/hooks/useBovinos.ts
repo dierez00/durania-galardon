@@ -13,7 +13,7 @@ export const DEFAULT_BOVINOS_FILTERS: BovinosFiltersState = {
   fechaHasta: "",
 };
 
-export function useBovinos() {
+export function useBovinos(uppId?: string | null) {
   const [bovinos, setBovinos] = useState<Bovino[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -53,14 +53,14 @@ export function useBovinos() {
         exportable: appliedFilters.exportable,
         fechaDesde: appliedFilters.fechaDesde,
         fechaHasta: appliedFilters.fechaHasta,
-      });
+      }, uppId);
       setBovinos(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al cargar bovinos.");
     } finally {
       setLoading(false);
     }
-  }, [appliedFilters]);
+  }, [appliedFilters, uppId]);
 
   useEffect(() => {
     void loadBovinos();

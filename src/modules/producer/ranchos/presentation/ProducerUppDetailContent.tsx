@@ -91,8 +91,8 @@ export function ProducerUppDetailContent({ upp }: ProducerUppDetailContentProps)
       <DetailHeader
         title={upp.name}
         subtitle={upp.upp_code ? `Código UPP: ${upp.upp_code}` : undefined}
-        backHref="/producer/ranchos"
-        backLabel="Mis ranchos"
+        backHref="/producer"
+        backLabel="Ranchos / UPPs"
         status={upp.status}
         statusLabel={statusLabel(upp.status)}
         statusVariant={statusVariant(upp.status)}

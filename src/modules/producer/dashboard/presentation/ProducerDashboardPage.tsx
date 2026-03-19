@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Beef, FileText, Grid3x3, Package, ShieldAlert, Truck } from "lucide-react";
 import { Badge } from "@/shared/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
@@ -26,10 +26,34 @@ function uppStatusVariant(status: string): "default" | "secondary" | "destructiv
 }
 
 export default function ProducerDashboardPage() {
+  return <ProducerDashboardPageContent />;
+}
+
+interface ProducerDashboardPageProps {
+  title?: string;
+  description?: string;
+  lockedUppId?: string | null;
+  showProjectCards?: boolean;
+  forceOrganizationScope?: boolean;
+}
+
+export function ProducerDashboardPageContent({
+  title = "Dashboard Productor",
+  description,
+  lockedUppId,
+  showProjectCards = true,
+  forceOrganizationScope = false,
+}: ProducerDashboardPageProps = {}) {
   const { upps, selectedUppId, selectedUpp, setSelectedUppId, hydrated } = useProducerUppContext();
   const [kpis, setKpis] = useState<ProducerKpis | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+
+  const effectiveSelectedUppId = forceOrganizationScope ? null : lockedUppId ?? selectedUppId;
+  const effectiveSelectedUpp = useMemo(
+    () => upps.find((upp) => upp.id === effectiveSelectedUppId) ?? selectedUpp,
+    [effectiveSelectedUppId, selectedUpp, upps]
+  );
 
   const loadKpis = useCallback(async (uppId: string | null) => {
     setLoading(true);
@@ -59,9 +83,9 @@ export default function ProducerDashboardPage() {
 
   useEffect(() => {
     if (hydrated) {
-      void loadKpis(selectedUppId);
+      void loadKpis(effectiveSelectedUppId ?? null);
     }
-  }, [hydrated, selectedUppId, loadKpis]);
+  }, [effectiveSelectedUppId, hydrated, loadKpis]);
 
   const kpiCards = [
     { label: "Ranchos (UPPs)", value: kpis?.totalUpps, icon: Grid3x3, color: "text-blue-500" },
@@ -76,20 +100,24 @@ export default function ProducerDashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold">Dashboard Productor</h1>
+        <h1 className="text-2xl font-bold">{title}</h1>
         <p className="text-sm text-muted-foreground">
-          {selectedUpp ? `Metricas de: ${selectedUpp.name}` : "Vision global de toda la operacion del productor."}
+          {description ??
+            (effectiveSelectedUpp
+              ? `Metricas de: ${effectiveSelectedUpp.name}`
+              : "Vision global de toda la operacion del productor.")}
         </p>
       </div>
 
       {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
 
+      {showProjectCards ? (
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Ranchos / UPPs
           </h2>
-          {selectedUppId ? (
+          {effectiveSelectedUppId ? (
             <button
               onClick={() => setSelectedUppId(null)}
               className="text-xs text-muted-foreground underline hover:text-foreground"
@@ -101,7 +129,7 @@ export default function ProducerDashboardPage() {
 
         <div className="sm:hidden">
           <Select
-            value={selectedUppId ?? "__all__"}
+            value={effectiveSelectedUppId ?? "__all__"}
             onValueChange={(value) => setSelectedUppId(value === "__all__" ? null : value)}
           >
             <SelectTrigger>
@@ -126,10 +154,10 @@ export default function ProducerDashboardPage() {
             : upps.map((upp) => (
                 <button
                   key={upp.id}
-                  onClick={() => setSelectedUppId(selectedUppId === upp.id ? null : upp.id)}
+                  onClick={() => setSelectedUppId(effectiveSelectedUppId === upp.id ? null : upp.id)}
                   className={[
                     "rounded-lg border p-4 text-left transition-all hover:shadow-md",
-                    selectedUppId === upp.id
+                    effectiveSelectedUppId === upp.id
                       ? "border-primary bg-primary/5 ring-2 ring-primary"
                       : "border-border bg-card hover:border-primary/50",
                   ].join(" ")}
@@ -158,10 +186,11 @@ export default function ProducerDashboardPage() {
           ) : null}
         </div>
       </section>
+      ) : null}
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          {selectedUpp ? `Metricas - ${selectedUpp.name}` : "Metricas globales"}
+          {effectiveSelectedUpp ? `Metricas - ${effectiveSelectedUpp.name}` : "Metricas globales"}
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {kpiCards.map(({ label, value, icon: Icon, color }) => (

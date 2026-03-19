@@ -186,8 +186,8 @@ export function redirectPathForRole(role: AppRole): string {
   }
 
   if (isProducerViewRole(role)) {
-    return "/producer/dashboard";
+    return "/producer";
   }
 
-  return "/mvz/dashboard";
+  return "/mvz";
 }

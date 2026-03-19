@@ -18,7 +18,7 @@ export default function MvzRanchosIndexPage() {
       return;
     }
 
-    router.replace("/mvz/dashboard?selectRancho=1");
+    router.replace("/mvz");
   }, [hydrated, router, selectedUppId]);
 
   return (

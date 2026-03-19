@@ -31,13 +31,22 @@ export async function GET(request: Request) {
     panelType: auth.context.user.panelType,
   });
 
+  const uppId = new URL(request.url).searchParams.get("uppId")?.trim() ?? null;
+  if (uppId) {
+    const canAccess = await auth.context.canAccessUpp(uppId);
+    if (!canAccess) {
+      return apiError("FORBIDDEN", "No tiene acceso a la UPP solicitada.", 403);
+    }
+  }
+
   const accessibleUppIds = await auth.context.getAccessibleUppIds();
+  const scopedUppIds = uppId ? accessibleUppIds.filter((accessibleUppId) => accessibleUppId === uppId) : accessibleUppIds;
   logProducerAccessServer("producer/exports:get:accessible-ids", {
     userId: auth.context.user.id,
     tenantId: auth.context.user.tenantId,
-    accessibleUpps: sampleProducerAccessIds(accessibleUppIds),
+    accessibleUpps: sampleProducerAccessIds(scopedUppIds),
   });
-  if (accessibleUppIds.length === 0) {
+  if (scopedUppIds.length === 0) {
     logProducerAccessServer("producer/exports:get:empty-access", {
       userId: auth.context.user.id,
       tenantId: auth.context.user.tenantId,
@@ -52,7 +61,7 @@ export async function GET(request: Request) {
       "id,upp_id,status,compliance_60_rule,tb_br_validated,blue_tag_assigned,blocked_reason,monthly_bucket,created_at,updated_at"
     )
     .eq("tenant_id", auth.context.user.tenantId)
-    .in("upp_id", accessibleUppIds)
+    .in("upp_id", scopedUppIds)
     .order("created_at", { ascending: false });
 
   if (rowsResult.error) {

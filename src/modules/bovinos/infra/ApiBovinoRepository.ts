@@ -23,8 +23,8 @@ import {
 } from "./mappers/fieldTest.mapper";
 
 export class ApiBovinoRepository implements BovinoRepository {
-  async list(): Promise<Bovino[]> {
-    const records = await apiFetchBovinos();
+  async list(uppId?: string | null): Promise<Bovino[]> {
+    const records = await apiFetchBovinos(uppId);
     return (records as BovinoApiRecord[]).map(toDomainBovino);
   }
 

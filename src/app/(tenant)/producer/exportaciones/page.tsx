@@ -1,1 +1,7 @@
-export { default } from "@/modules/exportaciones/presentation/producer/ProducerExportacionesPage";
+"use client";
+
+import { LegacyProducerProjectRedirect } from "@/modules/producer/ranchos/presentation";
+
+export default function ProducerExportacionesLegacyPage() {
+  return <LegacyProducerProjectRedirect targetModule="exportaciones" />;
+}

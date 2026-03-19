@@ -17,8 +17,10 @@ export class ServerBovinoRepository implements BovinoRepository {
     private readonly accessibleUppIds: string[] = []
   ) {}
 
-  async list(): Promise<Bovino[]> {
-    if (this.accessibleUppIds.length === 0) {
+  async list(uppId?: string | null): Promise<Bovino[]> {
+    const scopedUppIds = uppId ? this.accessibleUppIds.filter((accessibleUppId) => accessibleUppId === uppId) : this.accessibleUppIds;
+
+    if (scopedUppIds.length === 0) {
       return [];
     }
 
@@ -29,14 +31,14 @@ export class ServerBovinoRepository implements BovinoRepository {
         "animal_id,upp_id,upp_name,upp_code,siniiga_tag,sex,birth_date,animal_status,mother_animal_id,tb_date,tb_result,tb_valid_until,tb_status,br_date,br_result,br_valid_until,br_status,sanitary_alert"
       )
       .eq("tenant_id", this.tenantId)
-      .in("upp_id", this.accessibleUppIds)
+      .in("upp_id", scopedUppIds)
       .order("siniiga_tag", { ascending: true });
 
     if (animalsResult.error) {
       throw new Error(animalsResult.error.message);
     }
 
-    const uppStatusMap = await this.fetchUppStatuses(this.accessibleUppIds);
+    const uppStatusMap = await this.fetchUppStatuses(scopedUppIds);
 
     return (animalsResult.data ?? []).map((row) =>
       toDomainBovino({

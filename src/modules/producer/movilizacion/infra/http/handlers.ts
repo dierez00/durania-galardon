@@ -37,13 +37,22 @@ export async function GET(request: Request) {
     panelType: auth.context.user.panelType,
   });
 
+  const uppId = new URL(request.url).searchParams.get("uppId")?.trim() ?? null;
+  if (uppId) {
+    const canAccess = await auth.context.canAccessUpp(uppId);
+    if (!canAccess) {
+      return apiError("FORBIDDEN", "No tiene acceso a la UPP solicitada.", 403);
+    }
+  }
+
   const accessibleUppIds = await auth.context.getAccessibleUppIds();
+  const scopedUppIds = uppId ? accessibleUppIds.filter((accessibleUppId) => accessibleUppId === uppId) : accessibleUppIds;
   logProducerAccessServer("producer/movements:get:accessible-ids", {
     userId: auth.context.user.id,
     tenantId: auth.context.user.tenantId,
-    accessibleUpps: sampleProducerAccessIds(accessibleUppIds),
+    accessibleUpps: sampleProducerAccessIds(scopedUppIds),
   });
-  if (accessibleUppIds.length === 0) {
+  if (scopedUppIds.length === 0) {
     logProducerAccessServer("producer/movements:get:empty-access", {
       userId: auth.context.user.id,
       tenantId: auth.context.user.tenantId,
@@ -56,7 +65,7 @@ export async function GET(request: Request) {
     .from("movement_requests")
     .select("id,upp_id,status,qr_code,route_note,incidence_note,movement_date,created_at,updated_at")
     .eq("tenant_id", auth.context.user.tenantId)
-    .in("upp_id", accessibleUppIds)
+    .in("upp_id", scopedUppIds)
     .order("created_at", { ascending: false });
 
   if (rowsResult.error) {

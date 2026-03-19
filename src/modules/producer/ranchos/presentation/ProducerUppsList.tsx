@@ -85,7 +85,7 @@ export function ProducerUppsList({ upps }: ProducerUppsListProps) {
                   <TableRow key={upp.id} className="group">
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       <Link
-                        href={`/producer/ranchos/${upp.id}`}
+                        href={`/producer/projects/${upp.id}`}
                         className="hover:text-foreground hover:underline transition-colors"
                       >
                         {upp.upp_code ?? upp.id.slice(0, 8)}
@@ -93,7 +93,7 @@ export function ProducerUppsList({ upps }: ProducerUppsListProps) {
                     </TableCell>
                     <TableCell>
                       <Link
-                        href={`/producer/ranchos/${upp.id}`}
+                        href={`/producer/projects/${upp.id}`}
                         className="font-medium hover:underline"
                       >
                         {upp.name}

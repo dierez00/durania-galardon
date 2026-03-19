@@ -13,21 +13,15 @@ export interface UseUppDocumentsResult {
   lastUpdate: Date | null;
 }
 
-export function useUppDocuments(): UseUppDocumentsResult {
-  // Función que ejecuta el use case
-  const loadFn = useCallback(
-    () => listUppDocumentsUseCase.execute(),
-    []
-  );
+export function useUppDocuments(uppId?: string | null): UseUppDocumentsResult {
+  const loadFn = useCallback(() => listUppDocumentsUseCase.execute(uppId ?? undefined), [uppId]);
 
-  // Usar el hook de polling
-  const polling = useDocumentPolling<UppDocument>(
-    loadFn,
-    'upp',
-    { interval: null, enabled: true, onWindowFocus: true }
-  );
+  const polling = useDocumentPolling<UppDocument>(loadFn, "upp", {
+    interval: null,
+    enabled: true,
+    onWindowFocus: true,
+  });
 
-  // Crear función reload manual
   const reload = useCallback(async () => {
     await polling.refetch();
   }, [polling.refetch]);

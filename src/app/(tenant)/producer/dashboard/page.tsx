@@ -1,1 +1,7 @@
-export { default } from "@/modules/producer/dashboard/presentation/ProducerDashboardPage";
+"use client";
+
+import { LegacyProducerProjectRedirect } from "@/modules/producer/ranchos/presentation";
+
+export default function ProducerDashboardLegacyPage() {
+  return <LegacyProducerProjectRedirect targetModule="overview" />;
+}

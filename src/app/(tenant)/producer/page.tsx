@@ -1,5 +1,1 @@
-import { redirect } from "next/navigation";
-
-export default function ProducerHomePage() {
-  redirect("/producer/dashboard");
-}
+export { default } from "@/modules/producer/ranchos/presentation/ProducerOrganizationProjectsPage";

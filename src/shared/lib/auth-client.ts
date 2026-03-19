@@ -17,10 +17,12 @@ interface AuthMeResponse {
   data?: {
     user?: {
       role?: string;
+      displayName?: string | null;
     };
     tenant?: {
       id?: string;
       slug?: string;
+      name?: string;
     };
     panelType?: "government" | "producer" | "mvz";
     permissions?: string[];

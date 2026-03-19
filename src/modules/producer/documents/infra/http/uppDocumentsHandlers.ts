@@ -28,13 +28,22 @@ export async function GET(request: NextRequest) {
     panelType: auth.context.user.panelType,
   });
 
+  const uppId = request.nextUrl.searchParams.get("uppId")?.trim() ?? null;
+  if (uppId) {
+    const canAccess = await auth.context.canAccessUpp(uppId);
+    if (!canAccess) {
+      return apiError("FORBIDDEN", "No tiene acceso a la UPP solicitada.", 403);
+    }
+  }
+
   const accessibleUppIds = await auth.context.getAccessibleUppIds();
+  const scopedUppIds = uppId ? accessibleUppIds.filter((accessibleUppId) => accessibleUppId === uppId) : accessibleUppIds;
   logProducerAccessServer("producer/upp-documents:get:accessible-ids", {
     userId: auth.context.user.id,
     tenantId: auth.context.user.tenantId,
-    accessibleUpps: sampleProducerAccessIds(accessibleUppIds),
+    accessibleUpps: sampleProducerAccessIds(scopedUppIds),
   });
-  if (accessibleUppIds.length === 0) {
+  if (scopedUppIds.length === 0) {
     logProducerAccessServer("producer/upp-documents:get:empty-access", {
       userId: auth.context.user.id,
       tenantId: auth.context.user.tenantId,
@@ -44,7 +53,7 @@ export async function GET(request: NextRequest) {
   const repository = new ServerUppDocumentsRepository(
     auth.context.user.tenantId,
     auth.context.user.id,
-    accessibleUppIds
+    scopedUppIds
   );
 
   try {

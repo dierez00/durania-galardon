@@ -1,5 +1,5 @@
 export {
-  getProducerDocuments as GET,
-  postProducerDocuments as POST,
-  patchProducerDocuments as PATCH,
-} from "@/modules/producer/documents";
+  GET,
+  POST,
+  PATCH,
+} from "@/modules/producer/documents/infra/http/producerDocumentsHandlers";

@@ -17,8 +17,10 @@
 - `admin/audit` -> `src/modules/admin/auditoria`
 - `producer/bovinos` -> `src/modules/bovinos`
 - `producer/documents` y `producer/upp-documents` -> `src/modules/producer/documents`
+- `producer/settings` -> `src/modules/producer/settings`
 - `producer/upp` -> `src/modules/producer/ranchos`
 - `mvz/assignments` -> `src/modules/ranchos`
+- `mvz/settings` -> `src/modules/mvz/settings`
 
 ## Patron esperado
 
@@ -52,6 +54,7 @@ Si el modulo aun no expone alias desde `index.ts`, el reexport puede apuntar tem
 
 - `GET /api/producer/dashboard`
 - `GET /api/producer/upp`
+- `GET|PATCH /api/producer/settings`
 - `GET|POST /api/producer/bovinos`
 - `GET|POST /api/producer/movements`
 - `GET|POST /api/producer/exports`
@@ -59,10 +62,20 @@ Si el modulo aun no expone alias desde `index.ts`, el reexport puede apuntar tem
 - `GET|POST /api/producer/upp-documents`
 - `GET|POST|PATCH /api/producer/employees`
 
+### Scope de proyecto productor
+
+Cuando la UI esta en `/producer/projects/[uppId]/*`, estas APIs aceptan `?uppId=` y deben responder filtradas al proyecto activo:
+
+- `GET /api/producer/bovinos`
+- `GET /api/producer/movements`
+- `GET /api/producer/exports`
+- `GET /api/producer/upp-documents`
+
 ## MVZ
 
 - `GET /api/mvz/dashboard`
 - `GET /api/mvz/assignments`
+- `GET|PATCH /api/mvz/settings`
 - `GET|POST /api/mvz/tests`
 - `POST /api/mvz/tests/sync`
 - `GET|PATCH /api/mvz/exports`
@@ -75,6 +88,10 @@ Si el modulo aun no expone alias desde `index.ts`, el reexport puede apuntar tem
 - `GET /api/mvz/ranchos/:uppId/reportes`
 - `GET|POST /api/mvz/ranchos/:uppId/documentacion`
 - `GET|POST|PATCH /api/mvz/ranchos/:uppId/visitas`
+
+### Shell tenant
+
+`GET /api/auth/me` alimenta el shell tenant y debe incluir `panelType`, `permissions` y `tenant.name` para renderizar el contexto organizacional correcto.
 
 ## Public
 

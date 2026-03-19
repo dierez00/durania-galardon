@@ -40,7 +40,15 @@ const MEMBERSHIP_VARIANT: Record<string, "default" | "secondary" | "destructive"
   suspended: "destructive",
 };
 
-export default function ProducerEmpleadosPage() {
+interface ProducerEmpleadosPageProps {
+  title?: string;
+  description?: string;
+}
+
+export default function ProducerEmpleadosPage({
+  title = "Empleados",
+  description = "Gestion de membresias y accesos UPP del personal.",
+}: ProducerEmpleadosPageProps) {
   const { upps } = useProducerUppContext();
   const [rows, setRows] = useState<EmployeeRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,8 +129,8 @@ export default function ProducerEmpleadosPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Empleados</h1>
-        <p className="text-sm text-muted-foreground">Gestion de membresias y accesos UPP del personal.</p>
+        <h1 className="text-2xl font-bold">{title}</h1>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
 
       <Card>

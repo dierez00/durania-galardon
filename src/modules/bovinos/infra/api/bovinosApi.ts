@@ -12,9 +12,10 @@ async function getToken(): Promise<string> {
   return token;
 }
 
-export async function apiFetchBovinos(): Promise<unknown[]> {
+export async function apiFetchBovinos(uppId?: string | null): Promise<unknown[]> {
   const token = await getToken();
-  const res = await fetch(BASE, { headers: authHeaders(token) });
+  const url = uppId ? `${BASE}?uppId=${encodeURIComponent(uppId)}` : BASE;
+  const res = await fetch(url, { headers: authHeaders(token) });
   const body = await res.json();
   if (!res.ok || !body.ok) {
     throw new Error(body.error?.message ?? "No fue posible cargar bovinos.");

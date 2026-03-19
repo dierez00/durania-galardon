@@ -19,7 +19,7 @@ export default function LegacyMvzRedirect({ targetTab }: { targetTab?: string })
       return;
     }
 
-    router.replace("/mvz/dashboard?selectRancho=1");
+    router.replace("/mvz");
   }, [hydrated, router, selectedUppId, targetTab]);
 
   return (

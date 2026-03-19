@@ -58,6 +58,7 @@ export interface TenantContextResolution {
 export interface AuthenticatedRequestUser {
   id: string;
   email: string;
+  displayName: string | null;
   role: AppRole;
   tenantId: string;
   tenantSlug: string;
@@ -384,6 +385,11 @@ export async function resolveAuthenticatedRequestUser(
     user: {
       id: userResult.data.user.id,
       email: userResult.data.user.email ?? "",
+      displayName:
+        (userResult.data.user.user_metadata?.full_name as string | undefined) ??
+        (userResult.data.user.user_metadata?.name as string | undefined) ??
+        (userResult.data.user.user_metadata?.display_name as string | undefined) ??
+        null,
       role: contextResult.row.role_key as AppRole,
       tenantId: contextResult.row.tenant_id,
       tenantSlug: contextResult.row.tenant_slug,

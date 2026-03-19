@@ -2,14 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import AppSidebar from "@app/_components/AppSidebar";
-import Topbar from "@/shared/ui/layout/Topbar";
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase-browser";
 import { resolveClientRole } from "@/shared/lib/auth-client";
 import { MvzRanchProvider } from "@/modules/ranchos/presentation/mvz";
 import { ProducerUppProvider } from "@/modules/producer/ranchos/presentation";
+import { TenantWorkspaceProvider, TenantWorkspaceShell } from "@/modules/workspace";
 import {
-  ROLE_DEFAULT_PERMISSIONS,
   isPermissionKey,
   isMvzViewRole,
   isProducerViewRole,
@@ -17,28 +15,141 @@ import {
   type PermissionKey,
 } from "@/shared/lib/auth";
 
-const producerRoutePermissions: Array<{ prefix: string; permission: PermissionKey }> = [
-  { prefix: "/producer/dashboard", permission: "producer.dashboard.read" },
-  { prefix: "/producer/ranchos", permission: "producer.upp.read" },
-  { prefix: "/producer/bovinos", permission: "producer.bovinos.read" },
-  { prefix: "/producer/movilizacion", permission: "producer.movements.read" },
-  { prefix: "/producer/exportaciones", permission: "producer.exports.read" },
-  { prefix: "/producer/documentos", permission: "producer.documents.read" },
-  { prefix: "/producer/empleados", permission: "producer.employees.read" },
-];
+function resolveProducerPermission(pathname: string): PermissionKey | null {
+  const segments = pathname.split("/").filter(Boolean);
 
-const mvzRoutePermissions: Array<{ prefix: string; permission: PermissionKey }> = [
-  { prefix: "/mvz/dashboard", permission: "mvz.dashboard.read" },
-  { prefix: "/mvz/ranchos", permission: "mvz.ranch.read" },
-  { prefix: "/mvz/asignaciones", permission: "mvz.assignments.read" },
-  { prefix: "/mvz/pruebas", permission: "mvz.tests.read" },
-  { prefix: "/mvz/exportaciones", permission: "mvz.exports.read" },
-];
+  if (segments[0] !== "producer") {
+    return null;
+  }
 
-function resolvePermissionForPath(pathname: string, rolePath: "producer" | "mvz"): PermissionKey | null {
-  const source = rolePath === "producer" ? producerRoutePermissions : mvzRoutePermissions;
-  const match = source.find((entry) => pathname === entry.prefix || pathname.startsWith(`${entry.prefix}/`));
-  return match?.permission ?? null;
+  if (segments.length === 1) {
+    return "producer.upp.read";
+  }
+
+  if (segments[1] === "metrics" || segments[1] === "dashboard") {
+    return "producer.dashboard.read";
+  }
+
+  if (segments[1] === "settings" || segments[1] === "ranchos" || segments[1] === "empleados") {
+    return "producer.upp.read";
+  }
+
+  if (segments[1] === "bovinos") {
+    return "producer.bovinos.read";
+  }
+
+  if (segments[1] === "movilizacion") {
+    return "producer.movements.read";
+  }
+
+  if (segments[1] === "exportaciones") {
+    return "producer.exports.read";
+  }
+
+  if (segments[1] === "documentos") {
+    return "producer.documents.read";
+  }
+
+  if (segments[1] === "projects") {
+    const moduleKey = segments[3] ?? "overview";
+
+    if (moduleKey === "animales") {
+      return "producer.bovinos.read";
+    }
+
+    if (moduleKey === "movilizacion") {
+      return "producer.movements.read";
+    }
+
+    if (moduleKey === "exportaciones") {
+      return "producer.exports.read";
+    }
+
+    if (moduleKey === "documentos") {
+      return "producer.documents.read";
+    }
+
+    return "producer.upp.read";
+  }
+
+  return null;
+}
+
+function resolveMvzPermission(pathname: string): PermissionKey | null {
+  const segments = pathname.split("/").filter(Boolean);
+
+  if (segments[0] !== "mvz") {
+    return null;
+  }
+
+  if (segments.length === 1) {
+    return "mvz.assignments.read";
+  }
+
+  if (segments[1] === "metrics" || segments[1] === "dashboard" || segments[1] === "settings") {
+    return "mvz.dashboard.read";
+  }
+
+  if (segments[1] === "asignaciones") {
+    return "mvz.assignments.read";
+  }
+
+  if (segments[1] === "pruebas") {
+    return "mvz.tests.read";
+  }
+
+  if (segments[1] === "exportaciones") {
+    return "mvz.exports.read";
+  }
+
+  if (segments[1] === "ranchos" && !segments[2]) {
+    return "mvz.assignments.read";
+  }
+
+  if (segments[1] === "ranchos" && segments[2]) {
+    const moduleKey = segments[3] ?? "overview";
+
+    if (moduleKey === "animales") {
+      return "mvz.ranch.animals.read";
+    }
+
+    if (moduleKey === "historial-clinico") {
+      return "mvz.ranch.clinical.read";
+    }
+
+    if (moduleKey === "vacunacion") {
+      return "mvz.ranch.vaccinations.read";
+    }
+
+    if (moduleKey === "incidencias") {
+      return "mvz.ranch.incidents.read";
+    }
+
+    if (moduleKey === "reportes") {
+      return "mvz.ranch.reports.read";
+    }
+
+    if (moduleKey === "documentacion") {
+      return "mvz.ranch.documents.read";
+    }
+
+    if (moduleKey === "visitas") {
+      return "mvz.ranch.visits.read";
+    }
+
+    return "mvz.ranch.read";
+  }
+
+  return null;
+}
+
+function resolvePermissionForPath(
+  pathname: string,
+  rolePath: "producer" | "mvz"
+): PermissionKey | null {
+  return rolePath === "producer"
+    ? resolveProducerPermission(pathname)
+    : resolveMvzPermission(pathname);
 }
 
 export default function TenantLayout({
@@ -49,6 +160,7 @@ export default function TenantLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [ready, setReady] = useState(false);
+  const panel = pathname.startsWith("/producer") ? "producer" : "mvz";
 
   useEffect(() => {
     const run = async () => {
@@ -74,31 +186,25 @@ export default function TenantLayout({
         }
 
         if (isProducerViewRole(roleResult.role) && !pathname.startsWith("/producer")) {
-          router.replace("/producer/dashboard");
+          router.replace("/producer");
           return;
         }
 
         if (isMvzViewRole(roleResult.role) && !pathname.startsWith("/mvz")) {
-          router.replace("/mvz/dashboard");
+          router.replace("/mvz");
           return;
         }
 
-        const permissionsFallback = ROLE_DEFAULT_PERMISSIONS[roleResult.role] ?? [];
         const rolePath = isProducerViewRole(roleResult.role) ? "producer" : "mvz";
         const requiredPermission = resolvePermissionForPath(pathname, rolePath);
-        const dashboardPath = isProducerViewRole(roleResult.role) ? "/producer/dashboard" : "/mvz/dashboard";
+        const dashboardPath = isProducerViewRole(roleResult.role) ? "/producer" : "/mvz";
 
         if (!requiredPermission) {
-          if (pathname !== dashboardPath) {
-            router.replace(dashboardPath);
-            return;
-          }
-
           setReady(true);
           return;
         }
 
-        let permissions = permissionsFallback;
+        let permissions: PermissionKey[] = [];
         try {
           const authMeResponse = await fetch("/api/auth/me", {
             headers: {
@@ -108,12 +214,10 @@ export default function TenantLayout({
           const authMeBody = await authMeResponse.json();
           if (authMeResponse.ok && authMeBody.ok && Array.isArray(authMeBody.data?.permissions)) {
             const apiPermissions = (authMeBody.data.permissions as string[]).filter(isPermissionKey);
-            if (apiPermissions.length > 0) {
-              permissions = apiPermissions;
-            }
+            permissions = apiPermissions;
           }
         } catch {
-          permissions = permissionsFallback;
+          permissions = [];
         }
 
         if (!permissions.includes(requiredPermission)) {
@@ -144,18 +248,16 @@ export default function TenantLayout({
   }
 
   return (
-    <div className="flex min-h-screen">
-      <AppSidebar />
-      <div className="flex-1 flex flex-col min-w-0">
-        <Topbar />
-        <main className="flex-1 p-6 overflow-auto">
-          {pathname.startsWith("/producer") ? (
-            <ProducerUppProvider>{children}</ProducerUppProvider>
-          ) : (
-            <MvzRanchProvider>{children}</MvzRanchProvider>
-          )}
-        </main>
-      </div>
-    </div>
+    <TenantWorkspaceProvider key={panel} panel={panel}>
+      {panel === "producer" ? (
+        <ProducerUppProvider>
+          <TenantWorkspaceShell>{children}</TenantWorkspaceShell>
+        </ProducerUppProvider>
+      ) : (
+        <MvzRanchProvider>
+          <TenantWorkspaceShell>{children}</TenantWorkspaceShell>
+        </MvzRanchProvider>
+      )}
+    </TenantWorkspaceProvider>
   );
 }

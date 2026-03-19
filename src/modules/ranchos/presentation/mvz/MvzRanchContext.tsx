@@ -1,7 +1,7 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { getAccessToken } from "@/shared/lib/auth-session";
+import { createContext, useContext, useMemo } from "react";
+import { useTenantWorkspace } from "@/modules/workspace";
 
 interface MvzRanchContextValue {
   tenantId: string | null;
@@ -12,81 +12,23 @@ interface MvzRanchContextValue {
 
 const MvzRanchContext = createContext<MvzRanchContextValue | null>(null);
 
-function buildStorageKey(tenantId: string) {
-  return `mvz:selectedUppId:${tenantId}`;
-}
-
 export function MvzRanchProvider({ children }: { children: React.ReactNode }) {
-  const [tenantId, setTenantId] = useState<string | null>(null);
-  const [selectedUppId, setSelectedUppIdState] = useState<string | null>(null);
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    const run = async () => {
-      const accessToken = await getAccessToken();
-      if (!accessToken) {
-        setHydrated(true);
-        return;
-      }
-
-      try {
-        const response = await fetch("/api/auth/me", {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          cache: "no-store",
-        });
-
-        const body = await response.json();
-        if (!response.ok || !body.ok || body.data?.panelType !== "mvz") {
-          setHydrated(true);
-          return;
-        }
-
-        const resolvedTenantId = (body.data?.tenant?.id as string | undefined) ?? null;
-        setTenantId(resolvedTenantId);
-
-        if (resolvedTenantId) {
-          const stored = sessionStorage.getItem(buildStorageKey(resolvedTenantId));
-          if (stored) {
-            setSelectedUppIdState(stored);
-          }
-        }
-      } catch {
-        // Ignore and keep provider in neutral mode.
-      } finally {
-        setHydrated(true);
-      }
-    };
-
-    void run();
-  }, []);
-
-  const setSelectedUppId = useCallback(
-    (uppId: string | null) => {
-      setSelectedUppIdState(uppId);
-      if (!tenantId) {
-        return;
-      }
-
-      const key = buildStorageKey(tenantId);
-      if (uppId) {
-        sessionStorage.setItem(key, uppId);
-      } else {
-        sessionStorage.removeItem(key);
-      }
-    },
-    [tenantId]
-  );
+  const workspace = useTenantWorkspace();
 
   const value = useMemo<MvzRanchContextValue>(
     () => ({
-      tenantId,
-      selectedUppId,
-      hydrated,
-      setSelectedUppId,
+      tenantId: workspace.organization?.id ?? null,
+      selectedUppId: workspace.currentProject?.id ?? workspace.selectedProjectId,
+      hydrated: !workspace.loading,
+      setSelectedUppId: workspace.setSelectedProjectId,
     }),
-    [hydrated, selectedUppId, setSelectedUppId, tenantId]
+    [
+      workspace.currentProject?.id,
+      workspace.loading,
+      workspace.organization?.id,
+      workspace.selectedProjectId,
+      workspace.setSelectedProjectId,
+    ]
   );
 
   return <MvzRanchContext.Provider value={value}>{children}</MvzRanchContext.Provider>;

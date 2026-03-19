@@ -1,5 +1,1 @@
-import { redirect } from "next/navigation";
-
-export default function MvzHomePage() {
-  redirect("/mvz/dashboard");
-}
+export { default } from "@/modules/ranchos/presentation/mvz/MvzProjectsPage";

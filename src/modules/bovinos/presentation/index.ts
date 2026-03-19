@@ -4,6 +4,7 @@ export { BovinoDetail } from "./BovinoDetail";
 export { SanitarioBadge } from "./SanitarioBadge";
 export { PruebaStatusBadge } from "./PruebaStatusBadge";
 export { ExportableCheckBadge } from "./ExportableCheckBadge";
+export { default as ProducerBovinosPage } from "./ProducerBovinosPage";
 export { useBovinos } from "./hooks/useBovinos";
 export { useBovinoDetail } from "./hooks/useBovinoDetail";
 export type { BovinoDetailTab } from "./hooks/useBovinoDetail";

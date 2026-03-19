@@ -27,6 +27,20 @@ interface AssignmentRow {
 }
 
 export default function MvzDashboardPage() {
+  return <MvzDashboardPageContent />;
+}
+
+interface MvzDashboardPageProps {
+  title?: string;
+  description?: string;
+  showAssignmentsSelector?: boolean;
+}
+
+export function MvzDashboardPageContent({
+  title = "Dashboard MVZ",
+  description = "Resumen global y selector de ranchos asignados.",
+  showAssignmentsSelector = true,
+}: MvzDashboardPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { selectedUppId, setSelectedUppId } = useMvzRanchContext();
@@ -91,8 +105,8 @@ export default function MvzDashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Dashboard MVZ</h1>
-        <p className="text-sm text-muted-foreground">Resumen global y selector de ranchos asignados.</p>
+        <h1 className="text-2xl font-bold">{title}</h1>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
 
       {showSelectionHint ? (
@@ -101,46 +115,50 @@ export default function MvzDashboardPage() {
 
       {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Selector de ranchos asignados</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <select
-              value={localSelectedUppId}
-              onChange={(event) => setLocalSelectedUppId(event.target.value)}
-              className="h-10 rounded-md border bg-background px-3 text-sm"
-            >
-              <option value="">Selecciona un rancho</option>
-              {ranchos.map((rancho) => (
-                <option key={rancho.assignment_id} value={rancho.upp_id}>
-                  {rancho.upp_name} - {rancho.producer_name}
-                </option>
-              ))}
-            </select>
-            <Button onClick={() => openRancho(localSelectedUppId)} disabled={!localSelectedUppId}>
-              Abrir panel del rancho
-            </Button>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {ranchos.map((rancho) => (
-              <button
-                key={rancho.assignment_id}
-                type="button"
-                onClick={() => openRancho(rancho.upp_id)}
-                className="rounded-lg border p-4 text-left hover:bg-accent"
+      {showAssignmentsSelector ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Selector de ranchos asignados</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <select
+                value={localSelectedUppId}
+                onChange={(event) => setLocalSelectedUppId(event.target.value)}
+                className="h-10 rounded-md border bg-background px-3 text-sm"
               >
-                <p className="font-semibold">{rancho.upp_name}</p>
-                <p className="text-xs text-muted-foreground">Productor: {rancho.producer_name}</p>
-                <p className="text-xs text-muted-foreground">Alerta: {rancho.sanitary_alert}</p>
-                <p className="text-xs text-muted-foreground">Animales activos: {rancho.active_animals ?? 0}</p>
-              </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+                <option value="">Selecciona un rancho</option>
+                {ranchos.map((rancho) => (
+                  <option key={rancho.assignment_id} value={rancho.upp_id}>
+                    {rancho.upp_name} - {rancho.producer_name}
+                  </option>
+                ))}
+              </select>
+              <Button onClick={() => openRancho(localSelectedUppId)} disabled={!localSelectedUppId}>
+                Abrir panel del rancho
+              </Button>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {ranchos.map((rancho) => (
+                <button
+                  key={rancho.assignment_id}
+                  type="button"
+                  onClick={() => openRancho(rancho.upp_id)}
+                  className="rounded-lg border p-4 text-left hover:bg-accent"
+                >
+                  <p className="font-semibold">{rancho.upp_name}</p>
+                  <p className="text-xs text-muted-foreground">Productor: {rancho.producer_name}</p>
+                  <p className="text-xs text-muted-foreground">Alerta: {rancho.sanitary_alert}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Animales activos: {rancho.active_animals ?? 0}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Card>

@@ -1,1 +1,1 @@
-export { getUppDocumentFile as GET } from "@/modules/producer/documents";
+export { GET } from "@/modules/producer/documents/infra/http/uppDocumentFileHandlers";

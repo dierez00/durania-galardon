@@ -1,1 +1,5 @@
-export { default } from "@/modules/mvz/dashboard/presentation/MvzDashboardPage";
+import { redirect } from "next/navigation";
+
+export default function MvzDashboardLegacyPage() {
+  redirect("/mvz/metrics");
+}

@@ -1,1 +1,1 @@
-export { deleteProducerDocument as DELETE } from "@/modules/producer/documents";
+export { DELETE } from "@/modules/producer/documents/infra/http/producerDocumentDetailHandlers";

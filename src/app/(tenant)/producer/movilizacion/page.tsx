@@ -1,1 +1,7 @@
-export { default } from "@/modules/producer/movilizacion/presentation/ProducerMovilizacionPage";
+"use client";
+
+import { LegacyProducerProjectRedirect } from "@/modules/producer/ranchos/presentation";
+
+export default function ProducerMovilizacionLegacyPage() {
+  return <LegacyProducerProjectRedirect targetModule="movilizacion" />;
+}

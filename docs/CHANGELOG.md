@@ -19,6 +19,9 @@ Source of Truth: Historical log of documentation-only changes. Current operation
 
 ### Changed
 
+- `docs/architecture/routing.md`: actualiza el mapa tenant a navegacion de dos niveles (`/producer` y `/mvz` como home organizacional, rutas de proyecto y redirects legacy).
+- `docs/architecture/multitenancy.md`: documenta el workspace de dos niveles, persistencia de proyecto activo y uso de `tenant.name` desde `GET /api/auth/me`.
+- `src/app/api/README.md`: agrega ownership y contratos de `producer/settings`, `mvz/settings` y filtros `?uppId=` para APIs de proyecto.
 - `docs/README.md`: indice actualizado con jerarquia MVZ, referencia a modulos archivados, cierre de la normalizacion estructural y guia rapida para futuras contribuciones.
 - `docs/architecture/overview.md`: estructura real de rutas MVZ por rancho, ownership final de la refactor, estructura final de carpetas y nueva guia de trabajo por capas.
 - `docs/architecture/routing.md`: rutas nuevas `/mvz/ranchos/[uppId]/*` y politica de redirects legacy.
