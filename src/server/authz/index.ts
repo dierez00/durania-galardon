@@ -16,6 +16,12 @@ import {
 } from "@/server/auth/supabase";
 import { requirePermission } from "@/server/auth/permissions";
 import { logAuditEvent } from "@/server/audit";
+import {
+  isProducerAccessDebugEnabled,
+  logProducerAccessServer,
+  sampleProducerAccessIds,
+  summarizeProducerAccessError,
+} from "@/server/debug/producerAccess";
 
 export interface RequireAuthorizedOptions {
   roles?: AppRole[];
@@ -52,9 +58,38 @@ export async function hasUppScopeAccess(
     return false;
   }
 
+  const debugProducerAccess = isProducerAccessDebugEnabled() && isProducerViewRole(user.role);
+  const debugContext = {
+    userId: user.id,
+    role: user.role,
+    tenantId: user.tenantId,
+    tenantSlug: user.tenantSlug,
+    panelType: user.panelType,
+    uppId,
+  };
+
+  if (debugProducerAccess) {
+    logProducerAccessServer("hasUppScopeAccess:start", debugContext);
+  }
+
   const supabase = createSupabaseRlsServerClient(user.accessToken);
-  const uppResult = await supabase.from("upps").select("id").eq("id", uppId).maybeSingle();
-  if (!uppResult.error && uppResult.data) {
+  const directUppResult = await supabase.from("upps").select("id").eq("id", uppId).maybeSingle();
+
+  if (debugProducerAccess) {
+    logProducerAccessServer("hasUppScopeAccess:direct-rls-select", {
+      ...debugContext,
+      found: Boolean(directUppResult.data?.id),
+      error: summarizeProducerAccessError(directUppResult.error),
+    });
+  }
+
+  if (!directUppResult.error && directUppResult.data) {
+    if (debugProducerAccess) {
+      logProducerAccessServer("hasUppScopeAccess:granted", {
+        ...debugContext,
+        source: "rls_select",
+      });
+    }
     return true;
   }
 
@@ -63,7 +98,21 @@ export async function hasUppScopeAccess(
     p_min_level: "viewer",
   });
 
+  if (debugProducerAccess) {
+    logProducerAccessServer("hasUppScopeAccess:rpc-auth-has-upp-access", {
+      ...debugContext,
+      granted: uppScopeResult.data === true,
+      error: summarizeProducerAccessError(uppScopeResult.error),
+    });
+  }
+
   if (!uppScopeResult.error && uppScopeResult.data === true) {
+    if (debugProducerAccess) {
+      logProducerAccessServer("hasUppScopeAccess:granted", {
+        ...debugContext,
+        source: "rpc_auth_has_upp_access",
+      });
+    }
     return true;
   }
 
@@ -78,8 +127,17 @@ export async function hasUppScopeAccess(
       .eq("status", "active")
       .maybeSingle();
 
+    if (debugProducerAccess) {
+      logProducerAccessServer("hasUppScopeAccess:producer-profile-by-user", {
+        ...debugContext,
+        found: Boolean(producerResult.data?.id),
+        producerId: producerResult.data?.id ?? null,
+        error: summarizeProducerAccessError(producerResult.error),
+      });
+    }
+
     if (!producerResult.error && producerResult.data) {
-      const uppResult = await supabaseAdmin
+      const producerUppResult = await supabaseAdmin
         .from("upps")
         .select("id")
         .eq("tenant_id", user.tenantId)
@@ -87,9 +145,43 @@ export async function hasUppScopeAccess(
         .eq("id", uppId)
         .maybeSingle();
 
-      if (!uppResult.error && uppResult.data) {
+      if (debugProducerAccess) {
+        logProducerAccessServer("hasUppScopeAccess:producer-upp-check", {
+          ...debugContext,
+          producerId: producerResult.data.id,
+          found: Boolean(producerUppResult.data?.id),
+          error: summarizeProducerAccessError(producerUppResult.error),
+        });
+      }
+
+      if (!producerUppResult.error && producerUppResult.data) {
+        if (debugProducerAccess) {
+          logProducerAccessServer("hasUppScopeAccess:granted", {
+            ...debugContext,
+            source: "producer_profile_lookup",
+            producerId: producerResult.data.id,
+          });
+        }
         return true;
       }
+    } else if (debugProducerAccess && !producerResult.error) {
+      const tenantProducersResult = await supabaseAdmin
+        .from("producers")
+        .select("id,user_id,status")
+        .eq("owner_tenant_id", user.tenantId)
+        .limit(5);
+
+      logProducerAccessServer("hasUppScopeAccess:producer-profile-by-tenant-diagnostic", {
+        ...debugContext,
+        foundAny: (tenantProducersResult.data ?? []).length > 0,
+        error: summarizeProducerAccessError(tenantProducersResult.error),
+        tenantProducers:
+          (tenantProducersResult.data ?? []).slice(0, 5).map((producer) => ({
+            id: producer.id,
+            userId: producer.user_id,
+            status: producer.status,
+          })),
+      });
     }
   }
 
@@ -117,14 +209,40 @@ export async function hasUppScopeAccess(
     }
   }
 
+  if (debugProducerAccess) {
+    logProducerAccessServer("hasUppScopeAccess:denied", debugContext);
+  }
+
   return false;
 }
 
 export async function resolveAccessibleUppIds(
   user: AuthenticatedRequestUser
 ): Promise<string[]> {
+  const debugProducerAccess = isProducerAccessDebugEnabled() && isProducerViewRole(user.role);
+  const debugContext = {
+    userId: user.id,
+    role: user.role,
+    tenantId: user.tenantId,
+    tenantSlug: user.tenantSlug,
+    panelType: user.panelType,
+  };
+
+  if (debugProducerAccess) {
+    logProducerAccessServer("resolveAccessibleUppIds:start", debugContext);
+  }
+
   const supabase = createSupabaseRlsServerClient(user.accessToken);
   const uppResult = await supabase.from("upps").select("id");
+
+  if (debugProducerAccess) {
+    const rlsVisibleIds = ((uppResult.data ?? []) as Array<{ id: string }>).map((row) => row.id);
+    logProducerAccessServer("resolveAccessibleUppIds:rls-probe", {
+      ...debugContext,
+      error: summarizeProducerAccessError(uppResult.error),
+      rlsVisibleUpps: sampleProducerAccessIds(rlsVisibleIds),
+    });
+  }
 
   if (uppResult.error) {
     return [];
@@ -139,6 +257,17 @@ export async function resolveAccessibleUppIds(
     .eq("tenant_id", user.tenantId)
     .eq("user_id", user.id)
     .eq("status", "active");
+
+  if (debugProducerAccess) {
+    const directAccessIds = ((directAccessResult.data ?? []) as Array<{ upp_id: string | null }>)
+      .map((row) => row.upp_id)
+      .filter((uppId): uppId is string => Boolean(uppId));
+    logProducerAccessServer("resolveAccessibleUppIds:user-upp-access", {
+      ...debugContext,
+      error: summarizeProducerAccessError(directAccessResult.error),
+      directAccessUpps: sampleProducerAccessIds(directAccessIds),
+    });
+  }
 
   if (!directAccessResult.error) {
     (directAccessResult.data ?? []).forEach((row) => {
@@ -157,6 +286,15 @@ export async function resolveAccessibleUppIds(
       .eq("status", "active")
       .maybeSingle();
 
+    if (debugProducerAccess) {
+      logProducerAccessServer("resolveAccessibleUppIds:producer-profile-by-user", {
+        ...debugContext,
+        found: Boolean(producerResult.data?.id),
+        producerId: producerResult.data?.id ?? null,
+        error: summarizeProducerAccessError(producerResult.error),
+      });
+    }
+
     if (!producerResult.error && producerResult.data) {
       const producerUppsResult = await supabaseAdmin
         .from("upps")
@@ -164,9 +302,39 @@ export async function resolveAccessibleUppIds(
         .eq("tenant_id", user.tenantId)
         .eq("producer_id", producerResult.data.id);
 
+      if (debugProducerAccess) {
+        const producerUppIds = ((producerUppsResult.data ?? []) as Array<{ id: string }>).map(
+          (row) => row.id
+        );
+        logProducerAccessServer("resolveAccessibleUppIds:producer-upps", {
+          ...debugContext,
+          producerId: producerResult.data.id,
+          error: summarizeProducerAccessError(producerUppsResult.error),
+          producerUpps: sampleProducerAccessIds(producerUppIds),
+        });
+      }
+
       if (!producerUppsResult.error) {
         (producerUppsResult.data ?? []).forEach((row) => uppIds.add(row.id));
       }
+    } else if (debugProducerAccess && !producerResult.error) {
+      const tenantProducersResult = await supabaseAdmin
+        .from("producers")
+        .select("id,user_id,status")
+        .eq("owner_tenant_id", user.tenantId)
+        .limit(5);
+
+      logProducerAccessServer("resolveAccessibleUppIds:producer-profile-by-tenant-diagnostic", {
+        ...debugContext,
+        foundAny: (tenantProducersResult.data ?? []).length > 0,
+        error: summarizeProducerAccessError(tenantProducersResult.error),
+        tenantProducers:
+          (tenantProducersResult.data ?? []).slice(0, 5).map((producer) => ({
+            id: producer.id,
+            userId: producer.user_id,
+            status: producer.status,
+          })),
+      });
     }
   }
 
@@ -196,7 +364,16 @@ export async function resolveAccessibleUppIds(
     }
   }
 
-  return [...uppIds];
+  const resolvedIds = [...uppIds];
+
+  if (debugProducerAccess) {
+    logProducerAccessServer("resolveAccessibleUppIds:resolved", {
+      ...debugContext,
+      accessibleUpps: sampleProducerAccessIds(resolvedIds),
+    });
+  }
+
+  return resolvedIds;
 }
 
 export async function requireAuthorized(

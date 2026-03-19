@@ -28,8 +28,13 @@ Orden recomendado de ejecucion SQL:
 
 1. `sql/migration_001_duraniaMVP.sql`
 2. `sql/migration_002_mvz_hierarchy.sql`
-3. `sql/views.sql`
-4. `sql/seeds.sql`
+3. `sql/migration_003_fix_rls_politicies.sql`
+4. `sql/views.sql`
+5. `sql/seeds.sql`
+
+Nota:
+
+- `sql/migration_003_fix_rls_politicies.sql` corrige recursion infinita de RLS en politicas que referencian `public.tenants`, especialmente visible cuando paneles de productor/MVZ cargan vacios aunque la sesion y el tenant se resuelven correctamente.
 
 Verificar despues de migrar:
 

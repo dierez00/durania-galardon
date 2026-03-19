@@ -3,6 +3,11 @@ import { requireAuthorized } from "@/server/authz";
 import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
 import { resolveProducerId } from "@/server/authz/profiles";
 import { logAuditEvent } from "@/server/audit";
+import {
+  logProducerAccessServer,
+  sampleProducerAccessIds,
+  summarizeProducerAccessError,
+} from "@/server/debug/producerAccess";
 
 interface MovementBody {
   uppId?: string;
@@ -24,8 +29,25 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
+  logProducerAccessServer("producer/movements:get:start", {
+    userId: auth.context.user.id,
+    role: auth.context.user.role,
+    tenantId: auth.context.user.tenantId,
+    tenantSlug: auth.context.user.tenantSlug,
+    panelType: auth.context.user.panelType,
+  });
+
   const accessibleUppIds = await auth.context.getAccessibleUppIds();
+  logProducerAccessServer("producer/movements:get:accessible-ids", {
+    userId: auth.context.user.id,
+    tenantId: auth.context.user.tenantId,
+    accessibleUpps: sampleProducerAccessIds(accessibleUppIds),
+  });
   if (accessibleUppIds.length === 0) {
+    logProducerAccessServer("producer/movements:get:empty-access", {
+      userId: auth.context.user.id,
+      tenantId: auth.context.user.tenantId,
+    });
     return apiSuccess({ movements: [] });
   }
 
@@ -38,8 +60,19 @@ export async function GET(request: Request) {
     .order("created_at", { ascending: false });
 
   if (rowsResult.error) {
+    logProducerAccessServer("producer/movements:get:error", {
+      userId: auth.context.user.id,
+      tenantId: auth.context.user.tenantId,
+      error: summarizeProducerAccessError(rowsResult.error),
+    });
     return apiError("PRODUCER_MOVEMENTS_QUERY_FAILED", rowsResult.error.message, 500);
   }
+
+  logProducerAccessServer("producer/movements:get:end", {
+    userId: auth.context.user.id,
+    tenantId: auth.context.user.tenantId,
+    movementsCount: rowsResult.data?.length ?? 0,
+  });
 
   return apiSuccess({ movements: rowsResult.data ?? [] });
 }

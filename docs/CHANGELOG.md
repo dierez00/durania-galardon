@@ -23,6 +23,9 @@
 - `docs/tenant-iam.md`: catalogo de permisos `mvz.ranch.*`.
 - `docs/prisma-from-sql.md`: nota SQL-first para tablas nuevas de MVZ jerarquico.
 - `src/app/api/README.md`: refleja el ownership final de las familias API normalizadas y el patron esperado de entrypoints delgados.
+- `docs/setup.md`: orden SQL actualizado para incluir `sql/migration_003_fix_rls_politicies.sql` como correccion de recursion RLS.
+- `docs/security/security.md`: documenta la causa, sintoma y remediacion del error PostgreSQL `42P17` por policies recursivas sobre `public.tenants`.
+- `docs/troubleshooting-login.md`: agrega el caso donde productor entra correctamente pero ve `0` ranchos por fallo RLS en `resolveAccessibleUppIds()`.
 
 ## [2026-02-24]
 

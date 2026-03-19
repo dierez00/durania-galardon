@@ -2,6 +2,10 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { getAccessToken } from "@/shared/lib/auth-session";
+import {
+  logProducerAccessClient,
+  sampleProducerAccessClientIds,
+} from "@/modules/producer/ranchos/presentation/producerAccessDebug";
 
 export interface ProducerUpp {
   id: string;
@@ -37,8 +41,10 @@ export function ProducerUppProvider({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     const run = async () => {
+      logProducerAccessClient("useProducerUppContext:bootstrap-start");
       const accessToken = await getAccessToken();
       if (!accessToken) {
+        logProducerAccessClient("useProducerUppContext:no-access-token");
         setHydrated(true);
         return;
       }
@@ -50,21 +56,50 @@ export function ProducerUppProvider({ children }: { children: React.ReactNode })
         });
         const meBody = await meResponse.json();
 
+        logProducerAccessClient("useProducerUppContext:auth-me-response", {
+          status: meResponse.status,
+          ok: meBody.ok === true,
+          panelType: meBody.data?.panelType ?? null,
+          tenantId: meBody.data?.tenant?.id ?? null,
+          tenantSlug: meBody.data?.tenant?.slug ?? null,
+          permissionCount: Array.isArray(meBody.data?.permissions) ? meBody.data.permissions.length : 0,
+          errorCode: meBody.error?.code ?? null,
+        });
+
         if (!meResponse.ok || !meBody.ok || meBody.data?.panelType !== "producer") {
+          logProducerAccessClient("useProducerUppContext:auth-me-skipped", {
+            status: meResponse.status,
+            ok: meBody.ok === true,
+            panelType: meBody.data?.panelType ?? null,
+          });
           setHydrated(true);
           return;
         }
 
         const resolvedTenantId = (meBody.data?.tenant?.id as string | undefined) ?? null;
         setTenantId(resolvedTenantId);
+        logProducerAccessClient("useProducerUppContext:tenant-resolved", {
+          tenantId: resolvedTenantId,
+          tenantSlug: meBody.data?.tenant?.slug ?? null,
+          panelType: meBody.data?.panelType ?? null,
+        });
 
         const uppsResponse = await fetch("/api/producer/upp", {
           headers: { Authorization: `Bearer ${accessToken}` },
           cache: "no-store",
         });
         const uppsBody = await uppsResponse.json();
+        const nextUpps = uppsBody.data?.upps ?? [];
+        logProducerAccessClient("useProducerUppContext:producer-upp-response", {
+          status: uppsResponse.status,
+          ok: uppsBody.ok === true,
+          upps: sampleProducerAccessClientIds(
+            nextUpps.map((upp: ProducerUpp) => upp.id)
+          ),
+          errorCode: uppsBody.error?.code ?? null,
+        });
         if (uppsResponse.ok && uppsBody.ok) {
-          setUpps(uppsBody.data?.upps ?? []);
+          setUpps(nextUpps);
         }
 
         if (resolvedTenantId) {
@@ -72,11 +107,19 @@ export function ProducerUppProvider({ children }: { children: React.ReactNode })
           if (stored) {
             setSelectedUppIdState(stored);
           }
+          logProducerAccessClient("useProducerUppContext:restore-selection", {
+            tenantId: resolvedTenantId,
+            storedSelectedUppId: stored,
+          });
         }
-      } catch {
+      } catch (error) {
+        logProducerAccessClient("useProducerUppContext:bootstrap-error", {
+          error: error instanceof Error ? { name: error.name, message: error.message } : String(error),
+        });
         // Ignore and keep provider in neutral mode.
       } finally {
         setHydrated(true);
+        logProducerAccessClient("useProducerUppContext:bootstrap-end");
       }
     };
 
@@ -86,6 +129,10 @@ export function ProducerUppProvider({ children }: { children: React.ReactNode })
   const setSelectedUppId = useCallback(
     (uppId: string | null) => {
       setSelectedUppIdState(uppId);
+      logProducerAccessClient("useProducerUppContext:set-selected-upp", {
+        tenantId,
+        selectedUppId: uppId,
+      });
       if (!tenantId) return;
       const key = buildStorageKey(tenantId);
       if (uppId) {
@@ -98,8 +145,11 @@ export function ProducerUppProvider({ children }: { children: React.ReactNode })
   );
 
   const clearSelectedUpp = useCallback(() => {
+    logProducerAccessClient("useProducerUppContext:clear-selected-upp", {
+      tenantId,
+    });
     setSelectedUppId(null);
-  }, [setSelectedUppId]);
+  }, [setSelectedUppId, tenantId]);
 
   const selectedUpp = useMemo(
     () => upps.find((upp) => upp.id === selectedUppId) ?? null,

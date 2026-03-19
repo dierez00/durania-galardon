@@ -46,6 +46,21 @@ Si el login funciona pero falla `/mvz/ranchos/[uppId]/*`:
 2. Verifica asignacion activa en `mvz_upp_assignments` para ese `uppId`.
 3. Verifica permisos `mvz.ranch.*` para el rol MVZ.
 
+## Caso especifico: productor entra pero no ve ranchos
+
+Si el login funciona, `GET /api/auth/me` responde `200`, pero `/producer/dashboard` o `/producer/ranchos` muestran `0` ranchos/UPPs:
+
+1. Revisa logs del servidor buscando `code: 42P17`.
+2. Si el mensaje contiene `infinite recursion detected in policy for relation "tenants"`, el problema no esta en la UI ni en el tenant actual.
+3. Aplica `sql/migration_003_fix_rls_politicies.sql`.
+4. Ejecuta las verificaciones incluidas al final de esa migracion y confirma que la query de policies devuelve `0 rows`.
+
+Sintoma tipico:
+
+- `resolveAccessibleUppIds()` falla en el primer probe RLS y devuelve `[]`.
+- `/api/producer/upp` responde `200` pero con lista vacia.
+- Dashboard, documentos, exportaciones y movilizacion del productor quedan vacios por depender del mismo scope UPP.
+
 ## SQL de verificacion (referencia)
 
 ```sql

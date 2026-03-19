@@ -90,6 +90,23 @@ Implementado:
 - Vistas con `security_invoker`:
   - `sql/views.sql:15-17`, `46-48`, `72-74`
 
+Actualizacion 2026-03-19:
+
+- Se documento una correccion especifica para recursion infinita de RLS en politicas que hacian `JOIN public.tenants` dentro del cuerpo de la policy.
+- Sintoma observado: login y resolucion de tenant correctos, pero carga vacia de UPP/ranchos y errores PostgreSQL `42P17` (`infinite recursion detected in policy for relation "tenants"`).
+- Solucion canonicamente aplicada en `sql/migration_003_fix_rls_politicies.sql`.
+- La migracion introduce helpers `SECURITY DEFINER`:
+  - `public.auth_is_government_member()`
+  - `public.auth_is_government_admin()`
+- Luego reemplaza el uso inline de `JOIN public.tenants` en policies sensibles (`tenants`, `producers`, `upps`, `mvz_profiles`, `mvz_upp_assignments`, `producer_documents`, `animals`, `field_tests`, `export_requests`, `movement_requests`, `normative_settings`, `appointment_requests`, `notification_events`, `audit_logs` y tablas de `migration_002`).
+- La misma migracion incluye queries de verificacion para comprobar que:
+  - las funciones helper existen y son `SECURITY DEFINER`
+  - no quedan policies referenciando `public.tenants` directamente
+
+Implicacion operativa:
+
+- Cuando esta regresion aparece, la app puede devolver `200` con listas vacias porque el backend captura el error RLS y termina resolviendo scope UPP como vacio.
+
 ### 3.4 Rutas con cliente RLS vs rutas con `service_role`
 
 Implementado:

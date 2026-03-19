@@ -3,6 +3,11 @@ import { requireAuthorized } from "@/server/authz";
 import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
 import { resolveProducerId } from "@/server/authz/profiles";
 import { logAuditEvent } from "@/server/audit";
+import {
+  logProducerAccessServer,
+  sampleProducerAccessIds,
+  summarizeProducerAccessError,
+} from "@/server/debug/producerAccess";
 
 interface ProducerExportBody {
   uppId?: string;
@@ -18,8 +23,25 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
+  logProducerAccessServer("producer/exports:get:start", {
+    userId: auth.context.user.id,
+    role: auth.context.user.role,
+    tenantId: auth.context.user.tenantId,
+    tenantSlug: auth.context.user.tenantSlug,
+    panelType: auth.context.user.panelType,
+  });
+
   const accessibleUppIds = await auth.context.getAccessibleUppIds();
+  logProducerAccessServer("producer/exports:get:accessible-ids", {
+    userId: auth.context.user.id,
+    tenantId: auth.context.user.tenantId,
+    accessibleUpps: sampleProducerAccessIds(accessibleUppIds),
+  });
   if (accessibleUppIds.length === 0) {
+    logProducerAccessServer("producer/exports:get:empty-access", {
+      userId: auth.context.user.id,
+      tenantId: auth.context.user.tenantId,
+    });
     return apiSuccess({ exports: [] });
   }
 
@@ -34,8 +56,19 @@ export async function GET(request: Request) {
     .order("created_at", { ascending: false });
 
   if (rowsResult.error) {
+    logProducerAccessServer("producer/exports:get:error", {
+      userId: auth.context.user.id,
+      tenantId: auth.context.user.tenantId,
+      error: summarizeProducerAccessError(rowsResult.error),
+    });
     return apiError("PRODUCER_EXPORTS_QUERY_FAILED", rowsResult.error.message, 500);
   }
+
+  logProducerAccessServer("producer/exports:get:end", {
+    userId: auth.context.user.id,
+    tenantId: auth.context.user.tenantId,
+    exportsCount: rowsResult.data?.length ?? 0,
+  });
 
   return apiSuccess({ exports: rowsResult.data ?? [] });
 }

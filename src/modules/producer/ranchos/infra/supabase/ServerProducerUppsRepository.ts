@@ -5,6 +5,11 @@ import type {
   ListProducerUppsResult,
 } from "@/modules/producer/ranchos/domain/repositories/producerUppsRepository";
 import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
+import {
+  logProducerAccessServer,
+  sampleProducerAccessIds,
+  summarizeProducerAccessError,
+} from "@/server/debug/producerAccess";
 
 export class ServerProducerUppsRepository implements IProducerUppsRepository {
   constructor(
@@ -15,8 +20,18 @@ export class ServerProducerUppsRepository implements IProducerUppsRepository {
 
   async list(params: ListProducerUppsParams): Promise<ListProducerUppsResult> {
     if (this.accessibleUppIds.length === 0) {
+      logProducerAccessServer("ServerProducerUppsRepository:list:empty-access", {
+        tenantId: this.tenantId,
+        filters: params,
+      });
       return { upps: [] };
     }
+
+    logProducerAccessServer("ServerProducerUppsRepository:list:start", {
+      tenantId: this.tenantId,
+      filters: params,
+      accessibleUpps: sampleProducerAccessIds(this.accessibleUppIds),
+    });
 
     const supabase = createSupabaseRlsServerClient(this.accessToken);
     const uppsResult = await supabase
@@ -29,6 +44,11 @@ export class ServerProducerUppsRepository implements IProducerUppsRepository {
       .order("created_at", { ascending: false });
 
     if (uppsResult.error) {
+      logProducerAccessServer("ServerProducerUppsRepository:list:error", {
+        tenantId: this.tenantId,
+        filters: params,
+        error: summarizeProducerAccessError(uppsResult.error),
+      });
       throw new Error(uppsResult.error.message);
     }
 
@@ -40,6 +60,13 @@ export class ServerProducerUppsRepository implements IProducerUppsRepository {
         (upp.upp_code ?? "").toLowerCase().includes(params.search.toLowerCase());
       const matchStatus = !params.status || upp.status === params.status;
       return matchSearch && matchStatus;
+    });
+
+    logProducerAccessServer("ServerProducerUppsRepository:list:end", {
+      tenantId: this.tenantId,
+      filters: params,
+      fetchedUpps: sampleProducerAccessIds(upps.map((upp) => upp.id)),
+      filteredUpps: sampleProducerAccessIds(filtered.map((upp) => upp.id)),
     });
 
     return { upps: filtered };

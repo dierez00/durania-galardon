@@ -4,6 +4,11 @@ import { apiSuccess, apiError } from "@/shared/lib/api-response";
 import { logAuditEvent } from "@/server/audit";
 import { ServerUppDocumentsRepository } from "@/modules/producer/documents/infra/supabase/ServerUppDocumentsRepository";
 import { calculateFileHash } from "@/modules/producer/documents/infra/supabase/shared";
+import {
+  logProducerAccessServer,
+  sampleProducerAccessIds,
+  summarizeProducerAccessError,
+} from "@/server/debug/producerAccess";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuthorized(request, {
@@ -15,7 +20,27 @@ export async function GET(request: NextRequest) {
     return auth.response;
   }
 
+  logProducerAccessServer("producer/upp-documents:get:start", {
+    userId: auth.context.user.id,
+    role: auth.context.user.role,
+    tenantId: auth.context.user.tenantId,
+    tenantSlug: auth.context.user.tenantSlug,
+    panelType: auth.context.user.panelType,
+  });
+
   const accessibleUppIds = await auth.context.getAccessibleUppIds();
+  logProducerAccessServer("producer/upp-documents:get:accessible-ids", {
+    userId: auth.context.user.id,
+    tenantId: auth.context.user.tenantId,
+    accessibleUpps: sampleProducerAccessIds(accessibleUppIds),
+  });
+  if (accessibleUppIds.length === 0) {
+    logProducerAccessServer("producer/upp-documents:get:empty-access", {
+      userId: auth.context.user.id,
+      tenantId: auth.context.user.tenantId,
+    });
+  }
+
   const repository = new ServerUppDocumentsRepository(
     auth.context.user.tenantId,
     auth.context.user.id,
@@ -24,8 +49,18 @@ export async function GET(request: NextRequest) {
 
   try {
     const documents = await repository.list();
+    logProducerAccessServer("producer/upp-documents:get:end", {
+      userId: auth.context.user.id,
+      tenantId: auth.context.user.tenantId,
+      documentsCount: documents.length,
+    });
     return apiSuccess({ documents });
   } catch (error) {
+    logProducerAccessServer("producer/upp-documents:get:error", {
+      userId: auth.context.user.id,
+      tenantId: auth.context.user.tenantId,
+      error: summarizeProducerAccessError(error),
+    });
     return apiError(
       "UPP_DOCUMENTS_QUERY_FAILED",
       error instanceof Error ? error.message : "No fue posible cargar documentos de UPP.",
