@@ -1,11 +1,14 @@
 export { BovinosFilters } from "./BovinosFilters";
 export { BovinoList } from "./BovinoList";
 export { BovinoDetail } from "./BovinoDetail";
+export { BovinoDetailContent } from "./BovinoDetailContent";
+export { MvzBovinoDetail } from "./MvzBovinoDetail";
 export { SanitarioBadge } from "./SanitarioBadge";
 export { PruebaStatusBadge } from "./PruebaStatusBadge";
 export { ExportableCheckBadge } from "./ExportableCheckBadge";
 export { default as ProducerBovinosPage } from "./ProducerBovinosPage";
 export { useBovinos } from "./hooks/useBovinos";
 export { useBovinoDetail } from "./hooks/useBovinoDetail";
+export { useMvzBovinoDetail } from "./hooks/useMvzBovinoDetail";
 export type { BovinoDetailTab } from "./hooks/useBovinoDetail";
 export type { BovinosFiltersState } from "@/modules/bovinos/domain/entities/Bovino";

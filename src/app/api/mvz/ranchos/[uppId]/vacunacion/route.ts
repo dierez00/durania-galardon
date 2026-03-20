@@ -198,5 +198,45 @@ export async function PATCH(
   return apiSuccess({ vaccination: updateResult.data });
 }
 
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ uppId: string }> }
+) {
+  const { uppId } = await context.params;
+  const access = await requireMvzRanchAccess(
+    request,
+    uppId,
+    "mvz.ranch.vaccinations.write",
+    "mvz.ranch.vaccinations"
+  );
+  if (!access.ok) {
+    return access.response;
+  }
+
+  const url = new URL(request.url);
+  const id = url.searchParams.get("id")?.trim();
+  if (!id) {
+    return apiError("INVALID_PAYLOAD", "Debe enviar id de vacunacion.");
+  }
+
+  const deleteResult = await access.supabaseAdmin
+    .from("animal_vaccinations")
+    .delete()
+    .eq("id", id)
+    .eq("upp_id", uppId)
+    .select("id")
+    .maybeSingle();
+
+  if (deleteResult.error) {
+    return apiError("MVZ_RANCH_VACCINATION_DELETE_FAILED", deleteResult.error.message, 400);
+  }
+
+  if (!deleteResult.data) {
+    return apiError("MVZ_RANCH_VACCINATION_NOT_FOUND", "No existe vacunacion para la UPP enviada.", 404);
+  }
+
+  return apiSuccess({ deletedId: deleteResult.data.id });
+}
+
 
 

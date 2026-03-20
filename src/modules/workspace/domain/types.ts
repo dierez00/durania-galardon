@@ -35,6 +35,12 @@ export interface WorkspaceUser {
   permissions: PermissionKey[];
 }
 
+export interface WorkspaceSelectorOption {
+  id: string;
+  label: string;
+  meta?: string | null;
+}
+
 export type WorkspaceBreadcrumbItem =
   | {
       type: "link";
@@ -49,6 +55,15 @@ export type WorkspaceBreadcrumbItem =
       type: "project-selector";
       label: string;
       projectId: string | null;
+    }
+  | {
+      type: "detail-selector";
+      label: string;
+      detailId: string | null;
+      options: WorkspaceSelectorOption[];
+      onDetailChange: (detailId: string) => void;
+      searchPlaceholder?: string;
+      emptyMessage?: string;
     };
 
 export interface ResolvedNavItem {

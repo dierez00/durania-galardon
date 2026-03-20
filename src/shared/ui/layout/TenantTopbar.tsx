@@ -10,6 +10,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/shared/ui/breadcrumb";
+import { BreadcrumbSelector } from "@/shared/ui/layout/BreadcrumbSelector";
 import { ProfileMenu } from "@/shared/ui/layout/ProfileMenu";
 import { ProjectSelector } from "@/shared/ui/layout/ProjectSelector";
 import type {
@@ -57,6 +58,15 @@ export function TenantTopbar({
                         currentProjectId={item.projectId ?? currentProjectId}
                         currentLabel={item.label}
                         onProjectChange={onProjectChange}
+                      />
+                    ) : item.type === "detail-selector" ? (
+                      <BreadcrumbSelector
+                        options={item.options}
+                        currentId={item.detailId}
+                        currentLabel={item.label}
+                        onChange={item.onDetailChange}
+                        searchPlaceholder={item.searchPlaceholder}
+                        emptyMessage={item.emptyMessage}
                       />
                     ) : (
                       <BreadcrumbPage>{item.label}</BreadcrumbPage>

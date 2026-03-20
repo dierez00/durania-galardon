@@ -18,6 +18,7 @@ import type {
   WorkspaceOrganization,
   WorkspacePanel,
   WorkspaceProject,
+  WorkspaceSelectorOption,
   WorkspaceUser,
 } from "@/modules/workspace/domain/types";
 import { resolveWorkspaceNavigation } from "@/modules/workspace/presentation/navigation";
@@ -95,6 +96,18 @@ interface TenantWorkspaceContextValue {
   setSelectedProjectId: (projectId: string | null) => void;
   navigateToProject: (projectId: string) => void;
   clearSelectedProject: () => void;
+  setDetailBreadcrumbLabel: (label: string | null) => void;
+  setDetailBreadcrumbSelector: (
+    selector:
+      | {
+          detailId: string | null;
+          options: WorkspaceSelectorOption[];
+          onDetailChange: (detailId: string) => void;
+          searchPlaceholder?: string;
+          emptyMessage?: string;
+        }
+      | null
+  ) => void;
 }
 
 const TenantWorkspaceContext = createContext<TenantWorkspaceContextValue | null>(null);
@@ -164,6 +177,14 @@ export function TenantWorkspaceProvider({
   const [user, setUser] = useState<WorkspaceUser | null>(null);
   const [projects, setProjects] = useState<WorkspaceProject[]>([]);
   const [selectedProjectId, setSelectedProjectIdState] = useState<string | null>(null);
+  const [detailBreadcrumbLabel, setDetailBreadcrumbLabel] = useState<string | null>(null);
+  const [detailBreadcrumbSelector, setDetailBreadcrumbSelector] = useState<{
+    detailId: string | null;
+    options: WorkspaceSelectorOption[];
+    onDetailChange: (detailId: string) => void;
+    searchPlaceholder?: string;
+    emptyMessage?: string;
+  } | null>(null);
 
   const location = useMemo(() => resolveWorkspaceLocation(pathname), [pathname]);
 
@@ -301,6 +322,11 @@ export function TenantWorkspaceProvider({
     [currentProject?.id, mode, panel, user?.permissions]
   );
 
+  useEffect(() => {
+    setDetailBreadcrumbLabel(null);
+    setDetailBreadcrumbSelector(null);
+  }, [location?.detailId, panel]);
+
   const breadcrumbs = useMemo<WorkspaceBreadcrumbItem[]>(() => {
     if (!organization) {
       return [];
@@ -319,6 +345,28 @@ export function TenantWorkspaceProvider({
         },
       ];
 
+      if (location?.detailId && location.moduleKey) {
+        items.push({
+          type: "link",
+          label: currentSectionLabel,
+          href: buildProjectHref(panel, projectId ?? location.projectId ?? "", location.moduleKey),
+        });
+        if (detailBreadcrumbSelector?.options.length) {
+          items.push({
+            type: "detail-selector",
+            label: detailBreadcrumbLabel ?? "Detalle",
+            detailId: detailBreadcrumbSelector.detailId,
+            options: detailBreadcrumbSelector.options,
+            onDetailChange: detailBreadcrumbSelector.onDetailChange,
+            searchPlaceholder: detailBreadcrumbSelector.searchPlaceholder,
+            emptyMessage: detailBreadcrumbSelector.emptyMessage,
+          });
+        } else {
+          items.push({ type: "page", label: detailBreadcrumbLabel ?? "Detalle" });
+        }
+        return items;
+      }
+
       if ((location?.moduleKey ?? getDefaultModuleKey()) !== getDefaultModuleKey()) {
         items.push({ type: "page", label: currentSectionLabel });
       }
@@ -334,7 +382,20 @@ export function TenantWorkspaceProvider({
     }
 
     return [{ type: "page", label: "Inicio" }];
-  }, [currentProject, currentSectionLabel, location?.moduleKey, location?.projectId, location?.sectionKey, mode, organization, panel, selectedProjectId]);
+  }, [
+    currentProject,
+    currentSectionLabel,
+    detailBreadcrumbLabel,
+    detailBreadcrumbSelector,
+    location?.detailId,
+    location?.moduleKey,
+    location?.projectId,
+    location?.sectionKey,
+    mode,
+    organization,
+    panel,
+    selectedProjectId,
+  ]);
 
   const setSelectedProjectId = (projectId: string | null) => {
     if (!organization) {
@@ -392,6 +453,8 @@ export function TenantWorkspaceProvider({
       setSelectedProjectId,
       navigateToProject,
       clearSelectedProject,
+      setDetailBreadcrumbLabel,
+      setDetailBreadcrumbSelector,
     }),
     [
       breadcrumbs,

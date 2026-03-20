@@ -39,6 +39,7 @@ export interface WorkspaceLocation {
   sectionKey: string;
   sectionLabel: string;
   moduleKey: string | null;
+  detailId: string | null;
 }
 
 export function resolveWorkspacePanel(pathname: string): WorkspacePanel | null {
@@ -84,6 +85,7 @@ export function resolveWorkspaceLocation(pathname: string): WorkspaceLocation | 
         sectionKey: moduleKey,
         sectionLabel: PRODUCER_PROJECT_LABELS[moduleKey] ?? PRODUCER_PROJECT_LABELS.overview,
         moduleKey,
+        detailId: segments[4] ?? null,
       };
     }
 
@@ -97,6 +99,7 @@ export function resolveWorkspaceLocation(pathname: string): WorkspaceLocation | 
       sectionLabel:
         PRODUCER_ORGANIZATION_LABELS[sectionKey] ?? PRODUCER_ORGANIZATION_LABELS.projects,
       moduleKey: null,
+      detailId: null,
     };
   }
 
@@ -109,6 +112,7 @@ export function resolveWorkspaceLocation(pathname: string): WorkspaceLocation | 
       sectionKey: moduleKey,
       sectionLabel: MVZ_PROJECT_LABELS[moduleKey] ?? MVZ_PROJECT_LABELS.overview,
       moduleKey,
+      detailId: segments[4] ?? null,
     };
   }
 
@@ -121,6 +125,7 @@ export function resolveWorkspaceLocation(pathname: string): WorkspaceLocation | 
     sectionKey,
     sectionLabel: MVZ_ORGANIZATION_LABELS[sectionKey] ?? MVZ_ORGANIZATION_LABELS.projects,
     moduleKey: null,
+    detailId: null,
   };
 }
 

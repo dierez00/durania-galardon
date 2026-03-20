@@ -1,5 +1,6 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireMvzRanchAccess } from "@/modules/ranchos/infra/api/mvzRanchAccess";
+import { normalizeMvzRanchReports } from "@/modules/ranchos/application/use-cases/normalizeMvzRanchReports";
 
 export async function GET(
   request: Request,
@@ -33,7 +34,7 @@ export async function GET(
     return apiError("MVZ_RANCH_REPORTS_NOT_FOUND", "No existe reporte para la UPP enviada.", 404);
   }
 
-  return apiSuccess({ report: reportResult.data });
+  return apiSuccess({ reports: normalizeMvzRanchReports(reportResult.data) });
 }
 
 

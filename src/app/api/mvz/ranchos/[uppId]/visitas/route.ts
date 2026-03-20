@@ -185,5 +185,45 @@ export async function PATCH(
   return apiSuccess({ visit: updateResult.data });
 }
 
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ uppId: string }> }
+) {
+  const { uppId } = await context.params;
+  const access = await requireMvzRanchAccess(
+    request,
+    uppId,
+    "mvz.ranch.visits.write",
+    "mvz.ranch.visits"
+  );
+  if (!access.ok) {
+    return access.response;
+  }
+
+  const url = new URL(request.url);
+  const id = url.searchParams.get("id")?.trim();
+  if (!id) {
+    return apiError("INVALID_PAYLOAD", "Debe enviar id de visita.");
+  }
+
+  const deleteResult = await access.supabaseAdmin
+    .from("mvz_visits")
+    .delete()
+    .eq("id", id)
+    .eq("upp_id", uppId)
+    .select("id")
+    .maybeSingle();
+
+  if (deleteResult.error) {
+    return apiError("MVZ_RANCH_VISIT_DELETE_FAILED", deleteResult.error.message, 400);
+  }
+
+  if (!deleteResult.data) {
+    return apiError("MVZ_RANCH_VISIT_NOT_FOUND", "No existe visita para la UPP enviada.", 404);
+  }
+
+  return apiSuccess({ deletedId: deleteResult.data.id });
+}
+
 
 
