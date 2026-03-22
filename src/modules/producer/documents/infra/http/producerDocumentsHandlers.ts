@@ -6,7 +6,6 @@ import { ServerProducerDocumentsRepository } from "@/modules/producer/documents/
 import {
   calculateFileHash,
   findProducerIdForUserOrTenant,
-  validateIsoDate,
 } from "@/modules/producer/documents/infra/supabase/shared";
 
 interface ProducerDocumentBody {
@@ -82,12 +81,6 @@ export async function POST(request: Request) {
     return apiError("INVALID_PAYLOAD", "Debe enviar un archivo y documentTypeKey.");
   }
 
-  // Validar formato de fecha (si se proporciona)
-  const dateValidation = validateIsoDate(expiryDate);
-  if (!dateValidation.valid) {
-    return apiError("INVALID_DATE_FORMAT", dateValidation.error || "Formato de fecha inválido.", 400);
-  }
-
   const providedHash = formData.get("fileHash")?.toString().trim();
   if (providedHash) {
     const calculatedHash = await calculateFileHash(file);
@@ -102,7 +95,7 @@ export async function POST(request: Request) {
   );
 
   try {
-    const document = await repository.upload(file, documentTypeKey, expiryDate || undefined);
+    const document = await repository.upload(file, documentTypeKey, expiryDate);
 
     await logAuditEvent({
       request,

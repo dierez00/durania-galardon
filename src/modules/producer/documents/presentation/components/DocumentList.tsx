@@ -267,7 +267,6 @@ export function DocumentList({
           <TableHeader>
             <TableRow>
               <TableHead>Documento</TableHead>
-              <TableHead>Nivel</TableHead>
               <TableHead>Version</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Vigencia</TableHead>
@@ -278,7 +277,7 @@ export function DocumentList({
           <TableBody>
             {visibleDocs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
                   No hay documentos vigentes. Usa "Mostrar todos" para ver el historial.
                 </TableCell>
               </TableRow>
@@ -311,9 +310,6 @@ export function DocumentList({
                   >
                     <TableCell className="font-medium">
                       {doc.documentTypeName || doc.documentTypeKey}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{doc.level}</Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant={doc.isCurrent ? "default" : "secondary"}>

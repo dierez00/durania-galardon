@@ -3,7 +3,7 @@ import { requireAuthorized } from "@/server/authz";
 import { apiSuccess, apiError } from "@/shared/lib/api-response";
 import { logAuditEvent } from "@/server/audit";
 import { ServerUppDocumentsRepository } from "@/modules/producer/documents/infra/supabase/ServerUppDocumentsRepository";
-import { calculateFileHash, validateIsoDate } from "@/modules/producer/documents/infra/supabase/shared";
+import { calculateFileHash } from "@/modules/producer/documents/infra/supabase/shared";
 import {
   logProducerAccessServer,
   sampleProducerAccessIds,
@@ -114,12 +114,6 @@ export async function POST(request: NextRequest) {
 
   if (!file || !uppId || !documentType) {
     return apiError("INVALID_PAYLOAD", "Debe enviar file, uppId y documentType.");
-  }
-
-  // Validar formato de fecha (si se proporciona)
-  const dateValidation = validateIsoDate(expiryDate);
-  if (!dateValidation.valid) {
-    return apiError("INVALID_DATE_FORMAT", dateValidation.error || "Formato de fecha inválido.", 400);
   }
 
   const canAccess = await auth.context.canAccessUpp(uppId);
