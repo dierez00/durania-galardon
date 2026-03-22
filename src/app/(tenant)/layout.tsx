@@ -8,164 +8,161 @@ import { MvzRanchProvider } from "@/modules/ranchos/presentation/mvz";
 import { ProducerUppProvider } from "@/modules/producer/ranchos/presentation";
 import { TenantWorkspaceProvider, TenantWorkspaceShell } from "@/modules/workspace";
 import {
-  isPermissionKey,
-  isMvzViewRole,
-  isProducerViewRole,
-  isTenantAdminRole,
+  MVZ_SETTINGS_NAV_PERMISSIONS,
+  PRODUCER_SETTINGS_NAV_PERMISSIONS,
+  resolvePanelHomePath,
   type PermissionKey,
 } from "@/shared/lib/auth";
 
-function resolveProducerPermission(pathname: string): PermissionKey | null {
+function resolveProducerPermissions(pathname: string): PermissionKey[] {
   const segments = pathname.split("/").filter(Boolean);
 
   if (segments[0] !== "producer") {
-    return null;
+    return [];
   }
 
   if (segments.length === 1) {
-    return "producer.upp.read";
+    return ["producer.upp.read"];
   }
 
   if (segments[1] === "metrics" || segments[1] === "dashboard") {
-    return "producer.dashboard.read";
+    return ["producer.dashboard.read"];
   }
 
   if (segments[1] === "profile") {
-    return null;
+    return [];
   }
 
   if (segments[1] === "settings" || segments[1] === "empleados") {
-    return "producer.tenant.read";
+    return [...PRODUCER_SETTINGS_NAV_PERMISSIONS];
   }
 
   if (segments[1] === "ranchos") {
-    return "producer.upp.read";
+    return ["producer.upp.read"];
   }
 
   if (segments[1] === "bovinos") {
-    return "producer.bovinos.read";
+    return ["producer.bovinos.read"];
   }
 
   if (segments[1] === "movilizacion") {
-    return "producer.movements.read";
+    return ["producer.movements.read"];
   }
 
   if (segments[1] === "exportaciones") {
-    return "producer.exports.read";
+    return ["producer.exports.read"];
   }
 
   if (segments[1] === "documentos") {
-    return "producer.documents.read";
+    return ["producer.documents.read"];
   }
 
   if (segments[1] === "projects") {
     const moduleKey = segments[3] ?? "overview";
 
     if (moduleKey === "animales") {
-      return "producer.bovinos.read";
+      return ["producer.bovinos.read"];
     }
 
     if (moduleKey === "movilizacion") {
-      return "producer.movements.read";
+      return ["producer.movements.read"];
     }
 
     if (moduleKey === "exportaciones") {
-      return "producer.exports.read";
+      return ["producer.exports.read"];
     }
 
     if (moduleKey === "documentos") {
-      return "producer.documents.read";
+      return ["producer.documents.read"];
     }
 
-    return "producer.upp.read";
+    return ["producer.upp.read"];
   }
 
-  return null;
+  return [];
 }
 
-function resolveMvzPermission(pathname: string): PermissionKey | null {
+function resolveMvzPermissions(pathname: string): PermissionKey[] {
   const segments = pathname.split("/").filter(Boolean);
 
   if (segments[0] !== "mvz") {
-    return null;
+    return [];
   }
 
   if (segments.length === 1) {
-    return "mvz.assignments.read";
+    return ["mvz.assignments.read"];
   }
 
   if (segments[1] === "profile") {
-    return null;
+    return [];
   }
 
   if (segments[1] === "metrics" || segments[1] === "dashboard") {
-    return "mvz.dashboard.read";
+    return ["mvz.dashboard.read"];
   }
 
   if (segments[1] === "settings") {
-    return "mvz.tenant.read";
+    return [...MVZ_SETTINGS_NAV_PERMISSIONS];
   }
 
   if (segments[1] === "asignaciones") {
-    return "mvz.assignments.read";
+    return ["mvz.assignments.read"];
   }
 
   if (segments[1] === "pruebas") {
-    return "mvz.tests.read";
+    return ["mvz.tests.read"];
   }
 
   if (segments[1] === "exportaciones") {
-    return "mvz.exports.read";
+    return ["mvz.exports.read"];
   }
 
   if (segments[1] === "ranchos" && !segments[2]) {
-    return "mvz.assignments.read";
+    return ["mvz.assignments.read"];
   }
 
   if (segments[1] === "ranchos" && segments[2]) {
     const moduleKey = segments[3] ?? "overview";
 
     if (moduleKey === "animales") {
-      return "mvz.ranch.animals.read";
+      return ["mvz.ranch.animals.read"];
     }
 
     if (moduleKey === "historial-clinico") {
-      return "mvz.ranch.clinical.read";
+      return ["mvz.ranch.clinical.read"];
     }
 
     if (moduleKey === "vacunacion") {
-      return "mvz.ranch.vaccinations.read";
+      return ["mvz.ranch.vaccinations.read"];
     }
 
     if (moduleKey === "incidencias") {
-      return "mvz.ranch.incidents.read";
+      return ["mvz.ranch.incidents.read"];
     }
 
     if (moduleKey === "reportes") {
-      return "mvz.ranch.reports.read";
+      return ["mvz.ranch.reports.read"];
     }
 
     if (moduleKey === "documentacion") {
-      return "mvz.ranch.documents.read";
+      return ["mvz.ranch.documents.read"];
     }
 
     if (moduleKey === "visitas") {
-      return "mvz.ranch.visits.read";
+      return ["mvz.ranch.visits.read"];
     }
 
-    return "mvz.ranch.read";
+    return ["mvz.ranch.read"];
   }
 
-  return null;
+  return [];
 }
 
-function resolvePermissionForPath(
+function resolvePermissionsForPath(
   pathname: string,
-  rolePath: "producer" | "mvz"
-): PermissionKey | null {
-  return rolePath === "producer"
-    ? resolveProducerPermission(pathname)
-    : resolveMvzPermission(pathname);
+  panelType: "producer" | "mvz"
+): PermissionKey[] {
+  return panelType === "producer" ? resolveProducerPermissions(pathname) : resolveMvzPermissions(pathname);
 }
 
 export default function TenantLayout({
@@ -196,53 +193,55 @@ export default function TenantLayout({
           return;
         }
 
-        if (isTenantAdminRole(roleResult.role)) {
+        if (roleResult.panelType === "government") {
           router.replace("/admin");
           return;
         }
 
-        if (isProducerViewRole(roleResult.role) && !pathname.startsWith("/producer")) {
+        if (roleResult.panelType === "producer" && !pathname.startsWith("/producer")) {
           router.replace("/producer");
           return;
         }
 
-        if (isMvzViewRole(roleResult.role) && !pathname.startsWith("/mvz")) {
+        if (roleResult.panelType === "mvz" && !pathname.startsWith("/mvz")) {
           router.replace("/mvz");
           return;
         }
 
-        const rolePath = isProducerViewRole(roleResult.role) ? "producer" : "mvz";
-        const requiredPermission = resolvePermissionForPath(pathname, rolePath);
-        const dashboardPath = isProducerViewRole(roleResult.role) ? "/producer" : "/mvz";
+        if (
+          roleResult.panelType === "mvz" &&
+          roleResult.isMvzInternal &&
+          (pathname.startsWith("/mvz/settings") ||
+            pathname.startsWith("/mvz/metrics") ||
+            pathname.startsWith("/mvz/dashboard"))
+        ) {
+          router.replace("/mvz");
+          return;
+        }
 
-        if (!requiredPermission) {
+        const rolePath = roleResult.panelType === "producer" ? "producer" : "mvz";
+        const nextPanelType = roleResult.panelType ?? rolePath;
+        const requiredPermissions = resolvePermissionsForPath(pathname, rolePath);
+        const panelHomePath = resolvePanelHomePath({
+          panelType: nextPanelType,
+          permissions: roleResult.permissions ?? [],
+          isMvzInternal: roleResult.isMvzInternal,
+        });
+
+        if (requiredPermissions.length === 0) {
           setReady(true);
           return;
         }
 
-        let permissions: PermissionKey[] = [];
-        try {
-          const authMeResponse = await fetch("/api/auth/me", {
-            headers: {
-              Authorization: `Bearer ${data.session.access_token}`,
-            },
-          });
-          const authMeBody = await authMeResponse.json();
-          if (authMeResponse.ok && authMeBody.ok && Array.isArray(authMeBody.data?.permissions)) {
-            const apiPermissions = (authMeBody.data.permissions as string[]).filter(isPermissionKey);
-            permissions = apiPermissions;
-          }
-        } catch {
-          permissions = [];
-        }
+        const permissions: PermissionKey[] = roleResult.permissions ?? [];
 
-        if (!permissions.includes(requiredPermission)) {
-          if (pathname !== dashboardPath) {
-            router.replace(dashboardPath);
+        if (!requiredPermissions.some((permission) => permissions.includes(permission))) {
+          if (pathname !== panelHomePath) {
+            router.replace(panelHomePath);
             return;
           }
 
-          router.replace("/login");
+          router.replace(rolePath === "producer" ? "/producer/profile" : "/mvz/profile");
           return;
         }
 

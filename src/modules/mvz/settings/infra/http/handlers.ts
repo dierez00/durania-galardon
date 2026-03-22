@@ -119,7 +119,7 @@ async function getMvzSettingsSnapshot(user: {
 export async function GET(request: Request) {
   const auth = await requireAuthorized(request, {
     roles: ["mvz_government"],
-    permissions: ["mvz.tenant.read"],
+    permissions: ["mvz.tenant.read", "mvz.tenant.write"],
     resource: "mvz.settings",
   });
   if (!auth.ok) {

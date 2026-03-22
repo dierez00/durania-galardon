@@ -5,6 +5,10 @@ import { isAppRole, isPermissionKey, type AppRole, type PermissionKey } from "@/
 
 export interface ResolveClientRoleResult {
   role: AppRole | null;
+  roleKey?: string;
+  roleName?: string;
+  isSystemRole?: boolean;
+  isMvzInternal?: boolean;
   tenantId?: string;
   tenantSlug?: string;
   permissions?: PermissionKey[];
@@ -17,6 +21,10 @@ interface AuthMeResponse {
   data?: {
     user?: {
       role?: string;
+      roleKey?: string;
+      roleName?: string;
+      isSystemRole?: boolean;
+      isMvzInternal?: boolean;
       displayName?: string | null;
     };
     tenant?: {
@@ -65,6 +73,10 @@ export async function resolveClientRole(
 
     return {
       role: body.data.user.role,
+      roleKey: body.data.user.roleKey,
+      roleName: body.data.user.roleName,
+      isSystemRole: body.data.user.isSystemRole,
+      isMvzInternal: body.data.user.isMvzInternal,
       tenantId: body.data.tenant?.id,
       tenantSlug: body.data.tenant?.slug,
       panelType: body.data.panelType,

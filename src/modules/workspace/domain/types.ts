@@ -31,7 +31,11 @@ export interface WorkspaceUser {
   email: string;
   displayName: string;
   role: AppRole;
+  roleKey: string;
+  roleName: string;
   roleLabel: string;
+  isSystemRole: boolean;
+  isMvzInternal: boolean;
   permissions: PermissionKey[];
 }
 

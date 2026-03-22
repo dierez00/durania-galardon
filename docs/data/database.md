@@ -164,6 +164,7 @@ Catálogo global de permisos atómicos. Compartidos por todos los tenants. Forma
 - `mvz.tenant.read` / `.write`
 - `mvz.profile.read` / `.write`
 - `mvz.members.read` / `.write`
+- `mvz.roles.read` / `.write`
 - `mvz.ranch.read`
 - `mvz.ranch.animals.read`
 - `mvz.ranch.clinical.read`
@@ -184,6 +185,7 @@ Catálogo global de permisos atómicos. Compartidos por todos los tenants. Forma
 - `producer.notifications.read`
 - `producer.profile.read` / `.write`
 - `producer.employees.read` / `.write`
+- `producer.roles.read` / `.write`
 
 </details>
 
@@ -208,18 +210,26 @@ Vincula un usuario a un tenant. Un usuario puede tener membresías en múltiples
 
 #### `tenant_roles`
 
-Roles disponibles dentro de un tenant. Los roles de sistema (`is_system = true`) se crean con el seed de roles.
+Roles disponibles dentro de un tenant. Los roles de sistema (`is_system = true`) se crean con el seed de roles y permanecen reservados por tipo de panel.
 
 | Columna | Tipo | Descripción |
 |---|---|---|
 | `id` | `UUID` | PK |
 | `tenant_id` | `UUID` | FK → `tenants(id)` |
-| `key` | `TEXT` | `tenant_admin` \| `producer` \| `employee` \| `producer_viewer` \| `mvz_internal` \| `mvz_government` |
+| `key` | `TEXT` | `tenant_admin` \| `producer` \| `employee` \| `producer_viewer` \| `mvz_internal` \| `mvz_government` \| `custom_<slug>` |
 | `name` | `TEXT` | Nombre legible |
 | `is_system` | `BOOLEAN` | `TRUE` si fue creado por el seed. No eliminar. |
 | `priority` | `INTEGER` | Orden de prioridad (menor = más privilegio) |
 
 **Constraint:** `UNIQUE(tenant_id, key)`
+
+Reglas operativas actuales:
+
+- `government` reserva `tenant_admin`.
+- `producer` reserva `producer`, `employee` y `producer_viewer`.
+- `mvz` reserva `mvz_government` y `mvz_internal`.
+- Los roles base son visibles, asignables y clonables, pero sus permisos no se editan desde la UI.
+- Los roles custom usan `is_system = false` y la `key` interna sigue el patron `custom_<slug>`.
 
 ---
 

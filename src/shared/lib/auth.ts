@@ -8,6 +8,7 @@ export const APP_ROLES = [
 ] as const;
 
 export type AppRole = (typeof APP_ROLES)[number];
+export type TenantPanelType = "government" | "producer" | "mvz";
 
 export const ROLE_LABELS: Record<AppRole, string> = {
   tenant_admin: "Administrador",
@@ -58,6 +59,8 @@ export const PERMISSION_KEYS = [
   "mvz.profile.write",
   "mvz.members.read",
   "mvz.members.write",
+  "mvz.roles.read",
+  "mvz.roles.write",
   "mvz.ranch.read",
   "mvz.ranch.animals.read",
   "mvz.ranch.clinical.read",
@@ -88,6 +91,8 @@ export const PERMISSION_KEYS = [
   "producer.profile.write",
   "producer.employees.read",
   "producer.employees.write",
+  "producer.roles.read",
+  "producer.roles.write",
 ] as const;
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
@@ -141,6 +146,8 @@ const MVZ_GOVERNMENT_PERMISSION_SET: PermissionKey[] = [
   "mvz.profile.write",
   "mvz.members.read",
   "mvz.members.write",
+  "mvz.roles.read",
+  "mvz.roles.write",
   "mvz.ranch.read",
   "mvz.ranch.animals.read",
   "mvz.ranch.clinical.read",
@@ -195,6 +202,8 @@ const PRODUCER_PERMISSION_SET: PermissionKey[] = [
   "producer.profile.write",
   "producer.employees.read",
   "producer.employees.write",
+  "producer.roles.read",
+  "producer.roles.write",
 ];
 const PRODUCER_EMPLOYEE_PERMISSION_SET: PermissionKey[] = [
   "producer.dashboard.read",
@@ -226,6 +235,29 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<AppRole, PermissionKey[]> = {
 
 export function isAppRole(value: string): value is AppRole {
   return APP_ROLES.includes(value as AppRole);
+}
+
+export function deriveCompatibleRole(
+  tenantType: TenantPanelType,
+  roleKey: string | null | undefined
+): AppRole {
+  if (tenantType === "government") {
+    return "tenant_admin";
+  }
+
+  if (tenantType === "producer") {
+    if (roleKey === "employee") {
+      return "employee";
+    }
+
+    if (roleKey === "producer_viewer") {
+      return "producer_viewer";
+    }
+
+    return "producer";
+  }
+
+  return roleKey === "mvz_internal" ? "mvz_internal" : "mvz_government";
 }
 
 const ROLE_ALIASES: Record<string, AppRole> = {
@@ -271,4 +303,63 @@ export function redirectPathForRole(role: AppRole): string {
   }
 
   return "/mvz";
+}
+
+export const PRODUCER_SETTINGS_NAV_PERMISSIONS: PermissionKey[] = [
+  "producer.tenant.read",
+  "producer.tenant.write",
+  "producer.upp.read",
+  "producer.upp.write",
+  "producer.employees.read",
+  "producer.employees.write",
+  "producer.roles.read",
+  "producer.roles.write",
+];
+
+export const MVZ_SETTINGS_NAV_PERMISSIONS: PermissionKey[] = [
+  "mvz.tenant.read",
+  "mvz.tenant.write",
+  "mvz.assignments.read",
+  "mvz.members.read",
+  "mvz.members.write",
+  "mvz.roles.read",
+  "mvz.roles.write",
+];
+
+function hasAnyPermission(permissions: PermissionKey[], expected: PermissionKey[]) {
+  return expected.some((permission) => permissions.includes(permission));
+}
+
+export function resolvePanelHomePath(options: {
+  panelType: TenantPanelType;
+  permissions: PermissionKey[];
+  isMvzInternal?: boolean;
+}): string {
+  const { panelType, permissions, isMvzInternal = false } = options;
+
+  if (panelType === "government") {
+    return "/admin";
+  }
+
+  if (panelType === "producer") {
+    if (hasAnyPermission(permissions, ["producer.upp.read", "producer.dashboard.read"])) {
+      return "/producer";
+    }
+
+    if (hasAnyPermission(permissions, PRODUCER_SETTINGS_NAV_PERMISSIONS)) {
+      return "/producer/settings";
+    }
+
+    return "/producer/profile";
+  }
+
+  if (isMvzInternal || hasAnyPermission(permissions, ["mvz.assignments.read", "mvz.dashboard.read"])) {
+    return "/mvz";
+  }
+
+  if (hasAnyPermission(permissions, MVZ_SETTINGS_NAV_PERMISSIONS)) {
+    return "/mvz/settings";
+  }
+
+  return "/mvz/profile";
 }

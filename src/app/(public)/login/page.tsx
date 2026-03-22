@@ -9,18 +9,19 @@ import { Card, CardContent } from "@/shared/ui/card";
 import { Eye, EyeOff, Shield } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase-browser";
 import { resolveClientRole } from "@/shared/lib/auth-client";
-import { redirectPathForRole } from "@/shared/lib/auth";
+import {
+  resolvePanelHomePath,
+  type PermissionKey,
+  type TenantPanelType,
+} from "@/shared/lib/auth";
 
 interface LoginApiResponse {
   ok: boolean;
   data?: {
-    roleKey:
-      | "tenant_admin"
-      | "producer"
-      | "employee"
-      | "producer_viewer"
-      | "mvz_government"
-      | "mvz_internal";
+    roleKey: string;
+    panelType: TenantPanelType;
+    permissions: PermissionKey[];
+    isMvzInternal: boolean;
     redirectTo: string;
     tenantId: string;
     tenantSlug: string;
@@ -54,7 +55,21 @@ export default function PublicLoginPage() {
 
       const roleResult = await resolveClientRole(supabase, data.session.user.id);
       if (roleResult.role) {
-        router.replace(redirectPathForRole(roleResult.role));
+        const nextPanelType =
+          roleResult.panelType ??
+          (roleResult.role === "tenant_admin"
+            ? "government"
+            : roleResult.role === "mvz_government" || roleResult.role === "mvz_internal"
+              ? "mvz"
+              : "producer");
+
+        router.replace(
+          resolvePanelHomePath({
+            panelType: nextPanelType,
+            permissions: roleResult.permissions ?? [],
+            isMvzInternal: roleResult.isMvzInternal,
+          })
+        );
       }
     };
 

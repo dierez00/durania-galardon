@@ -42,6 +42,10 @@ interface AuthMePayload {
     user?: {
       email?: string;
       role?: AppRole;
+      roleKey?: string;
+      roleName?: string;
+      isSystemRole?: boolean;
+      isMvzInternal?: boolean;
       displayName?: string | null;
     };
     tenant?: {
@@ -53,6 +57,12 @@ interface AuthMePayload {
     panelType?: "producer" | "mvz" | "government";
     permissions?: PermissionKey[];
   };
+}
+
+function canLoadWorkspaceProjects(panel: WorkspacePanel, permissions: PermissionKey[]) {
+  return panel === "producer"
+    ? permissions.includes("producer.upp.read")
+    : permissions.includes("mvz.assignments.read");
 }
 
 interface ProducerProjectsPayload {
@@ -225,23 +235,31 @@ export function TenantWorkspaceProvider({
           panel,
         };
 
+        const permissions = authData.permissions ?? [];
         const nextUser: WorkspaceUser = {
           email: authData.user?.email ?? "",
           displayName: authData.user?.displayName?.trim() || authData.user?.email || "",
           role: resolvedRole,
-          roleLabel: ROLE_LABELS[resolvedRole] ?? resolvedRole,
-          permissions: authData.permissions ?? [],
+          roleKey: authData.user?.roleKey ?? resolvedRole,
+          roleName: authData.user?.roleName ?? ROLE_LABELS[resolvedRole] ?? resolvedRole,
+          roleLabel: authData.user?.roleName ?? ROLE_LABELS[resolvedRole] ?? resolvedRole,
+          isSystemRole: authData.user?.isSystemRole ?? true,
+          isMvzInternal: authData.user?.isMvzInternal ?? false,
+          permissions,
         };
 
-        const projectsPayload =
-          panel === "producer"
-            ? await fetchJson<ProducerProjectsPayload>("/api/producer/upp", accessToken)
-            : await fetchJson<MvzProjectsPayload>("/api/mvz/assignments", accessToken);
+        let nextProjects: WorkspaceProject[] = [];
+        if (canLoadWorkspaceProjects(panel, permissions)) {
+          const projectsPayload =
+            panel === "producer"
+              ? await fetchJson<ProducerProjectsPayload>("/api/producer/upp", accessToken)
+              : await fetchJson<MvzProjectsPayload>("/api/mvz/assignments", accessToken);
 
-        const nextProjects =
-          panel === "producer"
-            ? mapProducerProjects(projectsPayload as ProducerProjectsPayload)
-            : mapMvzProjects(projectsPayload as MvzProjectsPayload);
+          nextProjects =
+            panel === "producer"
+              ? mapProducerProjects(projectsPayload as ProducerProjectsPayload)
+              : mapMvzProjects(projectsPayload as MvzProjectsPayload);
+        }
 
         if (cancelled) {
           return;
@@ -348,8 +366,8 @@ export function TenantWorkspaceProvider({
   }, [location?.moduleKey, location?.sectionKey, mode, panel]);
 
   const navigation = useMemo(
-    () => resolveWorkspaceNavigation(panel, mode, user?.permissions ?? [], currentProject?.id ?? null),
-    [currentProject?.id, mode, panel, user?.permissions]
+    () => resolveWorkspaceNavigation(panel, mode, user, currentProject?.id ?? null),
+    [currentProject?.id, mode, panel, user]
   );
 
   useEffect(() => {
@@ -447,7 +465,7 @@ export function TenantWorkspaceProvider({
       return;
     }
 
-    const availableModules = resolveWorkspaceNavigation(panel, "project", user.permissions, projectId);
+    const availableModules = resolveWorkspaceNavigation(panel, "project", user, projectId);
     const storedModuleKey = sessionStorage.getItem(
       getLastModuleStorageKey(panel, organization.id, projectId)
     );

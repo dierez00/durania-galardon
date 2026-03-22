@@ -1,19 +1,20 @@
 import { resolveTenant } from "@/server/tenants/resolveTenant";
 import {
-  normalizeAppRole,
+  deriveCompatibleRole,
   isPermissionKey,
   isTenantAdminRole,
   redirectPathForRole,
   ROLE_DEFAULT_PERMISSIONS,
   type AppRole,
   type PermissionKey,
+  type TenantPanelType,
 } from "@/shared/lib/auth";
 import {
   createSupabaseRlsServerClient,
   getSupabaseProvisioningClient,
 } from "@/server/auth/supabase";
 
-type TenantType = "government" | "producer" | "mvz";
+type TenantType = TenantPanelType;
 
 interface UserContextRow {
   user_id: string;
@@ -21,6 +22,8 @@ interface UserContextRow {
   tenant_type: TenantType;
   tenant_slug: string;
   role_key: string;
+  role_name: string | null;
+  is_system_role: boolean;
   role_priority: number;
 }
 
@@ -37,6 +40,13 @@ interface TenantRow {
   id: string;
   type: TenantType;
   slug: string;
+}
+
+interface RoleRow {
+  key?: string;
+  name?: string;
+  priority?: number;
+  is_system?: boolean;
 }
 
 export interface AuthError {
@@ -60,6 +70,10 @@ export interface AuthenticatedRequestUser {
   email: string;
   displayName: string | null;
   role: AppRole;
+  roleKey: string;
+  roleName: string;
+  isSystemRole: boolean;
+  isMvzInternal: boolean;
   tenantId: string;
   tenantSlug: string;
   tenantType: TenantType;
@@ -96,14 +110,28 @@ function resolveTenantTypePriority(type: TenantType): number {
   return 3;
 }
 
-function resolveDefaultRoleForTenantType(type: TenantType): AppRole {
+function resolveDefaultRoleKeyForTenantType(type: TenantType): string {
   if (type === "government") {
     return "tenant_admin";
   }
+
   if (type === "mvz") {
     return "mvz_government";
   }
+
   return "producer";
+}
+
+function resolveDefaultRoleNameForTenantType(type: TenantType): string {
+  if (type === "government") {
+    return "Administrador";
+  }
+
+  if (type === "mvz") {
+    return "MVZ Gobierno";
+  }
+
+  return "Productor";
 }
 
 async function resolveContextFallback(
@@ -161,16 +189,18 @@ async function resolveContextFallback(
 
   const roleResult = await provisioning
     .from("tenant_user_roles")
-    .select("tenant_roles(key,priority)")
+    .select("tenant_roles(key,name,priority,is_system)")
     .eq("membership_id", selectedMembership.id);
 
-  let selectedRole: AppRole | null = null;
+  let selectedRoleKey: string | null = null;
+  let selectedRoleName: string | null = null;
+  let selectedRoleIsSystem = false;
   let selectedPriority = 100;
   let usedDefaultRole = false;
 
   if (!roleResult.error && roleResult.data) {
     const roleRows = roleResult.data as Array<{
-      tenant_roles?: { key?: string; priority?: number } | Array<{ key?: string; priority?: number }>;
+      tenant_roles?: RoleRow | RoleRow[];
     }>;
 
     const flattened = roleRows
@@ -182,21 +212,27 @@ async function resolveContextFallback(
           : []
       )
       .map((role) => ({
-        role: normalizeAppRole(role.key),
+        key: role.key?.trim() ?? null,
+        name: role.name?.trim() ?? null,
         priority: role.priority ?? 100,
+        isSystem: role.is_system === true,
       }))
-      .filter((item): item is { role: AppRole; priority: number } => item.role !== null)
+      .filter((item): item is { key: string; name: string | null; priority: number; isSystem: boolean } => item.key !== null)
       .sort((a, b) => a.priority - b.priority);
 
     if (flattened.length > 0) {
-      selectedRole = flattened[0].role;
+      selectedRoleKey = flattened[0].key;
+      selectedRoleName = flattened[0].name;
       selectedPriority = flattened[0].priority;
+      selectedRoleIsSystem = flattened[0].isSystem;
     }
   }
 
-  if (!selectedRole) {
-    selectedRole = resolveDefaultRoleForTenantType(selectedTenant.type);
+  if (!selectedRoleKey) {
+    selectedRoleKey = resolveDefaultRoleKeyForTenantType(selectedTenant.type);
+    selectedRoleName = resolveDefaultRoleNameForTenantType(selectedTenant.type);
     selectedPriority = 1;
+    selectedRoleIsSystem = true;
     usedDefaultRole = true;
   }
 
@@ -206,7 +242,9 @@ async function resolveContextFallback(
       tenant_id: selectedTenant.id,
       tenant_type: selectedTenant.type,
       tenant_slug: selectedTenant.slug,
-      role_key: selectedRole,
+      role_key: selectedRoleKey,
+      role_name: selectedRoleName,
+      is_system_role: selectedRoleIsSystem,
       role_priority: selectedPriority,
     },
     usedDefaultRole,
@@ -217,6 +255,25 @@ function resolveTenantSlugFromRequest(request: Request): string | null {
   const tenantHeader = request.headers.get("x-tenant-slug-resolved");
   const resolved = resolveTenant(request);
   return tenantHeader ?? resolved?.tenantSlug ?? null;
+}
+
+async function resolveRoleSystemFlag(
+  tenantId: string,
+  roleKey: string
+): Promise<boolean> {
+  const provisioning = getSupabaseProvisioningClient();
+  const roleResult = await provisioning
+    .from("tenant_roles")
+    .select("is_system")
+    .eq("tenant_id", tenantId)
+    .eq("key", roleKey)
+    .maybeSingle();
+
+  if (roleResult.error || !roleResult.data) {
+    return false;
+  }
+
+  return roleResult.data.is_system === true;
 }
 
 async function resolvePrimaryContext(
@@ -232,7 +289,7 @@ async function resolvePrimaryContext(
 
   let contextQuery = supabase
     .from("v_user_context")
-    .select("user_id,tenant_id,tenant_type,tenant_slug,role_key,role_priority")
+    .select("user_id,tenant_id,tenant_type,tenant_slug,role_key,role_name,role_priority")
     .order("role_priority", { ascending: true })
     .limit(1);
 
@@ -245,7 +302,7 @@ async function resolvePrimaryContext(
   if ((contextResult.error || !contextResult.data) && preferredTenantSlug) {
     contextResult = await supabase
       .from("v_user_context")
-      .select("user_id,tenant_id,tenant_type,tenant_slug,role_key,role_priority")
+      .select("user_id,tenant_id,tenant_type,tenant_slug,role_key,role_name,role_priority")
       .order("role_priority", { ascending: true })
       .limit(1)
       .maybeSingle();
@@ -254,7 +311,7 @@ async function resolvePrimaryContext(
   let row: UserContextRow | null = contextResult.data as UserContextRow | null;
   let usedDefaultRole = false;
 
-  if (!row || !normalizeAppRole(row.role_key)) {
+  if (!row) {
     const fallback = await resolveContextFallback(authUserResult.data.user.id, preferredTenantSlug);
     if (fallback) {
       row = fallback.row;
@@ -272,13 +329,13 @@ async function resolvePrimaryContext(
     };
   }
 
-  const normalizedRole = normalizeAppRole(row.role_key);
-  if (!normalizedRole) {
-    return {
-      error: authError(403, "ROLE_NOT_FOUND", "El rol principal no es valido para la aplicacion."),
-    };
+  if (!row.role_name) {
+    row.role_name = row.role_key;
   }
-  row.role_key = normalizedRole;
+
+  row.is_system_role = await resolveRoleSystemFlag(row.tenant_id, row.role_key);
+
+  const compatibleRole = deriveCompatibleRole(row.tenant_type, row.role_key);
 
   const permissionsResult = await supabase
     .from("v_user_permissions")
@@ -290,24 +347,13 @@ async function resolvePrimaryContext(
     .filter(isPermissionKey);
 
   if (permissions.length === 0 && usedDefaultRole) {
-    permissions = [...ROLE_DEFAULT_PERMISSIONS[normalizedRole]];
-  }
-
-  const panelResult = await supabase.rpc("auth_get_panel_type");
-  const panelType = panelResult.data;
-
-  if (panelType !== "government" && panelType !== "producer" && panelType !== "mvz") {
-    return {
-      row,
-      permissions,
-      panelType: row.tenant_type,
-    };
+    permissions = [...ROLE_DEFAULT_PERMISSIONS[compatibleRole]];
   }
 
   return {
     row,
     permissions,
-    panelType,
+    panelType: row.tenant_type,
   };
 }
 
@@ -390,7 +436,12 @@ export async function resolveAuthenticatedRequestUser(
         (userResult.data.user.user_metadata?.name as string | undefined) ??
         (userResult.data.user.user_metadata?.display_name as string | undefined) ??
         null,
-      role: contextResult.row.role_key as AppRole,
+      role: deriveCompatibleRole(contextResult.row.tenant_type, contextResult.row.role_key),
+      roleKey: contextResult.row.role_key,
+      roleName: contextResult.row.role_name ?? contextResult.row.role_key,
+      isSystemRole: contextResult.row.is_system_role,
+      isMvzInternal:
+        contextResult.row.tenant_type === "mvz" && contextResult.row.role_key === "mvz_internal",
       tenantId: contextResult.row.tenant_id,
       tenantSlug: contextResult.row.tenant_slug,
       tenantType: contextResult.row.tenant_type,

@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { isAppRole, isPermissionKey, redirectPathForRole } from "../../src/shared/lib/auth";
+import {
+  deriveCompatibleRole,
+  isAppRole,
+  isPermissionKey,
+  MVZ_SETTINGS_NAV_PERMISSIONS,
+  PRODUCER_SETTINGS_NAV_PERMISSIONS,
+  redirectPathForRole,
+  resolvePanelHomePath,
+} from "../../src/shared/lib/auth";
 
 describe("shared auth role helpers", () => {
   it("validates supported roles", () => {
@@ -27,7 +35,48 @@ describe("shared auth role helpers", () => {
     expect(isPermissionKey("mvz.members.write")).toBe(true);
     expect(isPermissionKey("mvz.profile.write")).toBe(true);
     expect(isPermissionKey("producer.documents.write")).toBe(true);
+    expect(isPermissionKey("producer.roles.write")).toBe(true);
+    expect(isPermissionKey("mvz.roles.write")).toBe(true);
     expect(isPermissionKey("producer.tenant.read")).toBe(true);
     expect(isPermissionKey("admin.superpower")).toBe(false);
+  });
+
+  it("derives compatible panel roles for custom tenant roles", () => {
+    expect(deriveCompatibleRole("producer", "custom_operador")).toBe("producer");
+    expect(deriveCompatibleRole("mvz", "custom_supervisor")).toBe("mvz_government");
+    expect(deriveCompatibleRole("mvz", "mvz_internal")).toBe("mvz_internal");
+  });
+
+  it("resolves panel home paths from permissions", () => {
+    expect(
+      resolvePanelHomePath({
+        panelType: "producer",
+        permissions: ["producer.roles.read"],
+      })
+    ).toBe("/producer/settings");
+
+    expect(
+      resolvePanelHomePath({
+        panelType: "mvz",
+        permissions: ["mvz.roles.write"],
+      })
+    ).toBe("/mvz/settings");
+
+    expect(
+      resolvePanelHomePath({
+        panelType: "mvz",
+        permissions: ["mvz.assignments.read"],
+        isMvzInternal: true,
+      })
+    ).toBe("/mvz");
+  });
+
+  it("keeps settings navigation permissions aligned with tab access", () => {
+    expect(PRODUCER_SETTINGS_NAV_PERMISSIONS).toEqual(
+      expect.arrayContaining(["producer.tenant.write", "producer.employees.write", "producer.roles.write"])
+    );
+    expect(MVZ_SETTINGS_NAV_PERMISSIONS).toEqual(
+      expect.arrayContaining(["mvz.tenant.write", "mvz.members.write", "mvz.roles.write"])
+    );
   });
 });

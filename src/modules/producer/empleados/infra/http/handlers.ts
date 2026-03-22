@@ -1,18 +1,57 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
 import { getSupabaseAdminClient } from "@/server/auth/supabase";
+import {
+  listTenantRolesForPanel,
+  resolveAssignableRoleForPanel,
+} from "@/server/authz/tenantRoles";
 import { logAuditEvent } from "@/server/audit";
 
 interface EmployeeBody {
   membershipId?: string;
+  roleId?: string;
   email?: string;
   status?: "active" | "inactive" | "suspended";
   uppIds?: string[];
-  accessLevel?: "viewer" | "editor" | "manager";
+  uppAccess?: Array<{
+    uppId?: string;
+    accessLevel?: "viewer" | "editor" | "owner";
+  }>;
+  accessLevel?: "viewer" | "editor" | "owner";
 }
 
 const EMPLOYEE_ROLE_KEY = "employee";
 const EMPLOYEE_ROLE_NAME = "Empleado";
+
+function normalizeUppAccessInput(body: EmployeeBody) {
+  if (Array.isArray(body.uppAccess)) {
+    const byUppId = new Map<string, { uppId: string; accessLevel: "viewer" | "editor" | "owner" }>();
+
+    body.uppAccess.forEach((item) => {
+      const uppId = item.uppId?.trim();
+      const accessLevel = item.accessLevel ?? "viewer";
+
+      if (!uppId) {
+        return;
+      }
+
+      byUppId.set(uppId, {
+        uppId,
+        accessLevel,
+      });
+    });
+
+    return [...byUppId.values()];
+  }
+
+  const fallbackAccessLevel = body.accessLevel ?? "viewer";
+  return Array.from(new Set((body.uppIds ?? []).map((uppId) => uppId.trim()).filter(Boolean))).map(
+    (uppId) => ({
+      uppId,
+      accessLevel: fallbackAccessLevel,
+    })
+  );
+}
 
 async function ensureEmployeeRole(tenantId: string): Promise<string> {
   const supabaseAdmin = getSupabaseAdminClient();
@@ -78,8 +117,8 @@ async function ensureEmployeeRole(tenantId: string): Promise<string> {
 
 export async function GET(request: Request) {
   const auth = await requireAuthorized(request, {
-    roles: ["producer", "employee"],
-    permissions: ["producer.employees.read"],
+    roles: ["producer", "employee", "producer_viewer"],
+    permissions: ["producer.employees.read", "producer.employees.write"],
     resource: "producer.employees",
   });
   if (!auth.ok) {
@@ -99,7 +138,17 @@ export async function GET(request: Request) {
 
   const memberships = membershipsResult.data ?? [];
   if (memberships.length === 0) {
-    return apiSuccess({ employees: [] });
+    const availableRolesPayload = await listTenantRolesForPanel(auth.context.user.tenantId, "producer");
+    return apiSuccess({
+      employees: [],
+      availableRoles: availableRolesPayload.roles.map((role) => ({
+        id: role.id,
+        key: role.key,
+        name: role.name,
+        isSystem: role.isSystem,
+        memberCount: role.memberCount,
+      })),
+    });
   }
 
   const membershipIds = memberships.map((row) => row.id);
@@ -109,7 +158,7 @@ export async function GET(request: Request) {
     supabaseAdmin.from("profiles").select("id,email,status,created_at").in("id", userIds),
     supabaseAdmin
       .from("tenant_user_roles")
-      .select("membership_id,tenant_role:tenant_roles(key,name)")
+      .select("membership_id,tenant_role_id,tenant_role:tenant_roles(id,key,name,is_system)")
       .in("membership_id", membershipIds),
     supabaseAdmin
       .from("user_upp_access")
@@ -127,7 +176,10 @@ export async function GET(request: Request) {
   }
 
   const profileByUserId = new Map((profilesResult.data ?? []).map((profile) => [profile.id, profile]));
-  const roleByMembership = new Map<string, { key: string | null; name: string | null }>();
+  const roleByMembership = new Map<
+    string,
+    { id: string | null; key: string | null; name: string | null; isSystem: boolean }
+  >();
 
   (rolesResult.data ?? []).forEach((row) => {
     if (roleByMembership.has(row.membership_id)) {
@@ -136,8 +188,10 @@ export async function GET(request: Request) {
 
     const role = Array.isArray(row.tenant_role) ? row.tenant_role[0] : row.tenant_role;
     roleByMembership.set(row.membership_id, {
+      id: role?.id ?? row.tenant_role_id ?? null,
       key: role?.key ?? null,
       name: role?.name ?? null,
+      isSystem: role?.is_system === true,
     });
   });
 
@@ -152,30 +206,46 @@ export async function GET(request: Request) {
     return acc;
   }, new Map<string, Array<{ uppId: string; accessLevel: string; status: string }>>());
 
+  const availableRolesPayload = await listTenantRolesForPanel(auth.context.user.tenantId, "producer");
+
   return apiSuccess({
     employees: memberships
       .filter((membership) => membership.user_id !== auth.context.user.id)
       .map((membership) => {
         const profile = profileByUserId.get(membership.user_id);
-        const roleInfo = roleByMembership.get(membership.id) ?? { key: null, name: null };
+        const roleInfo = roleByMembership.get(membership.id) ?? {
+          id: null,
+          key: null,
+          name: null,
+          isSystem: false,
+        };
         return {
           id: membership.id,
           userId: membership.user_id,
           email: profile?.email ?? "",
           profileStatus: profile?.status ?? "unknown",
           membershipStatus: membership.status,
+          roleId: roleInfo.id,
           roleKey: roleInfo.key,
           roleName: roleInfo.name,
+          isSystemRole: roleInfo.isSystem,
           uppAccess: accessByUserId.get(membership.user_id) ?? [],
           joinedAt: membership.joined_at,
         };
       }),
+    availableRoles: availableRolesPayload.roles.map((role) => ({
+      id: role.id,
+      key: role.key,
+      name: role.name,
+      isSystem: role.isSystem,
+      memberCount: role.memberCount,
+    })),
   });
 }
 
 export async function POST(request: Request) {
   const auth = await requireAuthorized(request, {
-    roles: ["producer", "employee"],
+    roles: ["producer", "employee", "producer_viewer"],
     permissions: ["producer.employees.write"],
     resource: "producer.employees",
   });
@@ -195,8 +265,8 @@ export async function POST(request: Request) {
     return apiError("INVALID_PAYLOAD", "Debe enviar email del empleado.");
   }
 
-  const uppIds = Array.from(new Set((body.uppIds ?? []).map((uppId) => uppId.trim()).filter(Boolean)));
-  const accessLevel = body.accessLevel ?? "viewer";
+  const uppAccess = normalizeUppAccessInput(body);
+  const uppIds = uppAccess.map((item) => item.uppId);
 
   const supabaseAdmin = getSupabaseAdminClient();
   const profileResult = await supabaseAdmin
@@ -251,7 +321,18 @@ export async function POST(request: Request) {
     membershipId = membershipInsert.data.id;
   }
 
-  const employeeRoleId = await ensureEmployeeRole(auth.context.user.tenantId);
+  let employeeRoleId: string;
+  try {
+    const selectedRole = await resolveAssignableRoleForPanel({
+      tenantId: auth.context.user.tenantId,
+      panel: "producer",
+      roleId: body.roleId?.trim(),
+      fallbackRoleKey: EMPLOYEE_ROLE_KEY,
+    });
+    employeeRoleId = selectedRole.id;
+  } catch {
+    employeeRoleId = await ensureEmployeeRole(auth.context.user.tenantId);
+  }
 
   const clearRoles = await supabaseAdmin.from("tenant_user_roles").delete().eq("membership_id", membershipId);
   if (clearRoles.error) {
@@ -268,15 +349,17 @@ export async function POST(request: Request) {
     return apiError("EMPLOYEE_ROLE_ASSIGN_FAILED", assignRole.error.message, 400);
   }
 
-  if (uppIds.length > 0) {
-    const uppsCheck = await supabaseAdmin
-      .from("upps")
-      .select("id")
-      .eq("tenant_id", auth.context.user.tenantId)
-      .in("id", uppIds);
+  if (Array.isArray(body.uppAccess) || Array.isArray(body.uppIds)) {
+    if (uppIds.length > 0) {
+      const uppsCheck = await supabaseAdmin
+        .from("upps")
+        .select("id")
+        .eq("tenant_id", auth.context.user.tenantId)
+        .in("id", uppIds);
 
-    if (uppsCheck.error || (uppsCheck.data ?? []).length !== uppIds.length) {
-      return apiError("INVALID_UPP_SCOPE", "Uno o mas uppIds no pertenecen al tenant.", 400);
+      if (uppsCheck.error || (uppsCheck.data ?? []).length !== uppIds.length) {
+        return apiError("INVALID_UPP_SCOPE", "Uno o mas uppIds no pertenecen al tenant.", 400);
+      }
     }
 
     await supabaseAdmin
@@ -286,11 +369,11 @@ export async function POST(request: Request) {
       .eq("user_id", profile.id);
 
     const accessInsert = await supabaseAdmin.from("user_upp_access").insert(
-      uppIds.map((uppId) => ({
+      uppAccess.map((item) => ({
         tenant_id: auth.context.user.tenantId,
         user_id: profile.id,
-        upp_id: uppId,
-        access_level: accessLevel,
+        upp_id: item.uppId,
+        access_level: item.accessLevel,
         status: "active",
         granted_by_user_id: auth.context.user.id,
       }))
@@ -309,8 +392,8 @@ export async function POST(request: Request) {
     resourceId: membershipId,
     payload: {
       email,
-      uppIds,
-      accessLevel,
+      roleId: body.roleId?.trim() ?? employeeRoleId,
+      uppAccess,
     },
   });
 
@@ -326,7 +409,7 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   const auth = await requireAuthorized(request, {
-    roles: ["producer", "employee"],
+    roles: ["producer", "employee", "producer_viewer"],
     permissions: ["producer.employees.write"],
     resource: "producer.employees",
   });
@@ -375,18 +458,57 @@ export async function PATCH(request: Request) {
     }
   }
 
-  if (Array.isArray(body.uppIds)) {
-    const uppIds = Array.from(new Set(body.uppIds.map((uppId) => uppId.trim()).filter(Boolean)));
-    const accessLevel = body.accessLevel ?? "viewer";
+  if (body.roleId?.trim()) {
+    let nextRoleId: string;
+    try {
+      const selectedRole = await resolveAssignableRoleForPanel({
+        tenantId: auth.context.user.tenantId,
+        panel: "producer",
+        roleId: body.roleId.trim(),
+      });
+      nextRoleId = selectedRole.id;
+    } catch (error) {
+      return apiError(
+        "INVALID_ROLE_SCOPE",
+        error instanceof Error ? error.message : "No fue posible asignar el rol solicitado.",
+        400
+      );
+    }
 
-    const uppsCheck = await supabaseAdmin
-      .from("upps")
-      .select("id")
-      .eq("tenant_id", auth.context.user.tenantId)
-      .in("id", uppIds);
+    const clearRoles = await supabaseAdmin
+      .from("tenant_user_roles")
+      .delete()
+      .eq("membership_id", membershipId);
 
-    if (uppsCheck.error || (uppsCheck.data ?? []).length !== uppIds.length) {
-      return apiError("INVALID_UPP_SCOPE", "Uno o mas uppIds no pertenecen al tenant.", 400);
+    if (clearRoles.error) {
+      return apiError("EMPLOYEE_ROLE_CLEAR_FAILED", clearRoles.error.message, 400);
+    }
+
+    const assignRole = await supabaseAdmin.from("tenant_user_roles").insert({
+      membership_id: membershipId,
+      tenant_role_id: nextRoleId,
+      assigned_by_user_id: auth.context.user.id,
+    });
+
+    if (assignRole.error) {
+      return apiError("EMPLOYEE_ROLE_ASSIGN_FAILED", assignRole.error.message, 400);
+    }
+  }
+
+  if (Array.isArray(body.uppAccess) || Array.isArray(body.uppIds)) {
+    const uppAccess = normalizeUppAccessInput(body);
+    const uppIds = uppAccess.map((item) => item.uppId);
+
+    if (uppIds.length > 0) {
+      const uppsCheck = await supabaseAdmin
+        .from("upps")
+        .select("id")
+        .eq("tenant_id", auth.context.user.tenantId)
+        .in("id", uppIds);
+
+      if (uppsCheck.error || (uppsCheck.data ?? []).length !== uppIds.length) {
+        return apiError("INVALID_UPP_SCOPE", "Uno o mas uppIds no pertenecen al tenant.", 400);
+      }
     }
 
     await supabaseAdmin
@@ -397,11 +519,11 @@ export async function PATCH(request: Request) {
 
     if (uppIds.length > 0) {
       const accessInsert = await supabaseAdmin.from("user_upp_access").insert(
-        uppIds.map((uppId) => ({
+        uppAccess.map((item) => ({
           tenant_id: auth.context.user.tenantId,
           user_id: membership.user_id,
-          upp_id: uppId,
-          access_level: accessLevel,
+          upp_id: item.uppId,
+          access_level: item.accessLevel,
           status: "active",
           granted_by_user_id: auth.context.user.id,
         }))
@@ -421,8 +543,8 @@ export async function PATCH(request: Request) {
     resourceId: membershipId,
     payload: {
       status: body.status ?? null,
-      uppIds: body.uppIds ?? null,
-      accessLevel: body.accessLevel ?? null,
+      roleId: body.roleId?.trim() ?? null,
+      uppAccess: body.uppAccess ?? null,
     },
   });
 

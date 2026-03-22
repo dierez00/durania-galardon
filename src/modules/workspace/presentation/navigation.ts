@@ -10,11 +10,16 @@ import {
   Truck,
   Users,
 } from "lucide-react";
-import type { PermissionKey } from "@/shared/lib/auth";
+import {
+  MVZ_SETTINGS_NAV_PERMISSIONS,
+  PRODUCER_SETTINGS_NAV_PERMISSIONS,
+  type PermissionKey,
+} from "@/shared/lib/auth";
 import type {
   ResolvedNavItem,
   WorkspaceMode,
   WorkspacePanel,
+  WorkspaceUser,
 } from "@/modules/workspace/domain/types";
 import {
   buildMetricsHref,
@@ -30,6 +35,7 @@ interface NavigationRule {
   exact?: boolean;
   permissions?: PermissionKey[];
   anyPermissions?: PermissionKey[];
+  hideWhenMvzInternal?: boolean;
 }
 
 const PRODUCER_ORGANIZATION_NAVIGATION: NavigationRule[] = [
@@ -52,7 +58,7 @@ const PRODUCER_ORGANIZATION_NAVIGATION: NavigationRule[] = [
     label: "Configuracion",
     icon: ShieldCheck,
     exact: true,
-    anyPermissions: ["producer.tenant.read", "producer.documents.read", "producer.employees.read"],
+    anyPermissions: PRODUCER_SETTINGS_NAV_PERMISSIONS,
   },
 ];
 
@@ -121,7 +127,8 @@ const MVZ_ORGANIZATION_NAVIGATION: NavigationRule[] = [
     label: "Configuracion",
     icon: ShieldCheck,
     exact: true,
-    anyPermissions: ["mvz.tenant.read", "mvz.members.read"],
+    anyPermissions: MVZ_SETTINGS_NAV_PERMISSIONS,
+    hideWhenMvzInternal: true,
   },
 ];
 
@@ -199,9 +206,10 @@ function isNavigationAllowed(rule: NavigationRule, permissions: PermissionKey[])
 export function resolveWorkspaceNavigation(
   panel: WorkspacePanel,
   mode: WorkspaceMode,
-  permissions: PermissionKey[],
+  user: WorkspaceUser | null,
   projectId: string | null
 ): ResolvedNavItem[] {
+  const permissions = user?.permissions ?? [];
   const rules =
     panel === "producer"
       ? mode === "organization"
@@ -212,6 +220,7 @@ export function resolveWorkspaceNavigation(
         : MVZ_PROJECT_NAVIGATION;
 
   return rules
+    .filter((rule) => !(rule.hideWhenMvzInternal && user?.isMvzInternal))
     .filter((rule) => isNavigationAllowed(rule, permissions))
     .map((rule) => ({
       key: rule.key,

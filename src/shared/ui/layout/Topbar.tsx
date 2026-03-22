@@ -11,7 +11,6 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase-browser";
-import { ROLE_LABELS, type AppRole } from "@/shared/lib/auth";
 
 interface UserInfo {
   displayName: string;
@@ -41,11 +40,10 @@ export default function Topbar() {
         });
         const body = await res.json();
         if (res.ok && body.ok && body.data) {
-          const role = body.data.role as AppRole | undefined;
           setUserInfo({
-            displayName: body.data.full_name ?? sessionEmail,
+            displayName: body.data.user?.displayName ?? sessionEmail,
             email: sessionEmail,
-            roleLabel: role ? (ROLE_LABELS[role] ?? role) : "",
+            roleLabel: body.data.user?.roleName ?? "",
           });
           return;
         }

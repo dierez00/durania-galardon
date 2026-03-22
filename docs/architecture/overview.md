@@ -41,6 +41,7 @@ src/
     bovinos/
     cuarentenas/
     exportaciones/
+    iam/
     pruebas/
     ranchos/
     usuarios/
@@ -77,18 +78,22 @@ La normalizacion pendiente quedo cerrada en estas familias:
 - `src/app/api/producer/documents/*` -> `src/modules/producer/documents/infra/http`
 - `src/app/api/producer/upp-documents/*` -> `src/modules/producer/documents/infra/http`
 - `src/app/api/producer/profile/*` -> `src/modules/producer/profile/infra/http`
+- `src/app/api/producer/roles/*` -> `src/modules/producer/settings/infra/http`
+- `src/app/api/producer/settings/ranchos/*` -> `src/modules/producer/settings/infra/http`
 - `src/app/api/producer/upp/*` -> `src/modules/producer/ranchos/infra/http`
 - `src/app/api/admin/appointments` y `src/app/api/public/appointments` -> `src/modules/admin/citas/infra/http`
 - `src/app/api/admin/audit` -> `src/modules/admin/auditoria/infra/http`
 - `src/app/api/mvz/assignments` -> `src/modules/ranchos/infra/http`
 - `src/app/api/mvz/profile/*` -> `src/modules/mvz/profile/infra/http`
 - `src/app/api/mvz/members/*` -> `src/modules/mvz/members/infra/http`
+- `src/app/api/mvz/roles/*` -> `src/modules/mvz/settings/infra/http`
 
 Tambien quedaron consolidados estos owners transversales:
 
 - `src/server/auth/provisioning` para helpers compartidos de Auth/GoTrue.
 - `src/server/admin/provisioning` solo para utilidades genericas de tenant, membership y roles.
 - `src/modules/ranchos/infra/api/mvzAssignments.ts` como query compartido entre `mvz/assignments` y `src/modules/mvz/dashboard`.
+- `src/server/authz/tenantRoles.ts` como helper transversal para catalogo, resolucion y mutacion de roles tenant-based.
 
 ## Owners activos
 
@@ -102,6 +107,7 @@ Tambien quedaron consolidados estos owners transversales:
   - `bovinos`
   - `cuarentenas`
   - `exportaciones`
+  - `iam`
   - `pruebas`
   - `ranchos`
   - `usuarios`

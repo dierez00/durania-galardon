@@ -32,12 +32,26 @@ Este documento describe la capa IAM por tenant y su extension para el flujo MVZ 
 - `producer.tenant.write`
 - `producer.profile.read`
 - `producer.profile.write`
+- `producer.roles.read`
+- `producer.roles.write`
 - `mvz.tenant.read`
 - `mvz.tenant.write`
 - `mvz.profile.read`
 - `mvz.profile.write`
 - `mvz.members.read`
 - `mvz.members.write`
+- `mvz.roles.read`
+- `mvz.roles.write`
+
+## Roles base y roles custom
+
+- Roles base reservados:
+  - `government` -> `tenant_admin`
+  - `producer` -> `producer`, `employee`, `producer_viewer`
+  - `mvz` -> `mvz_government`, `mvz_internal`
+- Los roles base son visibles, asignables y clonables, pero sus permisos no se editan desde UI.
+- Los roles custom usan `is_system = false` y una `key` interna `custom_<slug>`.
+- La UI opera con un rol principal por membresia, aunque `tenant_user_roles` soporte multiples filas.
 
 ## Permisos MVZ por rancho (nuevos)
 
@@ -62,7 +76,10 @@ Este documento describe la capa IAM por tenant y su extension para el flujo MVZ 
   - `GET|PATCH /api/mvz/profile`
 - Panel settings:
   - `GET|PATCH /api/producer/settings`
+  - `GET /api/producer/settings/ranchos`
+  - `GET|POST|PATCH /api/producer/roles`
   - `GET|PATCH /api/mvz/settings`
+  - `GET|POST|PATCH /api/mvz/roles`
 - Equipo MVZ:
   - `GET|POST|PATCH /api/mvz/members`
 - MVZ rancho (`/api/mvz/ranchos/:uppId/*`): requiere permisos + scope UPP.
@@ -72,10 +89,12 @@ Este documento describe la capa IAM por tenant y su extension para el flujo MVZ 
 
 - Una membresia activa representa acceso base al tenant.
 - Los permisos se derivan de roles asignados en la membresia.
+- El panel activo se resuelve por `tenant.type` + permisos + metadata del rol principal; no por un enum cerrado de roles de app.
 - `Mi perfil` y `Configuracion del panel` son superficies distintas:
   - `Mi perfil` usa datos de cuenta y ficha del usuario autenticado.
   - `Configuracion del panel` usa datos operativos del tenant.
 - `employee`, `producer_viewer` y `mvz_internal` mantienen acceso a `Mi perfil`, pero no a settings del panel salvo permiso explicito.
+- `mvz_internal` conserva semantica especial de entrada por rancho: nunca recibe vista global de settings o metricas.
 - En flujo MVZ, pertenecer al tenant MVZ no basta:
   - tambien se exige asignacion activa en `mvz_upp_assignments` para el `uppId`.
   - `auth_mvz_assigned_to_upp()` resuelve esa asignacion por membresia activa al tenant MVZ, no solo por `user_id` del perfil profesional.

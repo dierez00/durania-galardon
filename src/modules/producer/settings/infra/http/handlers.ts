@@ -69,8 +69,8 @@ async function getProducerSettingsSnapshot(user: {
 
 export async function GET(request: Request) {
   const auth = await requireAuthorized(request, {
-    roles: ["producer"],
-    permissions: ["producer.tenant.read"],
+    roles: ["producer", "employee", "producer_viewer"],
+    permissions: ["producer.tenant.read", "producer.tenant.write"],
     resource: "producer.settings",
   });
   if (!auth.ok) {
@@ -104,7 +104,7 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   const auth = await requireAuthorized(request, {
-    roles: ["producer"],
+    roles: ["producer", "employee", "producer_viewer"],
     permissions: ["producer.tenant.write"],
     resource: "producer.settings",
   });

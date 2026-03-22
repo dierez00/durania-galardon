@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { useTenantWorkspace } from "@/modules/workspace";
 import { Button } from "@/shared/ui/button";
@@ -8,8 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 
 export default function MvzProjectsPage() {
+  const router = useRouter();
   const workspace = useTenantWorkspace();
   const [search, setSearch] = useState("");
+  const isMvzInternal = workspace.user?.isMvzInternal ?? false;
 
   const filteredProjects = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -33,12 +36,24 @@ export default function MvzProjectsPage() {
     });
   }, [search, workspace.projects]);
 
+  useEffect(() => {
+    if (!isMvzInternal || workspace.projects.length !== 1) {
+      return;
+    }
+
+    router.replace(`/mvz/ranchos/${workspace.projects[0].id}`);
+  }, [isMvzInternal, router, workspace.projects]);
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Ranchos asignados</h1>
+        <h1 className="text-2xl font-bold">
+          {isMvzInternal ? "Selecciona tu rancho" : "Ranchos asignados"}
+        </h1>
         <p className="text-sm text-muted-foreground">
-          Espacio organizacional para revisar y abrir los ranchos bajo tu cobertura MVZ.
+          {isMvzInternal
+            ? "Accede directamente al rancho que tienes asignado en este tenant MVZ."
+            : "Espacio organizacional para revisar y abrir los ranchos bajo tu cobertura MVZ."}
         </p>
       </div>
 
@@ -52,34 +67,60 @@ export default function MvzProjectsPage() {
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {filteredProjects.map((project) => (
-          <Card key={project.id}>
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-lg">{project.name}</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                {project.producerName ?? "Sin productor"} {project.code ? `| ${project.code}` : ""}
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-                <p>Estado: {project.status || "Sin estado"}</p>
-                <p>Alerta sanitaria: {project.sanitaryAlert || "Sin alertas"}</p>
-                <p>Animales activos: {project.activeAnimals ?? 0}</p>
-                <p>
-                  Ultima asignacion:{" "}
-                  {project.assignedAt
-                    ? new Date(project.assignedAt).toLocaleDateString("es-MX")
-                    : "Sin registro"}
+      {isMvzInternal ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Ranchos disponibles</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {filteredProjects.map((project) => (
+              <button
+                key={project.id}
+                onClick={() => workspace.navigateToProject(project.id)}
+                className="flex w-full items-center justify-between rounded-lg border p-4 text-left transition hover:border-primary/40 hover:bg-muted/40"
+              >
+                <div className="space-y-1">
+                  <p className="font-medium">{project.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {project.producerName ?? "Sin productor"}
+                    {project.code ? ` | ${project.code}` : ""}
+                  </p>
+                </div>
+                <span className="text-sm text-muted-foreground">Abrir</span>
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {filteredProjects.map((project) => (
+            <Card key={project.id}>
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-lg">{project.name}</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {project.producerName ?? "Sin productor"} {project.code ? `| ${project.code}` : ""}
                 </p>
-              </div>
-              <Button onClick={() => workspace.navigateToProject(project.id)}>
-                Abrir proyecto
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                  <p>Estado: {project.status || "Sin estado"}</p>
+                  <p>Alerta sanitaria: {project.sanitaryAlert || "Sin alertas"}</p>
+                  <p>Animales activos: {project.activeAnimals ?? 0}</p>
+                  <p>
+                    Ultima asignacion:{" "}
+                    {project.assignedAt
+                      ? new Date(project.assignedAt).toLocaleDateString("es-MX")
+                      : "Sin registro"}
+                  </p>
+                </div>
+                <Button onClick={() => workspace.navigateToProject(project.id)}>
+                  Abrir proyecto
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {filteredProjects.length === 0 ? (
         <Card>

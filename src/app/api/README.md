@@ -19,11 +19,14 @@
 - `producer/documents` y `producer/upp-documents` -> `src/modules/producer/documents`
 - `producer/profile` -> `src/modules/producer/profile`
 - `producer/settings` -> `src/modules/producer/settings`
+- `producer/settings/ranchos` -> `src/modules/producer/settings`
+- `producer/roles` -> `src/modules/producer/settings`
 - `producer/upp` -> `src/modules/producer/ranchos`
 - `mvz/assignments` -> `src/modules/ranchos`
 - `mvz/members` -> `src/modules/mvz/members`
 - `mvz/profile` -> `src/modules/mvz/profile`
 - `mvz/settings` -> `src/modules/mvz/settings`
+- `mvz/roles` -> `src/modules/mvz/settings`
 
 ## Patron esperado
 
@@ -59,6 +62,8 @@ Si el modulo aun no expone alias desde `index.ts`, el reexport puede apuntar tem
 - `GET /api/producer/upp`
 - `GET|PATCH /api/producer/profile`
 - `GET|PATCH /api/producer/settings`
+- `GET /api/producer/settings/ranchos`
+- `GET|POST|PATCH /api/producer/roles`
 - `GET|POST /api/producer/bovinos`
 - `GET|POST /api/producer/movements`
 - `GET|POST /api/producer/exports`
@@ -75,7 +80,7 @@ Cuando la UI esta en `/producer/projects/[uppId]/*`, estas APIs aceptan `?uppId=
 - `GET /api/producer/exports`
 - `GET /api/producer/upp-documents`
 
-`/api/producer/settings` queda reservado para configuracion del tenant; los datos self-service del usuario viven en `/api/producer/profile`.
+`/api/producer/settings` queda reservado para configuracion del tenant y tabs del panel; `/api/producer/settings/ranchos` agrega la matriz de UPPs y asignaciones. Los datos self-service del usuario viven en `/api/producer/profile`.
 
 ## MVZ
 
@@ -84,6 +89,7 @@ Cuando la UI esta en `/producer/projects/[uppId]/*`, estas APIs aceptan `?uppId=
 - `GET|POST|PATCH /api/mvz/members`
 - `GET|PATCH /api/mvz/profile`
 - `GET|PATCH /api/mvz/settings`
+- `GET|POST|PATCH /api/mvz/roles`
 - `GET|POST /api/mvz/tests`
 - `POST /api/mvz/tests/sync`
 - `GET|PATCH /api/mvz/exports`
@@ -97,11 +103,11 @@ Cuando la UI esta en `/producer/projects/[uppId]/*`, estas APIs aceptan `?uppId=
 - `GET|POST /api/mvz/ranchos/:uppId/documentacion`
 - `GET|POST|PATCH /api/mvz/ranchos/:uppId/visitas`
 
-`/api/mvz/settings` queda reservado para configuracion del tenant y resumen operativo; la ficha profesional del usuario vive en `/api/mvz/profile`.
+`/api/mvz/settings` queda reservado para configuracion del tenant y resumen operativo; `/api/mvz/roles` administra roles tenant-based del panel. La ficha profesional del usuario vive en `/api/mvz/profile`.
 
 ### Shell tenant
 
-`GET /api/auth/me` alimenta el shell tenant y debe incluir `panelType`, `permissions` y `tenant.name` para renderizar el contexto organizacional correcto.
+`GET /api/auth/me` alimenta el shell tenant y debe incluir `panelType`, `permissions`, `tenant.name`, `roleKey`, `roleName`, `isSystemRole` e `isMvzInternal` para renderizar el contexto organizacional correcto.
 
 ## Public
 

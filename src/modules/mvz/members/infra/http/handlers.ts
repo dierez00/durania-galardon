@@ -6,6 +6,10 @@ import {
 } from "@/shared/lib/auth";
 import { requireAuthorized } from "@/server/authz";
 import { getSupabaseAdminClient } from "@/server/auth/supabase";
+import {
+  listTenantRolesForPanel,
+  resolveAssignableRoleForPanel,
+} from "@/server/authz/tenantRoles";
 import { logAuditEvent } from "@/server/audit";
 
 const MVZ_MEMBER_ROLES = ["mvz_government", "mvz_internal"] as const;
@@ -14,6 +18,7 @@ type MvzMemberRoleKey = (typeof MVZ_MEMBER_ROLES)[number];
 
 interface MvzMemberBody {
   membershipId?: string;
+  roleId?: string;
   email?: string;
   status?: "active" | "inactive" | "suspended";
   roleKey?: MvzMemberRoleKey;
@@ -104,7 +109,7 @@ async function ensureMvzRole(tenantId: string, roleKey: MvzMemberRoleKey): Promi
 export async function GET(request: Request) {
   const auth = await requireAuthorized(request, {
     roles: ["mvz_government"],
-    permissions: ["mvz.members.read"],
+    permissions: ["mvz.members.read", "mvz.members.write"],
     resource: "mvz.members",
   });
   if (!auth.ok) {
@@ -126,7 +131,17 @@ export async function GET(request: Request) {
     (membership) => membership.user_id !== auth.context.user.id
   );
   if (memberships.length === 0) {
-    return apiSuccess({ members: [] });
+    const availableRolesPayload = await listTenantRolesForPanel(auth.context.user.tenantId, "mvz");
+    return apiSuccess({
+      members: [],
+      availableRoles: availableRolesPayload.roles.map((role) => ({
+        id: role.id,
+        key: role.key,
+        name: role.name,
+        isSystem: role.isSystem,
+        memberCount: role.memberCount,
+      })),
+    });
   }
 
   const membershipIds = memberships.map((membership) => membership.id);
@@ -136,7 +151,7 @@ export async function GET(request: Request) {
     supabaseAdmin.from("profiles").select("id,email").in("id", userIds),
     supabaseAdmin
       .from("tenant_user_roles")
-      .select("membership_id,tenant_role:tenant_roles(key,name)")
+      .select("membership_id,tenant_role_id,tenant_role:tenant_roles(id,key,name,is_system)")
       .in("membership_id", membershipIds),
   ]);
 
@@ -148,7 +163,10 @@ export async function GET(request: Request) {
   }
 
   const profileByUserId = new Map((profilesResult.data ?? []).map((profile) => [profile.id, profile]));
-  const roleByMembership = new Map<string, { key: string | null; name: string | null }>();
+  const roleByMembership = new Map<
+    string,
+    { id: string | null; key: string | null; name: string | null; isSystem: boolean }
+  >();
 
   (rolesResult.data ?? []).forEach((row) => {
     if (roleByMembership.has(row.membership_id)) {
@@ -157,25 +175,43 @@ export async function GET(request: Request) {
 
     const role = Array.isArray(row.tenant_role) ? row.tenant_role[0] : row.tenant_role;
     roleByMembership.set(row.membership_id, {
+      id: role?.id ?? row.tenant_role_id ?? null,
       key: role?.key ?? null,
       name: role?.name ?? null,
+      isSystem: role?.is_system === true,
     });
   });
 
+  const availableRolesPayload = await listTenantRolesForPanel(auth.context.user.tenantId, "mvz");
+
   return apiSuccess({
     members: memberships.map((membership) => {
-      const roleInfo = roleByMembership.get(membership.id) ?? { key: null, name: null };
+      const roleInfo = roleByMembership.get(membership.id) ?? {
+        id: null,
+        key: null,
+        name: null,
+        isSystem: false,
+      };
       const profile = profileByUserId.get(membership.user_id);
       return {
         id: membership.id,
         userId: membership.user_id,
         email: profile?.email ?? "",
         membershipStatus: membership.status,
+        roleId: roleInfo.id,
         roleKey: roleInfo.key,
         roleName: roleInfo.name,
+        isSystemRole: roleInfo.isSystem,
         joinedAt: membership.joined_at,
       };
     }),
+    availableRoles: availableRolesPayload.roles.map((role) => ({
+      id: role.id,
+      key: role.key,
+      name: role.name,
+      isSystem: role.isSystem,
+      memberCount: role.memberCount,
+    })),
   });
 }
 
@@ -197,7 +233,6 @@ export async function POST(request: Request) {
   }
 
   const email = body.email?.trim().toLowerCase();
-  const roleKey = isMvzMemberRoleKey(body.roleKey ?? null) ? body.roleKey! : "mvz_internal";
 
   if (!email) {
     return apiError("INVALID_PAYLOAD", "Debe enviar email del miembro MVZ.");
@@ -264,8 +299,21 @@ export async function POST(request: Request) {
   }
 
   let roleId: string;
+  let resolvedRoleKey: string;
   try {
-    roleId = await ensureMvzRole(auth.context.user.tenantId, roleKey);
+    if (body.roleId?.trim()) {
+      const selectedRole = await resolveAssignableRoleForPanel({
+        tenantId: auth.context.user.tenantId,
+        panel: "mvz",
+        roleId: body.roleId.trim(),
+      });
+      roleId = selectedRole.id;
+      resolvedRoleKey = selectedRole.key;
+    } else {
+      const roleKey = isMvzMemberRoleKey(body.roleKey ?? null) ? body.roleKey! : "mvz_internal";
+      roleId = await ensureMvzRole(auth.context.user.tenantId, roleKey);
+      resolvedRoleKey = roleKey;
+    }
   } catch (error) {
     return apiError(
       "MVZ_MEMBER_ROLE_RESOLVE_FAILED",
@@ -301,7 +349,8 @@ export async function POST(request: Request) {
     resourceId: membershipId,
     payload: {
       email,
-      roleKey,
+      roleId,
+      roleKey: resolvedRoleKey,
     },
   });
 
@@ -310,7 +359,8 @@ export async function POST(request: Request) {
       membershipId,
       userId: profileResult.data.id,
       email: profileResult.data.email,
-      roleKey,
+      roleId,
+      roleKey: resolvedRoleKey,
     },
     { status: 201 }
   );
@@ -365,14 +415,28 @@ export async function PATCH(request: Request) {
     }
   }
 
-  if (body.roleKey) {
-    if (!isMvzMemberRoleKey(body.roleKey)) {
-      return apiError("INVALID_ROLE", "roleKey no es valido para equipo MVZ.", 400);
-    }
+  let resolvedRoleKey: string | null = null;
+  let resolvedRoleId: string | null = null;
 
+  if (body.roleKey || body.roleId?.trim()) {
     let roleId: string;
     try {
-      roleId = await ensureMvzRole(auth.context.user.tenantId, body.roleKey);
+      if (body.roleId?.trim()) {
+        const selectedRole = await resolveAssignableRoleForPanel({
+          tenantId: auth.context.user.tenantId,
+          panel: "mvz",
+          roleId: body.roleId.trim(),
+        });
+        roleId = selectedRole.id;
+        resolvedRoleKey = selectedRole.key;
+      } else {
+        if (!isMvzMemberRoleKey(body.roleKey)) {
+          return apiError("INVALID_ROLE", "roleKey no es valido para equipo MVZ.", 400);
+        }
+
+        roleId = await ensureMvzRole(auth.context.user.tenantId, body.roleKey);
+        resolvedRoleKey = body.roleKey;
+      }
     } catch (error) {
       return apiError(
         "MVZ_MEMBER_ROLE_RESOLVE_FAILED",
@@ -399,6 +463,8 @@ export async function PATCH(request: Request) {
     if (assignRole.error) {
       return apiError("MVZ_MEMBER_ROLE_ASSIGN_FAILED", assignRole.error.message, 400);
     }
+
+    resolvedRoleId = roleId;
   }
 
   await logAuditEvent({
@@ -409,13 +475,15 @@ export async function PATCH(request: Request) {
     resourceId: membershipId,
     payload: {
       status: body.status ?? null,
-      roleKey: body.roleKey ?? null,
+      roleId: resolvedRoleId,
+      roleKey: resolvedRoleKey,
     },
   });
 
   return apiSuccess({
     membershipId,
     status: body.status ?? membershipResult.data.status,
-    roleKey: body.roleKey ?? null,
+    roleId: resolvedRoleId,
+    roleKey: resolvedRoleKey,
   });
 }

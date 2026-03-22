@@ -33,7 +33,7 @@ export default function AdminProtectedLayout({
         return;
       }
 
-      if (roleResult.role !== "tenant_admin") {
+      if (roleResult.panelType !== "government") {
         router.replace(redirectPathForRole(roleResult.role));
         return;
       }

@@ -6,6 +6,11 @@ Todas las fechas usan formato YYYY-MM-DD.
 
 ### Added
 
+- Migracion `sql/migration_006_tenant_custom_roles.sql` para permisos `producer.roles.*` y `mvz.roles.*` con backfill a roles base.
+- Nuevos endpoints API para roles editables por tenant:
+  - `GET|POST|PATCH /api/producer/roles`
+  - `GET|POST|PATCH /api/mvz/roles`
+- Nuevo endpoint agregado `GET /api/producer/settings/ranchos` para resumen de UPPs y matriz de asignaciones por empleado.
 - Rutas y endpoints self-service por panel:
   - `GET|PATCH /api/producer/profile`
   - `GET|PATCH /api/mvz/profile`
@@ -40,6 +45,12 @@ Todas las fechas usan formato YYYY-MM-DD.
 
 ### Changed
 
+- `producer/settings` y `mvz/settings` ahora se renderizan por tabs (`Perfil`, `Ranchos`, `Empleados/Equipo`, `Roles`) y dejan de depender de una sola carga monolitica.
+- La resolucion de panel tenant ya no depende de un `AppRole` fijo; ahora usa `tenant.type`, permisos y metadata del rol principal.
+- `GET /api/auth/me` y el shell tenant ahora exponen/consumen `roleKey`, `roleName`, `isSystemRole` e `isMvzInternal`.
+- `GET|POST|PATCH /api/producer/employees` ahora usa `roleId` y `uppAccess[]` como contrato principal para rol y alcance por rancho.
+- `GET|POST|PATCH /api/mvz/members` ahora usa `roleId` tenant-based en lugar de depender de `roleKey` fijo.
+- `mvz_internal` ya no accede a settings ni metricas globales; `/mvz` redirige directo al rancho si solo tiene una asignacion activa y muestra lista minima si tiene varias.
 - `ProfileMenu` separa `Mi perfil` de `Configuracion del panel` y oculta esta ultima opcion cuando el usuario no tiene permisos de tenant settings.
 - `GET|PATCH /api/producer/settings` ahora administra solo configuracion del tenant productor, resumen operativo y bloques documentales/equipo.
 - `GET|PATCH /api/mvz/settings` ahora administra solo configuracion del tenant MVZ, resumen operativo y equipo MVZ.

@@ -1,6 +1,10 @@
 "use client";
 
 import { Building2 } from "lucide-react";
+import {
+  MVZ_SETTINGS_NAV_PERMISSIONS,
+  PRODUCER_SETTINGS_NAV_PERMISSIONS,
+} from "@/shared/lib/auth";
 import { TenantAppShell } from "@/shared/ui/layout/TenantAppShell";
 import { useTenantWorkspace } from "@/modules/workspace/presentation/TenantWorkspaceContext";
 import {
@@ -12,8 +16,13 @@ export function TenantWorkspaceShell({ children }: { children: React.ReactNode }
   const workspace = useTenantWorkspace();
   const canAccessPanelSettings =
     workspace.panel === "producer"
-      ? Boolean(workspace.user?.permissions.includes("producer.tenant.read"))
-      : Boolean(workspace.user?.permissions.includes("mvz.tenant.read"));
+      ? PRODUCER_SETTINGS_NAV_PERMISSIONS.some((permission) =>
+          Boolean(workspace.user?.permissions.includes(permission))
+        )
+      : !workspace.user?.isMvzInternal &&
+        MVZ_SETTINGS_NAV_PERMISSIONS.some((permission) =>
+          Boolean(workspace.user?.permissions.includes(permission))
+        );
 
   if (workspace.loading) {
     return (

@@ -32,7 +32,7 @@ Source of Truth: Active route map, legacy redirects, and guard expectations for 
     - `/producer`
     - `/producer/metrics`
     - `/producer/profile`
-    - `/producer/settings` solo con `producer.tenant.read` (normalmente `producer`)
+    - `/producer/settings` con cualquier permiso de settings (`producer.tenant.*`, `producer.upp.*`, `producer.employees.*`, `producer.roles.*`)
   - Proyecto
     - `/producer/projects/[uppId]`
     - `/producer/projects/[uppId]/animales`
@@ -56,7 +56,7 @@ Source of Truth: Active route map, legacy redirects, and guard expectations for 
     - `/mvz`
     - `/mvz/metrics`
     - `/mvz/profile`
-    - `/mvz/settings` solo con `mvz.tenant.read` (normalmente `mvz_government`)
+    - `/mvz/settings` con cualquier permiso de settings (`mvz.tenant.*`, `mvz.assignments.read`, `mvz.members.*`, `mvz.roles.*`) excepto `mvz_internal`
   - Proyecto
     - `/mvz/ranchos/[uppId]`
     - `/mvz/ranchos/[uppId]/animales`
@@ -101,6 +101,12 @@ Estas rutas se mantienen, pero redirigen a la jerarquia nueva:
 
 Si no hay `selectedUppId` persistido, redirigen a `/mvz`.
 
+Regla especial `mvz_internal`:
+
+- si tiene una sola asignacion activa, `/mvz` redirige a `/mvz/ranchos/[uppId]`
+- si tiene varias asignaciones, `/mvz` muestra una lista minima para elegir rancho
+- `/mvz/settings`, `/mvz/metrics` y `/mvz/dashboard` se bloquean y redirigen a `/mvz`
+
 ## Shell tenant
 
 `src/app/(tenant)/layout.tsx` monta un shell comun con dos modos:
@@ -117,7 +123,7 @@ Reglas activas del shell:
 - La topbar ya no muestra `tenant.slug` como badge de entorno en paneles tenant.
 - El `ProfileMenu` separa `Mi perfil` de `Configuracion del panel`.
 - `Mi perfil` existe siempre para roles tenant (`/producer/profile`, `/mvz/profile`).
-- `Configuracion del panel` solo aparece si el usuario tiene permisos de lectura del tenant (`producer.tenant.read` o `mvz.tenant.read`).
+- `Configuracion del panel` aparece si el usuario tiene cualquier permiso de los tabs de settings del panel activo.
 - El selector de proyecto/rancho ya no vive debajo del breadcrumb: en modo proyecto se renderiza inline dentro del breadcrumb.
 - En productor, el patron visible es `Inicio > <UPP actual>`.
 - En MVZ, el patron visible es `Inicio > <rancho actual>`.
@@ -129,8 +135,10 @@ Reglas activas del shell:
   - resuelve rol tenant
   - valida permisos por segmentos de ruta (`/producer/projects/[uppId]/animales`, `/mvz/ranchos/[uppId]/vacunacion`, etc.)
   - permite `/producer/profile` y `/mvz/profile` como rutas self-service sin exigir permisos de configuracion del panel
-  - exige `producer.tenant.read` para `/producer/settings`
-  - exige `mvz.tenant.read` para `/mvz/settings`
+  - resuelve el home del panel segun permisos (`/producer`, `/producer/settings`, `/producer/profile`, `/mvz`, `/mvz/settings`, `/mvz/profile`)
+  - permite `/producer/settings` con cualquier permiso de tabs producer
+  - permite `/mvz/settings` con cualquier permiso de tabs MVZ salvo `mvz_internal`
+  - bloquea `mvz_internal` en `/mvz/settings`, `/mvz/metrics` y `/mvz/dashboard`
 - `src/server/authz/index.ts`
   - aplica `roles`, `permissions` y `scope.uppId`
   - bloquea acceso a proyectos no asignados o fuera del tenant
@@ -139,4 +147,5 @@ Reglas activas del shell:
 
 - `Configuracion` en sidebar izquierdo queda reservada para datos del tenant/panel.
 - `Mi perfil` concentra datos de cuenta (`auth.user_metadata.full_name`, `profiles.email`) y ficha de dominio del usuario cuando exista.
-- `employee`, `producer_viewer` y `mvz_internal` pueden entrar a `Mi perfil`, pero no reciben acceso al panel settings por defecto.
+- `employee`, `producer_viewer` y roles custom pueden entrar a `Mi perfil`.
+- El acceso a `settings` ya no depende de un `AppRole` fijo sino de permisos del tenant.

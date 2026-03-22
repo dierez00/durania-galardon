@@ -21,6 +21,10 @@ export async function GET(request: Request) {
       id: user.id,
       email: user.email,
       role: user.role,
+      roleKey: user.roleKey,
+      roleName: user.roleName,
+      isSystemRole: user.isSystemRole,
+      isMvzInternal: user.isMvzInternal,
       displayName: user.displayName,
     },
     tenant: {

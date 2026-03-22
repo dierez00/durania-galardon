@@ -1,229 +1,119 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useTenantWorkspace } from "@/modules/workspace";
-import ProducerDocumentosPage from "@/modules/producer/documents/presentation/ProducerDocumentosPage";
+import { useEffect, useMemo, useState } from "react";
+import { TenantRolesManager } from "@/modules/iam";
 import ProducerEmpleadosPage from "@/modules/producer/empleados/presentation/ProducerEmpleadosPage";
-import { getAccessToken } from "@/shared/lib/auth-session";
-import { Button } from "@/shared/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
-import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
+import { useTenantWorkspace } from "@/modules/workspace";
+import { Card, CardContent } from "@/shared/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
+import ProducerSettingsProfileTab from "./ProducerSettingsProfileTab";
+import ProducerSettingsRanchosTab from "./ProducerSettingsRanchosTab";
 
-interface ProducerSettingsPayload {
-  data?: {
-    organization?: {
-      name?: string;
-      slug?: string;
-      type?: string;
-    };
-    summary?: {
-      activeMembers?: number;
-      accessibleProjects?: number;
-      pendingDocuments?: number;
-      rejectedDocuments?: number;
-    };
-  };
-  error?: {
-    message?: string;
-  };
+type ProducerSettingsTabKey = "profile" | "ranchos" | "employees" | "roles";
+
+function hasAnyPermission(permissions: string[], expected: string[]) {
+  return expected.some((permission) => permissions.includes(permission));
 }
 
 export default function ProducerSettingsPage() {
   const workspace = useTenantWorkspace();
   const permissions = workspace.user?.permissions ?? [];
-  const canEditOrganization = permissions.includes("producer.tenant.write");
-  const canViewDocuments = permissions.includes("producer.documents.read");
-  const canViewEmployees = permissions.includes("producer.employees.read");
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [organizationName, setOrganizationName] = useState("");
-  const [organizationSlug, setOrganizationSlug] = useState("");
-  const [organizationType, setOrganizationType] = useState("");
-  const [summary, setSummary] = useState({
-    activeMembers: 0,
-    accessibleProjects: 0,
-    pendingDocuments: 0,
-    rejectedDocuments: 0,
-  });
+  const tabs = useMemo(
+    () =>
+      [
+        {
+          key: "profile" as const,
+          label: "Perfil",
+          visible: hasAnyPermission(permissions, ["producer.tenant.read", "producer.tenant.write"]),
+          content: <ProducerSettingsProfileTab />,
+        },
+        {
+          key: "ranchos" as const,
+          label: "Ranchos",
+          visible: hasAnyPermission(permissions, [
+            "producer.upp.read",
+            "producer.upp.write",
+            "producer.employees.read",
+            "producer.employees.write",
+          ]),
+          content: <ProducerSettingsRanchosTab />,
+        },
+        {
+          key: "employees" as const,
+          label: "Empleados",
+          visible: hasAnyPermission(permissions, ["producer.employees.read", "producer.employees.write"]),
+          content: (
+            <ProducerEmpleadosPage
+              title="Empleados"
+              description="Altas, cambios de rol, suspensiones y acceso inicial del personal."
+              canManage={permissions.includes("producer.employees.write")}
+            />
+          ),
+        },
+        {
+          key: "roles" as const,
+          label: "Roles",
+          visible: hasAnyPermission(permissions, ["producer.roles.read", "producer.roles.write"]),
+          content: (
+            <TenantRolesManager
+              endpoint="/api/producer/roles"
+              title="Roles del tenant"
+              description="Combina roles base protegidos con roles custom y permisos por modulo."
+              emptyLabel="No hay roles visibles para este tenant."
+              canManage={permissions.includes("producer.roles.write")}
+            />
+          ),
+        },
+      ].filter((tab) => tab.visible),
+    [permissions]
+  );
+
+  const [activeTab, setActiveTab] = useState<ProducerSettingsTabKey | null>(
+    (tabs[0]?.key as ProducerSettingsTabKey | undefined) ?? null
+  );
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      setErrorMessage("");
-
-      try {
-        const accessToken = await getAccessToken();
-        if (!accessToken) {
-          setErrorMessage("No existe sesion activa.");
-          return;
-        }
-
-        const response = await fetch("/api/producer/settings", {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          cache: "no-store",
-        });
-
-        const body = (await response.json()) as ProducerSettingsPayload & { ok?: boolean };
-        if (!response.ok || !body.ok) {
-          setErrorMessage(body.error?.message ?? "No fue posible cargar configuracion.");
-          return;
-        }
-
-        setOrganizationName(body.data?.organization?.name ?? "");
-        setOrganizationSlug(body.data?.organization?.slug ?? "");
-        setOrganizationType(body.data?.organization?.type ?? "producer");
-        setSummary({
-          activeMembers: body.data?.summary?.activeMembers ?? 0,
-          accessibleProjects: body.data?.summary?.accessibleProjects ?? 0,
-          pendingDocuments: body.data?.summary?.pendingDocuments ?? 0,
-          rejectedDocuments: body.data?.summary?.rejectedDocuments ?? 0,
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void load();
-  }, []);
-
-  const handleSave = async () => {
-    setSaving(true);
-    setErrorMessage("");
-
-    try {
-      const accessToken = await getAccessToken();
-      if (!accessToken) {
-        setErrorMessage("No existe sesion activa.");
-        return;
-      }
-
-      const response = await fetch("/api/producer/settings", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          organizationName,
-        }),
-      });
-
-      const body = (await response.json()) as ProducerSettingsPayload & { ok?: boolean };
-      if (!response.ok || !body.ok) {
-        setErrorMessage(body.error?.message ?? "No fue posible guardar configuracion.");
-        return;
-      }
-
-      setOrganizationName(body.data?.organization?.name ?? organizationName);
-      setOrganizationSlug(body.data?.organization?.slug ?? organizationSlug);
-      setOrganizationType(body.data?.organization?.type ?? organizationType);
-      setSummary({
-        activeMembers: body.data?.summary?.activeMembers ?? summary.activeMembers,
-        accessibleProjects: body.data?.summary?.accessibleProjects ?? summary.accessibleProjects,
-        pendingDocuments: body.data?.summary?.pendingDocuments ?? summary.pendingDocuments,
-        rejectedDocuments: body.data?.summary?.rejectedDocuments ?? summary.rejectedDocuments,
-      });
-    } finally {
-      setSaving(false);
+    if (!tabs.some((tab) => tab.key === activeTab)) {
+      setActiveTab((tabs[0]?.key as ProducerSettingsTabKey | undefined) ?? null);
     }
-  };
+  }, [activeTab, tabs]);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Configuracion</h1>
         <p className="text-sm text-muted-foreground">
-          Ajustes organizacionales del tenant productor y administracion operativa.
+          Perfil del tenant productor, ranchos, empleados y roles personalizados por panel.
         </p>
       </div>
 
-      {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
-
-      <div className="grid gap-4 md:grid-cols-3">
+      {tabs.length === 0 || !activeTab ? (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Ranchos accesibles</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{loading ? "-" : summary.accessibleProjects}</p>
+          <CardContent className="py-8 text-sm text-muted-foreground">
+            No cuentas con permisos para visualizar tabs de configuracion en este panel.
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Miembros activos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{loading ? "-" : summary.activeMembers}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Documentos pendientes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{loading ? "-" : summary.pendingDocuments}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Documentos rechazados</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{loading ? "-" : summary.rejectedDocuments}</p>
-          </CardContent>
-        </Card>
-      </div>
+      ) : (
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ProducerSettingsTabKey)}>
+          <TabsList
+            className="grid h-auto w-full gap-1"
+            style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+          >
+            {tabs.map((tab) => (
+              <TabsTrigger key={tab.key} value={tab.key} className="py-2">
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>General</CardTitle>
-          <CardDescription>Configuracion del tenant productor para operacion y gobierno interno.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="organizationName">Nombre de la organizacion</Label>
-            <Input
-              id="organizationName"
-              value={organizationName}
-              onChange={(event) => setOrganizationName(event.target.value)}
-              readOnly={!canEditOrganization}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="organizationSlug">Slug</Label>
-            <Input id="organizationSlug" value={organizationSlug} readOnly />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="organizationType">Tipo de tenant</Label>
-            <Input id="organizationType" value={organizationType || "producer"} readOnly />
-          </div>
-          <div className="md:col-span-2">
-            <Button onClick={handleSave} disabled={!canEditOrganization || saving}>
-              {saving ? "Guardando..." : "Guardar cambios"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {canViewDocuments ? (
-        <ProducerDocumentosPage
-          scope="personal"
-          title="Documentos del productor"
-          description="Configuracion documental del nivel organizacional."
-        />
-      ) : null}
-
-      {canViewEmployees ? (
-        <ProducerEmpleadosPage
-          title="Miembros y accesos"
-          description="Gestion de administradores, empleados y alcances por UPP."
-        />
-      ) : null}
+          {tabs.map((tab) => (
+            <TabsContent key={tab.key} value={tab.key} className="pt-4">
+              {tab.content}
+            </TabsContent>
+          ))}
+        </Tabs>
+      )}
     </div>
   );
 }

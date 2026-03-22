@@ -14,6 +14,14 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
+  if (auth.context.user.isMvzInternal) {
+    return apiError(
+      "FORBIDDEN",
+      "El rol MVZ Interno no tiene acceso al dashboard global.",
+      403
+    );
+  }
+
   const user = auth.context.user;
   const supabaseAdmin = getSupabaseAdminClient();
 

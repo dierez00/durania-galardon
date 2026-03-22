@@ -1,4 +1,5 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
+import { resolvePanelHomePath } from "@/shared/lib/auth";
 import {
   resolveAuthenticatedRequestUser,
   type AuthError,
@@ -59,17 +60,18 @@ export async function POST(request: Request) {
   const panelType = user.panelType;
   const permissions = user.permissions;
 
-  const redirectByPanel =
-    panelType === "government"
-      ? "/admin"
-      : panelType === "producer"
-      ? "/producer"
-      : panelType === "mvz"
-      ? "/mvz"
-      : "/login";
+  const redirectByPanel = resolvePanelHomePath({
+    panelType,
+    permissions,
+    isMvzInternal: user.isMvzInternal,
+  });
 
   return apiSuccess({
-    roleKey: user.role,
+    role: user.role,
+    roleKey: user.roleKey,
+    roleName: user.roleName,
+    isSystemRole: user.isSystemRole,
+    isMvzInternal: user.isMvzInternal,
     redirectTo: redirectByPanel,
     tenantId: user.tenantId,
     tenantSlug: user.tenantSlug,
