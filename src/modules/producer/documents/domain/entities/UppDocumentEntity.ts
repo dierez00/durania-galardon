@@ -6,6 +6,7 @@ export interface UppDocument {
   fileStorageKey: string;
   fileHash: string;
   status: DocumentStatus;
+  comments: string | null;
   isCurrent: boolean;
   issuedAt: string | null;
   expiryDate: string | null;

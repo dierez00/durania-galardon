@@ -386,6 +386,7 @@ Documentos del productor. Solo puede haber **un documento activo** (`is_current 
 | `file_hash` | `TEXT` | Hash del archivo para verificar integridad |
 | `status` | `TEXT` | `'pending'` \| `'validated'` \| `'expired'` \| `'rejected'` |
 | `is_current` | `BOOLEAN` | `TRUE` si es el documento vigente de su tipo |
+| `comments` | `TEXT` | Comentarios o motivos de retorno de documentacion · Nullable |
 | `expiry_date` | `DATE` | Nullable |
 | `extracted_fields` | `JSONB` | Campos extraídos por OCR |
 | `ocr_confidence` | `NUMERIC` | Confianza del OCR (0–1) · Nullable |
@@ -1068,6 +1069,7 @@ Documentos asociados al rancho (`UPP`) en lugar de solo productor.
 | `document_type` | `TEXT` | Tipo de documento |
 | `file_storage_key` | `TEXT` | Ruta en Storage |
 | `status` | `TEXT` | `pending` \| `validated` \| `expired` \| `rejected` |
+| `comments` | `TEXT` | Comentarios o motivos de retorno de documentacion · Nullable |
 | `is_current` | `BOOLEAN` | Documento vigente por tipo |
 
 ### 8.2 Vistas nuevas

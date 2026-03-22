@@ -16,6 +16,7 @@ type UppDocumentRow = {
   file_storage_key: string;
   file_hash: string;
   status: string;
+  comments: string | null;
   is_current: boolean;
   issued_at: string | null;
   expiry_date: string | null;
@@ -31,6 +32,7 @@ function mapUppDocument(row: UppDocumentRow): UppDocument {
     fileStorageKey: row.file_storage_key,
     fileHash: row.file_hash,
     status: row.status as UppDocument["status"],
+    comments: row.comments,
     isCurrent: row.is_current,
     issuedAt: row.issued_at,
     expiryDate: row.expiry_date,
@@ -107,6 +109,7 @@ export class ServerUppDocumentsRepository implements IUppDocumentsRepository {
         file_storage_key: fileStorageKey,
         file_hash: calculatedHash,
         status: "pending",
+        comments: null,
         is_current: true,
         expiry_date: expiryDate || null,
         uploaded_by_user_id: this.userId,
@@ -121,11 +124,16 @@ export class ServerUppDocumentsRepository implements IUppDocumentsRepository {
     return mapUppDocument(insertResult.data as UppDocumentRow);
   }
 
-  async updateStatus(documentId: string, status: string): Promise<void> {
+  async updateStatus(documentId: string, status: string, comments?: string | null): Promise<void> {
     const supabaseAdmin = getSupabaseAdminClient();
+    const payload: { status: string; comments?: string | null } = { status };
+    if (comments !== undefined) {
+      payload.comments = comments;
+    }
+
     const result = await supabaseAdmin
       .from("upp_documents")
-      .update({ status })
+      .update(payload)
       .eq("tenant_id", this.tenantId)
       .eq("id", documentId);
 

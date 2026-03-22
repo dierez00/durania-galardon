@@ -63,6 +63,7 @@ CREATE TABLE producer_documents (
   document_type_id UUID NOT NULL REFERENCES document_types(id),
   file_storage_key TEXT NOT NULL,
   status TEXT CHECK (status IN ('pending', 'validated', 'expired', 'rejected')),
+  comments TEXT,
   is_current BOOLEAN DEFAULT false,
   expiry_date DATE,
   uploaded_at TIMESTAMPTZ DEFAULT now(),
@@ -85,6 +86,7 @@ CREATE TABLE upp_documents (
   document_type TEXT NOT NULL, -- Free text (not FK)
   file_storage_key TEXT NOT NULL,
   status TEXT CHECK (status IN ('pending', 'validated', 'expired', 'rejected')),
+  comments TEXT,
   is_current BOOLEAN DEFAULT false,
   expiry_date DATE,
   uploaded_by_user_id UUID REFERENCES profiles(id),
@@ -99,6 +101,10 @@ CREATE INDEX idx_upp_documents_status ON upp_documents(status);
 ```
 
 **Key Difference**: `producer_documents` uses a **FK to `document_types`**, while `upp_documents` uses **free text `document_type`** for flexibility.
+
+**Comments Policy**:
+- `comments` can only be updated by admin/government workflows.
+- Producer panel consumes comments as read-only feedback for rejection and validity guidance.
 
 ---
 

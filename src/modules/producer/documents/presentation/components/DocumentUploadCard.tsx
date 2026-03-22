@@ -192,10 +192,9 @@ export function DocumentUploadCard({
                     type="date"
                     value={personalExpiryDate}
                     onChange={(event) => setPersonalExpiryDate(event.target.value)}
-                    placeholder="dd/mm/yyyy"
+                    placeholder="mm/dd/yyyy"
                     className="placeholder-gray-400"
                   />
-                  <p className="text-xs text-gray-500">Formato: dd/mm/yyyy</p>
                 </div>
               ) : null}
 
@@ -307,10 +306,9 @@ export function DocumentUploadCard({
                     type="date"
                     value={uppExpiryDate}
                     onChange={(event) => setUppExpiryDate(event.target.value)}
-                    placeholder="dd/mm/yyyy"
+                    placeholder="mm/dd/yyyy"
                     className="placeholder-gray-400"
                   />
-                  <p className="text-xs text-gray-500">Formato: dd/mm/yyyy</p>
                 </div>
               ) : null}
 

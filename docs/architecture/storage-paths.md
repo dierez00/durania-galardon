@@ -113,6 +113,7 @@ Documents_producer/
 | `file_storage_key` | TEXT | Ruta exacta en bucket (sincronizado con storage) |
 | `file_hash` | TEXT | SHA256 del archivo para integridad |
 | `status` | TEXT | `pending` \| `validated` \| `expired` \| `rejected` |
+| `comments` | TEXT | Comentario de validación/rechazo visible en panel productor |
 | `is_current` | BOOLEAN | Indica si es la versión vigente |
 | `expiry_date` | DATE | Vencimiento del documento (si aplica) |
 | `uploaded_at` | TIMESTAMPTZ | Fecha de carga |
@@ -128,6 +129,7 @@ Documents_producer/
 | `file_storage_key` | TEXT | Ruta exacta en bucket |
 | `file_hash` | TEXT | SHA256 para validación de integridad |
 | `status` | TEXT | Estado del documento |
+| `comments` | TEXT | Comentario de validación/rechazo visible en panel productor |
 | `is_current` | BOOLEAN | Versión vigente |
 | `uploaded_by_user_id` | UUID | Quién subió el documento |
 | `expiry_date` | DATE | Vencimiento (si aplica) |

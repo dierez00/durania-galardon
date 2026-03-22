@@ -19,6 +19,7 @@ type ProducerDocumentRow = {
   file_storage_key: string;
   file_hash: string;
   status: string;
+  comments: string | null;
   is_current: boolean;
   expiry_date: string | null;
   uploaded_at: string;
@@ -36,6 +37,7 @@ function mapProducerDocument(row: ProducerDocumentRow): ProducerDocument {
     fileStorageKey: row.file_storage_key,
     fileHash: row.file_hash,
     status: row.status as ProducerDocument["status"],
+    comments: row.comments,
     isCurrent: row.is_current,
     expiryDate: row.expiry_date,
     uploadedAt: row.uploaded_at,
@@ -59,7 +61,7 @@ export class ServerProducerDocumentsRepository implements IProducerDocumentsRepo
     const result = await supabaseAdmin
       .from("producer_documents")
       .select(
-        "id,tenant_id,producer_id,document_type_id,file_storage_key,file_hash,uploaded_at,status,is_current,expiry_date,ocr_confidence,document_type:document_types(key,name)"
+        "id,tenant_id,producer_id,document_type_id,file_storage_key,file_hash,uploaded_at,status,comments,is_current,expiry_date,ocr_confidence,document_type:document_types(key,name)"
       )
       .eq("tenant_id", this.tenantId)
       .eq("producer_id", producerId)
@@ -121,11 +123,15 @@ export class ServerProducerDocumentsRepository implements IProducerDocumentsRepo
         file_storage_key: fileStorageKey,
         file_hash: calculatedHash,
         status: "pending",
+        comments:
+          normalizedKey === "comprobante_domicilio"
+            ? "recordar actualizar despues de sus 3 meses de emision"
+            : null,
         is_current: true,
         expiry_date: expiryDate || null,
       })
       .select(
-        "id,tenant_id,producer_id,document_type_id,file_storage_key,file_hash,uploaded_at,status,is_current,expiry_date,ocr_confidence,document_type:document_types(key,name)"
+        "id,tenant_id,producer_id,document_type_id,file_storage_key,file_hash,uploaded_at,status,comments,is_current,expiry_date,ocr_confidence,document_type:document_types(key,name)"
       )
       .single();
 
@@ -136,16 +142,21 @@ export class ServerProducerDocumentsRepository implements IProducerDocumentsRepo
     return mapProducerDocument(insertResult.data as ProducerDocumentRow);
   }
 
-  async updateStatus(documentId: string, status: string): Promise<void> {
+  async updateStatus(documentId: string, status: string, comments?: string | null): Promise<void> {
     const producerId = await findProducerIdForUserOrTenant(this.tenantId, this.userId);
     if (!producerId) {
       throw new Error("No existe perfil productor asociado.");
     }
 
     const supabaseAdmin = getSupabaseAdminClient();
+    const payload: { status: string; comments?: string | null } = { status };
+    if (comments !== undefined) {
+      payload.comments = comments;
+    }
+
     const result = await supabaseAdmin
       .from("producer_documents")
-      .update({ status })
+      .update(payload)
       .eq("tenant_id", this.tenantId)
       .eq("producer_id", producerId)
       .eq("id", documentId);

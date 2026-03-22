@@ -47,6 +47,7 @@ Si el modulo aun no expone alias desde `index.ts`, el reexport puede apuntar tem
 
 - `GET /api/admin/dashboard`
 - `GET|POST|PATCH /api/admin/producers`
+- `GET|PATCH /api/admin/producers/:id/documents`
 - `POST /api/admin/producers/batch`
 - `GET|POST|PATCH /api/admin/mvz`
 - `POST /api/admin/mvz/batch`
@@ -81,6 +82,10 @@ Cuando la UI esta en `/producer/projects/[uppId]/*`, estas APIs aceptan `?uppId=
 - `GET /api/producer/upp-documents`
 
 `/api/producer/settings` queda reservado para configuracion del tenant y tabs del panel; `/api/producer/settings/ranchos` agrega la matriz de UPPs y asignaciones. Los datos self-service del usuario viven en `/api/producer/profile`.
+
+Politica de comentarios en documentos:
+- Productor consume `comments` en modo solo lectura para feedback de rechazo y vigencia.
+- Solo flujos de admin/gobierno pueden actualizar `comments`.
 
 ## MVZ
 

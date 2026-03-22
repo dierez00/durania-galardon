@@ -8,6 +8,7 @@ export interface ProducerDocument {
   fileStorageKey: string;
   fileHash: string;
   status: DocumentStatus;
+  comments: string | null;
   isCurrent: boolean;
   expiryDate: string | null;
   uploadedAt: string;

@@ -14,6 +14,41 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/shared/ui/tabs";
 import type { DocumentChangeEvent } from "@/modules/producer/documents/domain/types/DocumentEvents";
 
 const MAX_ALERT_QUEUE_SIZE = 50;
+const RECENT_UPLOAD_TIMESTAMP_KEY = "durania:document_upload_timestamp";
+const UPLOAD_DUPLICATE_THRESHOLD_MS = 3000; // 3 segundos
+
+/**
+ * Filtra eventos duplicados de "newly-uploaded" que ocurrieron dentro de 3 segundos
+ * después del último upload exitoso registrado en sessionStorage.
+ * Esto evita mostrar dos alertas: una del toast en POST + otra del polling.
+ */
+function filterDuplicateUploadEvents(events: DocumentChangeEvent[]): DocumentChangeEvent[] {
+  const lastUploadTime = typeof window !== "undefined" ? sessionStorage.getItem(RECENT_UPLOAD_TIMESTAMP_KEY) : null;
+  
+  if (!lastUploadTime) {
+    return events; // Sin timestamp registrado, retornar eventos sin filtrar
+  }
+
+  const lastUploadMs = parseInt(lastUploadTime, 10);
+  if (isNaN(lastUploadMs)) {
+    return events;
+  }
+
+  return events.filter((event) => {
+    // Si es un evento "newly-uploaded" dentro de 3 seg del upload, filtrarlo
+    if (event.type === "newly-uploaded") {
+      const eventTime = new Date(event.data.uploadedAt).getTime();
+      const timeDiff = Date.now() - lastUploadMs;
+      
+      // Si el evento ocurrió dentro del threshold de tiempo después del upload, descartarlo
+      if (timeDiff < UPLOAD_DUPLICATE_THRESHOLD_MS) {
+        return false;
+      }
+    }
+    
+    return true;
+  });
+}
 
 export interface ProducerDocumentosPageProps {
   scope?: "all" | "personal" | "upp" | "mixed";
@@ -58,10 +93,14 @@ export default function ProducerDocumentosPage({
   );
 
   const allChanges = useMemo(
-    () => [
-      ...(scope === "upp" ? [] : producerChanges || []),
-      ...(scope === "personal" ? [] : uppChanges || []),
-    ],
+    () => {
+      const combined = [
+        ...(scope === "upp" ? [] : producerChanges || []),
+        ...(scope === "personal" ? [] : uppChanges || []),
+      ];
+      // Filtrar eventos duplicados de "newly-uploaded" cercanos al timestamp de upload
+      return filterDuplicateUploadEvents(combined);
+    },
     [producerChanges, scope, uppChanges]
   );
 

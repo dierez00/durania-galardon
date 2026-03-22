@@ -4,6 +4,7 @@ import type { UppDocument } from "../../domain/entities/UppDocumentEntity";
 import { UPP_DOCUMENT_TYPES } from "../../domain/entities/UppDocumentEntity";
 import type { DocumentChangeEvent } from "../../domain/types/DocumentEvents";
 import { documentDeletionPolicy } from "../../domain/services/documentDeletionPolicy";
+import { resolveProducerDocumentComment } from "../../domain/services/documentCommentsPresentation";
 import { useDocumentDelete } from "../hooks/useDocumentDelete";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import {
@@ -78,6 +79,7 @@ interface ChangeWithDocumentId {
 interface DisplayDocumentBase {
   id: string;
   status: ProducerDocument["status"];
+  comments: string | null;
   isCurrent: boolean;
   expiryDate: string | null;
   uploadedAt: string;
@@ -119,6 +121,7 @@ export function DocumentList({
     const personal: DisplayDocument[] = producerDocuments.map((d) => ({
       id: d.id,
       status: d.status,
+      comments: d.comments,
       isCurrent: d.isCurrent,
       expiryDate: d.expiryDate,
       uploadedAt: d.uploadedAt,
@@ -132,6 +135,7 @@ export function DocumentList({
     const ranch: DisplayDocument[] = uppDocuments.map((d) => ({
       id: d.id,
       status: d.status,
+      comments: d.comments,
       isCurrent: d.isCurrent,
       expiryDate: d.expiryDate,
       uploadedAt: d.uploadedAt,
@@ -287,6 +291,12 @@ export function DocumentList({
                   status: doc.status,
                   hasOtherVersion,
                 });
+                const producerMessage = resolveProducerDocumentComment({
+                  status: doc.status,
+                  isCurrent: doc.isCurrent,
+                  comments: doc.comments,
+                  documentTypeKey: doc.documentTypeKey,
+                });
                 const isOpening = openingId === doc.id;
                 const isDeleting = deletingId === doc.id;
 
@@ -311,9 +321,16 @@ export function DocumentList({
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={statusVariant(doc.status)}>
-                        {STATUS_LABELS[doc.status] ?? doc.status}
-                      </Badge>
+                      <div className="space-y-1">
+                        <Badge variant={statusVariant(doc.status)}>
+                          {STATUS_LABELS[doc.status] ?? doc.status}
+                        </Badge>
+                        {producerMessage ? (
+                          <p className="max-w-[320px] text-xs text-muted-foreground">
+                            {producerMessage}
+                          </p>
+                        ) : null}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {doc.expiryDate ? (

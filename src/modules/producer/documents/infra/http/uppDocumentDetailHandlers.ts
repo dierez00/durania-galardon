@@ -21,7 +21,7 @@ export async function PATCH(
     return auth.response;
   }
 
-  let body: { status?: string };
+  let body: { status?: string; comments?: string };
   try {
     body = await request.json();
   } catch {
@@ -30,6 +30,9 @@ export async function PATCH(
 
   if (!body.status) {
     return apiError("INVALID_PAYLOAD", "Debe enviar status.");
+  }
+  if (body.comments !== undefined) {
+    return apiError("FORBIDDEN", "Solo gobierno/admin puede actualizar comentarios de documentos.", 403);
   }
 
   const supabaseAdmin = getSupabaseAdminClient();

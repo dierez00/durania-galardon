@@ -6,12 +6,14 @@ import { ServerProducerDocumentsRepository } from "@/modules/producer/documents/
 import {
   calculateFileHash,
   findProducerIdForUserOrTenant,
+  validateIsoDate,
 } from "@/modules/producer/documents/infra/supabase/shared";
 
 interface ProducerDocumentBody {
   id?: string;
   expiryDate?: string;
   status?: "pending" | "validated" | "expired" | "rejected";
+  comments?: string;
   isCurrent?: boolean;
 }
 
@@ -42,6 +44,7 @@ export async function GET(request: Request) {
         file_hash: document.fileHash,
         uploaded_at: document.uploadedAt,
         status: document.status,
+        comments: document.comments,
         is_current: document.isCurrent,
         expiry_date: document.expiryDate,
         ocr_confidence: document.ocrConfidence,
@@ -79,6 +82,12 @@ export async function POST(request: Request) {
     return apiError("INVALID_PAYLOAD", "Debe enviar un archivo y documentTypeKey.");
   }
 
+  // Validar formato de fecha (si se proporciona)
+  const dateValidation = validateIsoDate(expiryDate);
+  if (!dateValidation.valid) {
+    return apiError("INVALID_DATE_FORMAT", dateValidation.error || "Formato de fecha inválido.", 400);
+  }
+
   const providedHash = formData.get("fileHash")?.toString().trim();
   if (providedHash) {
     const calculatedHash = await calculateFileHash(file);
@@ -93,7 +102,7 @@ export async function POST(request: Request) {
   );
 
   try {
-    const document = await repository.upload(file, documentTypeKey, expiryDate);
+    const document = await repository.upload(file, documentTypeKey, expiryDate || undefined);
 
     await logAuditEvent({
       request,
@@ -118,6 +127,7 @@ export async function POST(request: Request) {
           file_hash: document.fileHash,
           uploaded_at: document.uploadedAt,
           status: document.status,
+          comments: document.comments,
           is_current: document.isCurrent,
           expiry_date: document.expiryDate,
           document_type: {
@@ -164,6 +174,9 @@ export async function PATCH(request: Request) {
   }
 
   const updatePayload: Record<string, unknown> = {};
+  if (body.comments !== undefined) {
+    return apiError("FORBIDDEN", "Solo gobierno/admin puede actualizar comentarios de documentos.", 403);
+  }
   if (body.status) {
     updatePayload.status = body.status;
   }
@@ -186,7 +199,7 @@ export async function PATCH(request: Request) {
     .eq("producer_id", producerId)
     .eq("id", id)
     .select(
-      "id,tenant_id,producer_id,document_type_id,file_storage_key,file_hash,uploaded_at,status,is_current,expiry_date,ocr_confidence"
+      "id,tenant_id,producer_id,document_type_id,file_storage_key,file_hash,uploaded_at,status,comments,is_current,expiry_date,ocr_confidence"
     )
     .maybeSingle();
 
