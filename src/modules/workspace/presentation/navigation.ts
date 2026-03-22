@@ -52,7 +52,7 @@ const PRODUCER_ORGANIZATION_NAVIGATION: NavigationRule[] = [
     label: "Configuracion",
     icon: ShieldCheck,
     exact: true,
-    anyPermissions: ["producer.upp.read", "producer.documents.read", "producer.employees.read"],
+    anyPermissions: ["producer.tenant.read", "producer.documents.read", "producer.employees.read"],
   },
 ];
 
@@ -121,7 +121,7 @@ const MVZ_ORGANIZATION_NAVIGATION: NavigationRule[] = [
     label: "Configuracion",
     icon: ShieldCheck,
     exact: true,
-    anyPermissions: ["mvz.dashboard.read", "mvz.assignments.read"],
+    anyPermissions: ["mvz.tenant.read", "mvz.members.read"],
   },
 ];
 

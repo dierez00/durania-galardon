@@ -1,28 +1,28 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { getSupabaseProvisioningClient } from "@/server/auth/supabase";
 import { requireAuthorized } from "@/server/authz";
-import { resolveMvzProfileId } from "@/server/authz/profiles";
 import { logAuditEvent } from "@/server/audit";
 
 interface MvzSettingsBody {
   organizationName?: string;
-  fullName?: string;
 }
 
 async function getMvzSettingsSnapshot(user: {
-  id: string;
   tenantId: string;
   tenantSlug: string;
 }) {
   const provisioning = getSupabaseProvisioningClient();
-  const [tenantResult, mvzProfileResult] = await Promise.all([
+  const [tenantResult, membershipsResult, tenantMvzProfileResult] = await Promise.all([
     provisioning.from("tenants").select("id,name,slug,type").eq("id", user.tenantId).maybeSingle(),
     provisioning
+      .from("tenant_memberships")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", user.tenantId)
+      .eq("status", "active"),
+    provisioning
       .from("mvz_profiles")
-      .select("id,full_name,license_number,status,created_at")
+      .select("id")
       .eq("owner_tenant_id", user.tenantId)
-      .eq("user_id", user.id)
-      .eq("status", "active")
       .maybeSingle(),
   ]);
 
@@ -30,34 +30,73 @@ async function getMvzSettingsSnapshot(user: {
     throw new Error(tenantResult.error.message);
   }
 
-  if (mvzProfileResult.error) {
-    throw new Error(mvzProfileResult.error.message);
+  if (membershipsResult.error) {
+    throw new Error(membershipsResult.error.message);
   }
 
-  if (!mvzProfileResult.data) {
-    throw new Error("MVZ_PROFILE_NOT_FOUND");
+  if (tenantMvzProfileResult.error) {
+    throw new Error(tenantMvzProfileResult.error.message);
   }
 
-  const [assignmentsResult, activeAssignmentsResult] = await Promise.all([
-    provisioning
-      .from("mvz_upp_assignments")
-      .select("assigned_at", { count: "exact" })
-      .eq("mvz_profile_id", mvzProfileResult.data.id)
-      .order("assigned_at", { ascending: false })
-      .limit(1),
-    provisioning
-      .from("mvz_upp_assignments")
-      .select("id", { count: "exact", head: true })
-      .eq("mvz_profile_id", mvzProfileResult.data.id)
-      .eq("status", "active"),
-  ]);
+  let assignedProjects = 0;
+  let lastAssignedAt: string | null = null;
+  let upcomingVisits = 0;
+  let openIncidents = 0;
 
-  if (assignmentsResult.error) {
-    throw new Error(assignmentsResult.error.message);
-  }
+  if (tenantMvzProfileResult.data?.id) {
+    const [activeAssignmentsResult, latestAssignmentResult] = await Promise.all([
+      provisioning
+        .from("mvz_upp_assignments")
+        .select("upp_id,assigned_at")
+        .eq("mvz_profile_id", tenantMvzProfileResult.data.id)
+        .eq("status", "active")
+        .order("assigned_at", { ascending: false }),
+      provisioning
+        .from("mvz_upp_assignments")
+        .select("assigned_at")
+        .eq("mvz_profile_id", tenantMvzProfileResult.data.id)
+        .order("assigned_at", { ascending: false })
+        .limit(1),
+    ]);
 
-  if (activeAssignmentsResult.error) {
-    throw new Error(activeAssignmentsResult.error.message);
+    if (activeAssignmentsResult.error) {
+      throw new Error(activeAssignmentsResult.error.message);
+    }
+
+    if (latestAssignmentResult.error) {
+      throw new Error(latestAssignmentResult.error.message);
+    }
+
+    const assignedUppIds = (activeAssignmentsResult.data ?? []).map((assignment) => assignment.upp_id);
+    assignedProjects = assignedUppIds.length;
+    lastAssignedAt = latestAssignmentResult.data?.[0]?.assigned_at ?? null;
+
+    if (assignedUppIds.length > 0) {
+      const [upcomingVisitsResult, openIncidentsResult] = await Promise.all([
+        provisioning
+          .from("mvz_visits")
+          .select("id", { count: "exact", head: true })
+          .in("upp_id", assignedUppIds)
+          .eq("status", "scheduled")
+          .gte("scheduled_at", new Date().toISOString()),
+        provisioning
+          .from("sanitary_incidents")
+          .select("id", { count: "exact", head: true })
+          .in("upp_id", assignedUppIds)
+          .in("status", ["open", "in_progress"]),
+      ]);
+
+      if (upcomingVisitsResult.error) {
+        throw new Error(upcomingVisitsResult.error.message);
+      }
+
+      if (openIncidentsResult.error) {
+        throw new Error(openIncidentsResult.error.message);
+      }
+
+      upcomingVisits = upcomingVisitsResult.count ?? 0;
+      openIncidents = openIncidentsResult.count ?? 0;
+    }
   }
 
   return {
@@ -67,24 +106,20 @@ async function getMvzSettingsSnapshot(user: {
       slug: tenantResult.data?.slug ?? user.tenantSlug,
       type: tenantResult.data?.type ?? "mvz",
     },
-    profile: {
-      id: mvzProfileResult.data.id,
-      fullName: mvzProfileResult.data.full_name,
-      licenseNumber: mvzProfileResult.data.license_number,
-      status: mvzProfileResult.data.status,
-      createdAt: mvzProfileResult.data.created_at,
-    },
     summary: {
-      assignedProjects: activeAssignmentsResult.count ?? 0,
-      lastAssignedAt: assignmentsResult.data?.[0]?.assigned_at ?? null,
+      activeMembers: membershipsResult.count ?? 0,
+      assignedProjects,
+      lastAssignedAt,
+      upcomingVisits,
+      openIncidents,
     },
   };
 }
 
 export async function GET(request: Request) {
   const auth = await requireAuthorized(request, {
-    roles: ["mvz_government", "mvz_internal"],
-    permissions: ["mvz.dashboard.read", "mvz.assignments.read"],
+    roles: ["mvz_government"],
+    permissions: ["mvz.tenant.read"],
     resource: "mvz.settings",
   });
   if (!auth.ok) {
@@ -93,7 +128,6 @@ export async function GET(request: Request) {
 
   try {
     const snapshot = await getMvzSettingsSnapshot({
-      id: auth.context.user.id,
       tenantId: auth.context.user.tenantId,
       tenantSlug: auth.context.user.tenantSlug,
     });
@@ -103,21 +137,18 @@ export async function GET(request: Request) {
       permissions: auth.context.permissions,
     });
   } catch (error) {
-    const message =
-      error instanceof Error && error.message === "MVZ_PROFILE_NOT_FOUND"
-        ? "No existe perfil MVZ activo para el usuario."
-        : error instanceof Error
-          ? error.message
-          : "No fue posible cargar configuracion.";
-
-    return apiError("MVZ_SETTINGS_QUERY_FAILED", message, 500);
+    return apiError(
+      "MVZ_SETTINGS_QUERY_FAILED",
+      error instanceof Error ? error.message : "No fue posible cargar configuracion.",
+      500
+    );
   }
 }
 
 export async function PATCH(request: Request) {
   const auth = await requireAuthorized(request, {
-    roles: ["mvz_government", "mvz_internal"],
-    permissions: ["mvz.dashboard.read", "mvz.assignments.read"],
+    roles: ["mvz_government"],
+    permissions: ["mvz.tenant.write"],
     resource: "mvz.settings",
   });
   if (!auth.ok) {
@@ -132,47 +163,19 @@ export async function PATCH(request: Request) {
   }
 
   const organizationName = body.organizationName?.trim();
-  const fullName = body.fullName?.trim();
 
-  if (!organizationName && !fullName) {
-    return apiError("INVALID_PAYLOAD", "Debe enviar al menos organizationName o fullName.");
-  }
-
-  if (organizationName && auth.context.user.role !== "mvz_government") {
-    return apiError(
-      "FORBIDDEN",
-      "Solo MVZ Gobierno puede actualizar el nombre organizacional.",
-      403
-    );
+  if (!organizationName) {
+    return apiError("INVALID_PAYLOAD", "Debe enviar organizationName.");
   }
 
   const provisioning = getSupabaseProvisioningClient();
+  const tenantUpdate = await provisioning
+    .from("tenants")
+    .update({ name: organizationName })
+    .eq("id", auth.context.user.tenantId);
 
-  if (organizationName) {
-    const tenantUpdate = await provisioning
-      .from("tenants")
-      .update({ name: organizationName })
-      .eq("id", auth.context.user.tenantId);
-
-    if (tenantUpdate.error) {
-      return apiError("MVZ_SETTINGS_TENANT_UPDATE_FAILED", tenantUpdate.error.message, 400);
-    }
-  }
-
-  if (fullName) {
-    const mvzProfileId = await resolveMvzProfileId(auth.context.user);
-    if (!mvzProfileId) {
-      return apiError("MVZ_PROFILE_NOT_FOUND", "No existe perfil MVZ activo para el usuario.", 404);
-    }
-
-    const profileUpdate = await provisioning
-      .from("mvz_profiles")
-      .update({ full_name: fullName })
-      .eq("id", mvzProfileId);
-
-    if (profileUpdate.error) {
-      return apiError("MVZ_SETTINGS_PROFILE_UPDATE_FAILED", profileUpdate.error.message, 400);
-    }
+  if (tenantUpdate.error) {
+    return apiError("MVZ_SETTINGS_TENANT_UPDATE_FAILED", tenantUpdate.error.message, 400);
   }
 
   await logAuditEvent({
@@ -182,8 +185,7 @@ export async function PATCH(request: Request) {
     resource: "mvz.settings",
     resourceId: auth.context.user.tenantId,
     payload: {
-      organizationName: organizationName ?? null,
-      fullName: fullName ?? null,
+      organizationName,
     },
   });
 

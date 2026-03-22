@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-19
+Last Updated: 2026-03-22
 Source of Truth: Canonical auth flow, role routing, and tenant-level authorization model.
 
 # Auth y Tenant IAM
@@ -16,9 +16,11 @@ Source of Truth: Canonical auth flow, role routing, and tenant-level authorizati
 - Landing publica: `/`
 - Login unico: `/login`
 - Admin tenant: `/admin/*`
-- Vistas tenant productor: `/producer/*`
+- Vistas tenant productor: `/producer/*` (`/producer/settings` solo con `producer.tenant.read`)
 - Vistas tenant MVZ:
-  - `/mvz/dashboard`
+  - `/mvz`
+  - `/mvz/profile`
+  - `/mvz/settings` (solo con `mvz.tenant.read`)
   - `/mvz/ranchos/[uppId]/*`
 
 ## Modelo de roles (tenant)
@@ -28,14 +30,15 @@ Roles soportados:
 - `tenant_admin`
 - `producer`
 - `employee`
+- `producer_viewer`
 - `mvz_government`
 - `mvz_internal`
 
 Redireccion por rol:
 
 - `tenant_admin` -> `/admin`
-- `producer` y `employee` -> `/producer/dashboard`
-- `mvz_government` y `mvz_internal` -> `/mvz/dashboard`
+- `producer`, `employee` y `producer_viewer` -> `/producer`
+- `mvz_government` y `mvz_internal` -> `/mvz`
 
 ## Flujo de login
 
@@ -54,6 +57,9 @@ Redireccion por rol:
 ## Endpoints MVZ jerarquicos
 
 - `GET /api/mvz/dashboard`
+- `GET|PATCH /api/mvz/profile`
+- `GET|PATCH /api/mvz/settings`
+- `GET|POST|PATCH /api/mvz/members`
 - `GET /api/mvz/ranchos/:uppId`
 - `GET /api/mvz/ranchos/:uppId/overview`
 - `GET /api/mvz/ranchos/:uppId/animales`
@@ -64,8 +70,23 @@ Redireccion por rol:
 - `GET|POST /api/mvz/ranchos/:uppId/documentacion`
 - `GET|POST|PATCH /api/mvz/ranchos/:uppId/visitas`
 
+## Endpoints self-service por panel
+
+- `GET|PATCH /api/producer/profile`
+- `GET|PATCH /api/producer/settings`
+- `GET|PATCH /api/mvz/profile`
+- `GET|PATCH /api/mvz/settings`
+
 ## Reglas de autorizacion
 
+- `GET /api/auth/me` entrega `panelType`, `permissions`, `tenant.name` y `displayName` para el shell tenant.
+- El nombre visible self-service vive en `auth.user_metadata.full_name` y se sincroniza en topbar al editar `Mi perfil`.
+- `profiles.email` funciona como espejo denormalizado de `auth.users.email` para lecturas de perfil.
+- `producer/settings` ya no expone ni edita `producers.full_name`; esa ficha se mueve a `producer/profile`.
+- `mvz/settings` ya no expone ni edita `mvz_profiles.full_name` ni `license_number`; esa ficha se mueve a `mvz/profile`.
+- `producer/settings` usa `producer.tenant.read/write`.
+- `mvz/settings` usa `mvz.tenant.read/write`.
+- `mvz/members` usa `mvz.members.read/write` y queda limitado a `mvz_government`.
 - Todos los endpoints MVZ de rancho validan:
   - rol MVZ
   - permisos del modulo

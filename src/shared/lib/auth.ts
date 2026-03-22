@@ -2,6 +2,7 @@ export const APP_ROLES = [
   "tenant_admin",
   "producer",
   "employee",
+  "producer_viewer",
   "mvz_government",
   "mvz_internal",
 ] as const;
@@ -9,19 +10,27 @@ export const APP_ROLES = [
 export type AppRole = (typeof APP_ROLES)[number];
 
 export const ROLE_LABELS: Record<AppRole, string> = {
-  tenant_admin: "ADMIN Gobierno",
+  tenant_admin: "Administrador",
   producer: "Productor",
   employee: "Empleado",
+  producer_viewer: "Consulta",
   mvz_government: "MVZ Gobierno",
   mvz_internal: "MVZ Interno",
 };
 
 export const PERMISSION_KEYS = [
   "admin.dashboard.read",
+  "admin.users.read",
+  "admin.users.create",
+  "admin.users.update",
+  "admin.users.delete",
+  "admin.users.roles",
   "admin.producers.read",
   "admin.producers.write",
   "admin.mvz.read",
   "admin.mvz.write",
+  "admin.upps.read",
+  "admin.upps.write",
   "admin.quarantines.read",
   "admin.quarantines.write",
   "admin.exports.read",
@@ -29,15 +38,26 @@ export const PERMISSION_KEYS = [
   "admin.normative.read",
   "admin.normative.write",
   "admin.audit.read",
+  "admin.reports.export",
   "admin.appointments.read",
   "admin.appointments.write",
   "mvz.dashboard.read",
   "mvz.assignments.read",
+  "mvz.bovinos.read",
   "mvz.tests.read",
   "mvz.tests.write",
   "mvz.tests.sync",
+  "mvz.quarantines.read",
+  "mvz.quarantines.write",
   "mvz.exports.read",
   "mvz.exports.write",
+  "mvz.notifications.read",
+  "mvz.tenant.read",
+  "mvz.tenant.write",
+  "mvz.profile.read",
+  "mvz.profile.write",
+  "mvz.members.read",
+  "mvz.members.write",
   "mvz.ranch.read",
   "mvz.ranch.animals.read",
   "mvz.ranch.clinical.read",
@@ -51,6 +71,8 @@ export const PERMISSION_KEYS = [
   "mvz.ranch.visits.read",
   "mvz.ranch.visits.write",
   "producer.dashboard.read",
+  "producer.tenant.read",
+  "producer.tenant.write",
   "producer.upp.read",
   "producer.upp.write",
   "producer.bovinos.read",
@@ -61,6 +83,9 @@ export const PERMISSION_KEYS = [
   "producer.exports.write",
   "producer.documents.read",
   "producer.documents.write",
+  "producer.notifications.read",
+  "producer.profile.read",
+  "producer.profile.write",
   "producer.employees.read",
   "producer.employees.write",
 ] as const;
@@ -98,14 +123,46 @@ export interface OfflineSyncItem {
 }
 
 const ADMIN_PERMISSION_SET = [...ALL_PERMISSION_KEYS] as PermissionKey[];
-const MVZ_PERMISSION_SET: PermissionKey[] = [
+const MVZ_GOVERNMENT_PERMISSION_SET: PermissionKey[] = [
   "mvz.dashboard.read",
   "mvz.assignments.read",
+  "mvz.bovinos.read",
+  "mvz.tests.read",
+  "mvz.tests.write",
+  "mvz.tests.sync",
+  "mvz.quarantines.read",
+  "mvz.quarantines.write",
+  "mvz.exports.read",
+  "mvz.exports.write",
+  "mvz.notifications.read",
+  "mvz.tenant.read",
+  "mvz.tenant.write",
+  "mvz.profile.read",
+  "mvz.profile.write",
+  "mvz.members.read",
+  "mvz.members.write",
+  "mvz.ranch.read",
+  "mvz.ranch.animals.read",
+  "mvz.ranch.clinical.read",
+  "mvz.ranch.vaccinations.read",
+  "mvz.ranch.vaccinations.write",
+  "mvz.ranch.incidents.read",
+  "mvz.ranch.incidents.write",
+  "mvz.ranch.reports.read",
+  "mvz.ranch.documents.read",
+  "mvz.ranch.documents.write",
+  "mvz.ranch.visits.read",
+  "mvz.ranch.visits.write",
+];
+const MVZ_INTERNAL_PERMISSION_SET: PermissionKey[] = [
+  "mvz.dashboard.read",
+  "mvz.assignments.read",
+  "mvz.bovinos.read",
   "mvz.tests.read",
   "mvz.tests.write",
   "mvz.tests.sync",
   "mvz.exports.read",
-  "mvz.exports.write",
+  "mvz.notifications.read",
   "mvz.ranch.read",
   "mvz.ranch.animals.read",
   "mvz.ranch.clinical.read",
@@ -121,6 +178,8 @@ const MVZ_PERMISSION_SET: PermissionKey[] = [
 ];
 const PRODUCER_PERMISSION_SET: PermissionKey[] = [
   "producer.dashboard.read",
+  "producer.tenant.read",
+  "producer.tenant.write",
   "producer.upp.read",
   "producer.upp.write",
   "producer.bovinos.read",
@@ -131,16 +190,38 @@ const PRODUCER_PERMISSION_SET: PermissionKey[] = [
   "producer.exports.write",
   "producer.documents.read",
   "producer.documents.write",
+  "producer.notifications.read",
+  "producer.profile.read",
+  "producer.profile.write",
   "producer.employees.read",
   "producer.employees.write",
+];
+const PRODUCER_EMPLOYEE_PERMISSION_SET: PermissionKey[] = [
+  "producer.dashboard.read",
+  "producer.upp.read",
+  "producer.bovinos.read",
+  "producer.bovinos.write",
+  "producer.movements.read",
+  "producer.movements.write",
+  "producer.exports.read",
+  "producer.notifications.read",
+];
+const PRODUCER_VIEWER_PERMISSION_SET: PermissionKey[] = [
+  "producer.dashboard.read",
+  "producer.upp.read",
+  "producer.bovinos.read",
+  "producer.movements.read",
+  "producer.exports.read",
+  "producer.notifications.read",
 ];
 
 export const ROLE_DEFAULT_PERMISSIONS: Record<AppRole, PermissionKey[]> = {
   tenant_admin: ADMIN_PERMISSION_SET,
-  mvz_government: MVZ_PERMISSION_SET,
-  mvz_internal: MVZ_PERMISSION_SET,
+  mvz_government: MVZ_GOVERNMENT_PERMISSION_SET,
+  mvz_internal: MVZ_INTERNAL_PERMISSION_SET,
   producer: PRODUCER_PERMISSION_SET,
-  employee: PRODUCER_PERMISSION_SET,
+  employee: PRODUCER_EMPLOYEE_PERMISSION_SET,
+  producer_viewer: PRODUCER_VIEWER_PERMISSION_SET,
 };
 
 export function isAppRole(value: string): value is AppRole {
@@ -173,7 +254,7 @@ export function isTenantAdminRole(role: AppRole): boolean {
 }
 
 export function isProducerViewRole(role: AppRole): boolean {
-  return role === "producer" || role === "employee";
+  return role === "producer" || role === "employee" || role === "producer_viewer";
 }
 
 export function isMvzViewRole(role: AppRole): boolean {

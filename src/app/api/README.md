@@ -17,9 +17,12 @@
 - `admin/audit` -> `src/modules/admin/auditoria`
 - `producer/bovinos` -> `src/modules/bovinos`
 - `producer/documents` y `producer/upp-documents` -> `src/modules/producer/documents`
+- `producer/profile` -> `src/modules/producer/profile`
 - `producer/settings` -> `src/modules/producer/settings`
 - `producer/upp` -> `src/modules/producer/ranchos`
 - `mvz/assignments` -> `src/modules/ranchos`
+- `mvz/members` -> `src/modules/mvz/members`
+- `mvz/profile` -> `src/modules/mvz/profile`
 - `mvz/settings` -> `src/modules/mvz/settings`
 
 ## Patron esperado
@@ -54,6 +57,7 @@ Si el modulo aun no expone alias desde `index.ts`, el reexport puede apuntar tem
 
 - `GET /api/producer/dashboard`
 - `GET /api/producer/upp`
+- `GET|PATCH /api/producer/profile`
 - `GET|PATCH /api/producer/settings`
 - `GET|POST /api/producer/bovinos`
 - `GET|POST /api/producer/movements`
@@ -71,10 +75,14 @@ Cuando la UI esta en `/producer/projects/[uppId]/*`, estas APIs aceptan `?uppId=
 - `GET /api/producer/exports`
 - `GET /api/producer/upp-documents`
 
+`/api/producer/settings` queda reservado para configuracion del tenant; los datos self-service del usuario viven en `/api/producer/profile`.
+
 ## MVZ
 
 - `GET /api/mvz/dashboard`
 - `GET /api/mvz/assignments`
+- `GET|POST|PATCH /api/mvz/members`
+- `GET|PATCH /api/mvz/profile`
 - `GET|PATCH /api/mvz/settings`
 - `GET|POST /api/mvz/tests`
 - `POST /api/mvz/tests/sync`
@@ -88,6 +96,8 @@ Cuando la UI esta en `/producer/projects/[uppId]/*`, estas APIs aceptan `?uppId=
 - `GET /api/mvz/ranchos/:uppId/reportes`
 - `GET|POST /api/mvz/ranchos/:uppId/documentacion`
 - `GET|POST|PATCH /api/mvz/ranchos/:uppId/visitas`
+
+`/api/mvz/settings` queda reservado para configuracion del tenant y resumen operativo; la ficha profesional del usuario vive en `/api/mvz/profile`.
 
 ### Shell tenant
 

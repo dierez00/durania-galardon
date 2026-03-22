@@ -6,6 +6,14 @@ Todas las fechas usan formato YYYY-MM-DD.
 
 ### Added
 
+- Rutas y endpoints self-service por panel:
+  - `GET|PATCH /api/producer/profile`
+  - `GET|PATCH /api/mvz/profile`
+  - `/producer/profile`
+  - `/mvz/profile`
+- API de equipo MVZ:
+  - `GET|POST|PATCH /api/mvz/members`
+- Migracion `sql/migration_005_mvz_settings_permissions_backfill.sql` para completar permisos de configuracion MVZ en tenants existentes.
 - Migracion `sql/migration_002_mvz_hierarchy.sql` con:
   - `mvz_visits`
   - `animal_vaccinations`
@@ -32,6 +40,12 @@ Todas las fechas usan formato YYYY-MM-DD.
 
 ### Changed
 
+- `ProfileMenu` separa `Mi perfil` de `Configuracion del panel` y oculta esta ultima opcion cuando el usuario no tiene permisos de tenant settings.
+- `GET|PATCH /api/producer/settings` ahora administra solo configuracion del tenant productor, resumen operativo y bloques documentales/equipo.
+- `GET|PATCH /api/mvz/settings` ahora administra solo configuracion del tenant MVZ, resumen operativo y equipo MVZ.
+- Las fichas personales de productor y MVZ se movieron a endpoints/paginas de perfil; `email`, `CURP` y `license_number` quedan en solo lectura para self-service.
+- `src/shared/lib/auth.ts` incorpora `producer_viewer`, permisos `producer.tenant.*`, `mvz.tenant.*`, `mvz.profile.*` y `mvz.members.*`.
+- Los guards tenant dejaron de depender de permisos legacy para abrir settings y ahora distinguen perfil self-service vs configuracion del panel.
 - `GET /api/mvz/dashboard` ahora retorna `kpisGlobales` y `ranchosAsignados`.
 - Navegacion MVZ migrada a jerarquia por rancho (`/mvz/ranchos/[uppId]/*`).
 - Paginas legacy MVZ (`/mvz/asignaciones`, `/mvz/pruebas`, `/mvz/exportaciones`) ahora redirigen a la nueva jerarquia.

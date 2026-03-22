@@ -4,6 +4,7 @@ const PRODUCER_ORGANIZATION_LABELS = {
   projects: "Ranchos / UPPs",
   metrics: "Metricas",
   settings: "Configuracion",
+  profile: "Mi perfil",
 } as const;
 
 const PRODUCER_PROJECT_LABELS = {
@@ -19,6 +20,7 @@ const MVZ_ORGANIZATION_LABELS = {
   projects: "Ranchos asignados",
   metrics: "Metricas",
   settings: "Configuracion",
+  profile: "Mi perfil",
 } as const;
 
 const MVZ_PROJECT_LABELS = {
@@ -139,6 +141,10 @@ export function buildMetricsHref(panel: WorkspacePanel) {
 
 export function buildSettingsHref(panel: WorkspacePanel) {
   return panel === "producer" ? "/producer/settings" : "/mvz/settings";
+}
+
+export function buildProfileHref(panel: WorkspacePanel) {
+  return panel === "producer" ? "/producer/profile" : "/mvz/profile";
 }
 
 export function buildProjectHref(

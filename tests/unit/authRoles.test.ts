@@ -8,21 +8,26 @@ describe("shared auth role helpers", () => {
     expect(isAppRole("mvz_internal")).toBe(true);
     expect(isAppRole("producer")).toBe(true);
     expect(isAppRole("employee")).toBe(true);
+    expect(isAppRole("producer_viewer")).toBe(true);
     expect(isAppRole("ventanilla")).toBe(false);
   });
 
   it("returns redirect route by role", () => {
     expect(redirectPathForRole("tenant_admin")).toBe("/admin");
-    expect(redirectPathForRole("mvz_government")).toBe("/mvz/dashboard");
-    expect(redirectPathForRole("mvz_internal")).toBe("/mvz/dashboard");
-    expect(redirectPathForRole("producer")).toBe("/producer/dashboard");
-    expect(redirectPathForRole("employee")).toBe("/producer/dashboard");
+    expect(redirectPathForRole("mvz_government")).toBe("/mvz");
+    expect(redirectPathForRole("mvz_internal")).toBe("/mvz");
+    expect(redirectPathForRole("producer")).toBe("/producer");
+    expect(redirectPathForRole("employee")).toBe("/producer");
+    expect(redirectPathForRole("producer_viewer")).toBe("/producer");
   });
 
   it("validates permission keys", () => {
     expect(isPermissionKey("admin.dashboard.read")).toBe(true);
     expect(isPermissionKey("mvz.tests.sync")).toBe(true);
+    expect(isPermissionKey("mvz.members.write")).toBe(true);
+    expect(isPermissionKey("mvz.profile.write")).toBe(true);
     expect(isPermissionKey("producer.documents.write")).toBe(true);
+    expect(isPermissionKey("producer.tenant.read")).toBe(true);
     expect(isPermissionKey("admin.superpower")).toBe(false);
   });
 });

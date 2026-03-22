@@ -6,7 +6,7 @@ import ProducerDocumentosPage from "@/modules/producer/documents/presentation/Pr
 import ProducerEmpleadosPage from "@/modules/producer/empleados/presentation/ProducerEmpleadosPage";
 import { getAccessToken } from "@/shared/lib/auth-session";
 import { Button } from "@/shared/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 
@@ -15,15 +15,13 @@ interface ProducerSettingsPayload {
     organization?: {
       name?: string;
       slug?: string;
+      type?: string;
     };
-    profile?: {
-      fullName?: string | null;
-      status?: string;
-    } | null;
     summary?: {
       activeMembers?: number;
-      personalDocuments?: number;
       accessibleProjects?: number;
+      pendingDocuments?: number;
+      rejectedDocuments?: number;
     };
   };
   error?: {
@@ -34,7 +32,7 @@ interface ProducerSettingsPayload {
 export default function ProducerSettingsPage() {
   const workspace = useTenantWorkspace();
   const permissions = workspace.user?.permissions ?? [];
-  const canEdit = permissions.includes("producer.upp.write");
+  const canEditOrganization = permissions.includes("producer.tenant.write");
   const canViewDocuments = permissions.includes("producer.documents.read");
   const canViewEmployees = permissions.includes("producer.employees.read");
 
@@ -42,11 +40,13 @@ export default function ProducerSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [organizationName, setOrganizationName] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [organizationSlug, setOrganizationSlug] = useState("");
+  const [organizationType, setOrganizationType] = useState("");
   const [summary, setSummary] = useState({
     activeMembers: 0,
-    personalDocuments: 0,
     accessibleProjects: 0,
+    pendingDocuments: 0,
+    rejectedDocuments: 0,
   });
 
   useEffect(() => {
@@ -75,11 +75,13 @@ export default function ProducerSettingsPage() {
         }
 
         setOrganizationName(body.data?.organization?.name ?? "");
-        setFullName(body.data?.profile?.fullName ?? "");
+        setOrganizationSlug(body.data?.organization?.slug ?? "");
+        setOrganizationType(body.data?.organization?.type ?? "producer");
         setSummary({
           activeMembers: body.data?.summary?.activeMembers ?? 0,
-          personalDocuments: body.data?.summary?.personalDocuments ?? 0,
           accessibleProjects: body.data?.summary?.accessibleProjects ?? 0,
+          pendingDocuments: body.data?.summary?.pendingDocuments ?? 0,
+          rejectedDocuments: body.data?.summary?.rejectedDocuments ?? 0,
         });
       } finally {
         setLoading(false);
@@ -108,7 +110,6 @@ export default function ProducerSettingsPage() {
         },
         body: JSON.stringify({
           organizationName,
-          fullName,
         }),
       });
 
@@ -119,11 +120,13 @@ export default function ProducerSettingsPage() {
       }
 
       setOrganizationName(body.data?.organization?.name ?? organizationName);
-      setFullName(body.data?.profile?.fullName ?? fullName);
+      setOrganizationSlug(body.data?.organization?.slug ?? organizationSlug);
+      setOrganizationType(body.data?.organization?.type ?? organizationType);
       setSummary({
         activeMembers: body.data?.summary?.activeMembers ?? summary.activeMembers,
-        personalDocuments: body.data?.summary?.personalDocuments ?? summary.personalDocuments,
         accessibleProjects: body.data?.summary?.accessibleProjects ?? summary.accessibleProjects,
+        pendingDocuments: body.data?.summary?.pendingDocuments ?? summary.pendingDocuments,
+        rejectedDocuments: body.data?.summary?.rejectedDocuments ?? summary.rejectedDocuments,
       });
     } finally {
       setSaving(false);
@@ -160,17 +163,26 @@ export default function ProducerSettingsPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Documentos del productor</CardTitle>
+            <CardTitle className="text-base">Documentos pendientes</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{loading ? "-" : summary.personalDocuments}</p>
+            <p className="text-2xl font-bold">{loading ? "-" : summary.pendingDocuments}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Documentos rechazados</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{loading ? "-" : summary.rejectedDocuments}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Datos organizacionales</CardTitle>
+          <CardTitle>General</CardTitle>
+          <CardDescription>Configuracion del tenant productor para operacion y gobierno interno.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
@@ -179,20 +191,19 @@ export default function ProducerSettingsPage() {
               id="organizationName"
               value={organizationName}
               onChange={(event) => setOrganizationName(event.target.value)}
-              readOnly={!canEdit}
+              readOnly={!canEditOrganization}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="fullName">Nombre del productor</Label>
-            <Input
-              id="fullName"
-              value={fullName}
-              onChange={(event) => setFullName(event.target.value)}
-              readOnly={!canEdit}
-            />
+            <Label htmlFor="organizationSlug">Slug</Label>
+            <Input id="organizationSlug" value={organizationSlug} readOnly />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="organizationType">Tipo de tenant</Label>
+            <Input id="organizationType" value={organizationType || "producer"} readOnly />
           </div>
           <div className="md:col-span-2">
-            <Button onClick={handleSave} disabled={!canEdit || saving}>
+            <Button onClick={handleSave} disabled={!canEditOrganization || saving}>
               {saving ? "Guardando..." : "Guardar cambios"}
             </Button>
           </div>

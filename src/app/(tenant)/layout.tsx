@@ -30,7 +30,15 @@ function resolveProducerPermission(pathname: string): PermissionKey | null {
     return "producer.dashboard.read";
   }
 
-  if (segments[1] === "settings" || segments[1] === "ranchos" || segments[1] === "empleados") {
+  if (segments[1] === "profile") {
+    return null;
+  }
+
+  if (segments[1] === "settings" || segments[1] === "empleados") {
+    return "producer.tenant.read";
+  }
+
+  if (segments[1] === "ranchos") {
     return "producer.upp.read";
   }
 
@@ -86,8 +94,16 @@ function resolveMvzPermission(pathname: string): PermissionKey | null {
     return "mvz.assignments.read";
   }
 
-  if (segments[1] === "metrics" || segments[1] === "dashboard" || segments[1] === "settings") {
+  if (segments[1] === "profile") {
+    return null;
+  }
+
+  if (segments[1] === "metrics" || segments[1] === "dashboard") {
     return "mvz.dashboard.read";
+  }
+
+  if (segments[1] === "settings") {
+    return "mvz.tenant.read";
   }
 
   if (segments[1] === "asignaciones") {

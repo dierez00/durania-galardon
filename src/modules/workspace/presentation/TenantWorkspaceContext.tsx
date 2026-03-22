@@ -32,6 +32,10 @@ import {
   getSelectedProjectStorageKey,
   resolveWorkspaceLocation,
 } from "@/modules/workspace/presentation/workspace-routing";
+import {
+  PROFILE_DISPLAY_NAME_UPDATED_EVENT,
+  type ProfileDisplayNameUpdatedDetail,
+} from "@/shared/lib/profile-events";
 
 interface AuthMePayload {
   data?: {
@@ -297,6 +301,32 @@ export function TenantWorkspaceProvider({
     const lastModuleKey = getLastModuleStorageKey(panel, organization.id, location.projectId);
     sessionStorage.setItem(lastModuleKey, location.moduleKey ?? getDefaultModuleKey());
   }, [location, organization, panel]);
+
+  useEffect(() => {
+    const handleDisplayNameUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<ProfileDisplayNameUpdatedDetail>;
+      const nextDisplayName = customEvent.detail?.displayName?.trim();
+
+      if (!nextDisplayName) {
+        return;
+      }
+
+      setUser((currentUser) =>
+        currentUser
+          ? {
+              ...currentUser,
+              displayName: nextDisplayName,
+            }
+          : currentUser
+      );
+    };
+
+    window.addEventListener(PROFILE_DISPLAY_NAME_UPDATED_EVENT, handleDisplayNameUpdated);
+
+    return () => {
+      window.removeEventListener(PROFILE_DISPLAY_NAME_UPDATED_EVENT, handleDisplayNameUpdated);
+    };
+  }, []);
 
   const currentProject = useMemo(() => {
     if (location?.panel === panel && location.projectId) {

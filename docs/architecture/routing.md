@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-19
+Last Updated: 2026-03-22
 Source of Truth: Active route map, legacy redirects, and guard expectations for the current application.
 
 # Rutas y guards
@@ -27,11 +27,12 @@ Source of Truth: Active route map, legacy redirects, and guard expectations for 
   - `/admin/audit`
   - `/admin/appointments`
 
-- `producer` y `employee`
+- `producer`, `employee` y `producer_viewer`
   - Organizacion
     - `/producer`
     - `/producer/metrics`
-    - `/producer/settings`
+    - `/producer/profile`
+    - `/producer/settings` solo con `producer.tenant.read` (normalmente `producer`)
   - Proyecto
     - `/producer/projects/[uppId]`
     - `/producer/projects/[uppId]/animales`
@@ -54,7 +55,8 @@ Source of Truth: Active route map, legacy redirects, and guard expectations for 
   - Organizacion
     - `/mvz`
     - `/mvz/metrics`
-    - `/mvz/settings`
+    - `/mvz/profile`
+    - `/mvz/settings` solo con `mvz.tenant.read` (normalmente `mvz_government`)
   - Proyecto
     - `/mvz/ranchos/[uppId]`
     - `/mvz/ranchos/[uppId]/animales`
@@ -113,6 +115,9 @@ Reglas activas del shell:
 - El sidebar tenant ya no muestra el nombre `Durania` ni una card contextual del tenant/proyecto.
 - El sidebar conserva solo icono, descriptor del panel (`Operacion Productor` o `Operacion MVZ`) y opciones habilitadas por permisos.
 - La topbar ya no muestra `tenant.slug` como badge de entorno en paneles tenant.
+- El `ProfileMenu` separa `Mi perfil` de `Configuracion del panel`.
+- `Mi perfil` existe siempre para roles tenant (`/producer/profile`, `/mvz/profile`).
+- `Configuracion del panel` solo aparece si el usuario tiene permisos de lectura del tenant (`producer.tenant.read` o `mvz.tenant.read`).
 - El selector de proyecto/rancho ya no vive debajo del breadcrumb: en modo proyecto se renderiza inline dentro del breadcrumb.
 - En productor, el patron visible es `Inicio > <UPP actual>`.
 - En MVZ, el patron visible es `Inicio > <rancho actual>`.
@@ -123,6 +128,15 @@ Reglas activas del shell:
   - valida sesion
   - resuelve rol tenant
   - valida permisos por segmentos de ruta (`/producer/projects/[uppId]/animales`, `/mvz/ranchos/[uppId]/vacunacion`, etc.)
+  - permite `/producer/profile` y `/mvz/profile` como rutas self-service sin exigir permisos de configuracion del panel
+  - exige `producer.tenant.read` para `/producer/settings`
+  - exige `mvz.tenant.read` para `/mvz/settings`
 - `src/server/authz/index.ts`
   - aplica `roles`, `permissions` y `scope.uppId`
   - bloquea acceso a proyectos no asignados o fuera del tenant
+
+## Split perfil vs panel
+
+- `Configuracion` en sidebar izquierdo queda reservada para datos del tenant/panel.
+- `Mi perfil` concentra datos de cuenta (`auth.user_metadata.full_name`, `profiles.email`) y ficha de dominio del usuario cuando exista.
+- `employee`, `producer_viewer` y `mvz_internal` pueden entrar a `Mi perfil`, pero no reciben acceso al panel settings por defecto.

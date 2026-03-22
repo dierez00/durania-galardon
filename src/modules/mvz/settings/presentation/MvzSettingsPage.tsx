@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useTenantWorkspace } from "@/modules/workspace";
+import MvzMembersPage from "@/modules/mvz/members/presentation/MvzMembersPage";
 import { getAccessToken } from "@/shared/lib/auth-session";
 import { Button } from "@/shared/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 
@@ -13,15 +14,14 @@ interface MvzSettingsPayload {
     organization?: {
       name?: string;
       slug?: string;
-    };
-    profile?: {
-      fullName?: string;
-      licenseNumber?: string;
-      status?: string;
+      type?: string;
     };
     summary?: {
+      activeMembers?: number;
       assignedProjects?: number;
       lastAssignedAt?: string | null;
+      upcomingVisits?: number;
+      openIncidents?: number;
     };
   };
   error?: {
@@ -31,17 +31,23 @@ interface MvzSettingsPayload {
 
 export default function MvzSettingsPage() {
   const workspace = useTenantWorkspace();
-  const role = workspace.user?.role ?? "mvz_internal";
-  const canEditOrganization = role === "mvz_government";
+  const permissions = workspace.user?.permissions ?? [];
+  const canEditOrganization = permissions.includes("mvz.tenant.write");
+  const canViewMembers = permissions.includes("mvz.members.read");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [organizationName, setOrganizationName] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [licenseNumber, setLicenseNumber] = useState("");
-  const [assignedProjects, setAssignedProjects] = useState(0);
-  const [lastAssignedAt, setLastAssignedAt] = useState<string | null>(null);
+  const [organizationSlug, setOrganizationSlug] = useState("");
+  const [organizationType, setOrganizationType] = useState("");
+  const [summary, setSummary] = useState({
+    activeMembers: 0,
+    assignedProjects: 0,
+    lastAssignedAt: null as string | null,
+    upcomingVisits: 0,
+    openIncidents: 0,
+  });
 
   useEffect(() => {
     const load = async () => {
@@ -69,10 +75,15 @@ export default function MvzSettingsPage() {
         }
 
         setOrganizationName(body.data?.organization?.name ?? "");
-        setFullName(body.data?.profile?.fullName ?? "");
-        setLicenseNumber(body.data?.profile?.licenseNumber ?? "");
-        setAssignedProjects(body.data?.summary?.assignedProjects ?? 0);
-        setLastAssignedAt(body.data?.summary?.lastAssignedAt ?? null);
+        setOrganizationSlug(body.data?.organization?.slug ?? "");
+        setOrganizationType(body.data?.organization?.type ?? "mvz");
+        setSummary({
+          activeMembers: body.data?.summary?.activeMembers ?? 0,
+          assignedProjects: body.data?.summary?.assignedProjects ?? 0,
+          lastAssignedAt: body.data?.summary?.lastAssignedAt ?? null,
+          upcomingVisits: body.data?.summary?.upcomingVisits ?? 0,
+          openIncidents: body.data?.summary?.openIncidents ?? 0,
+        });
       } finally {
         setLoading(false);
       }
@@ -100,7 +111,6 @@ export default function MvzSettingsPage() {
         },
         body: JSON.stringify({
           organizationName,
-          fullName,
         }),
       });
 
@@ -111,10 +121,15 @@ export default function MvzSettingsPage() {
       }
 
       setOrganizationName(body.data?.organization?.name ?? organizationName);
-      setFullName(body.data?.profile?.fullName ?? fullName);
-      setLicenseNumber(body.data?.profile?.licenseNumber ?? licenseNumber);
-      setAssignedProjects(body.data?.summary?.assignedProjects ?? assignedProjects);
-      setLastAssignedAt(body.data?.summary?.lastAssignedAt ?? lastAssignedAt);
+      setOrganizationSlug(body.data?.organization?.slug ?? organizationSlug);
+      setOrganizationType(body.data?.organization?.type ?? organizationType);
+      setSummary({
+        activeMembers: body.data?.summary?.activeMembers ?? summary.activeMembers,
+        assignedProjects: body.data?.summary?.assignedProjects ?? summary.assignedProjects,
+        lastAssignedAt: body.data?.summary?.lastAssignedAt ?? summary.lastAssignedAt,
+        upcomingVisits: body.data?.summary?.upcomingVisits ?? summary.upcomingVisits,
+        openIncidents: body.data?.summary?.openIncidents ?? summary.openIncidents,
+      });
     } finally {
       setSaving(false);
     }
@@ -131,13 +146,21 @@ export default function MvzSettingsPage() {
 
       {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Ranchos asignados</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{loading ? "-" : assignedProjects}</p>
+            <p className="text-2xl font-bold">{loading ? "-" : summary.assignedProjects}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Miembros activos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{loading ? "-" : summary.activeMembers}</p>
           </CardContent>
         </Card>
         <Card>
@@ -148,17 +171,34 @@ export default function MvzSettingsPage() {
             <p className="text-sm font-medium">
               {loading
                 ? "-"
-                : lastAssignedAt
-                  ? new Date(lastAssignedAt).toLocaleDateString("es-MX")
+                : summary.lastAssignedAt
+                  ? new Date(summary.lastAssignedAt).toLocaleDateString("es-MX")
                   : "Sin registro"}
             </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Visitas proximas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{loading ? "-" : summary.upcomingVisits}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Incidencias abiertas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{loading ? "-" : summary.openIncidents}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Datos del tenant y perfil</CardTitle>
+          <CardTitle>General</CardTitle>
+          <CardDescription>Configuracion del tenant MVZ y controles del panel operativo.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
@@ -171,24 +211,27 @@ export default function MvzSettingsPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="fullName">Nombre del MVZ</Label>
-            <Input
-              id="fullName"
-              value={fullName}
-              onChange={(event) => setFullName(event.target.value)}
-            />
+            <Label htmlFor="organizationSlug">Slug</Label>
+            <Input id="organizationSlug" value={organizationSlug} readOnly />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="licenseNumber">Licencia profesional</Label>
-            <Input id="licenseNumber" value={licenseNumber} readOnly />
+            <Label htmlFor="organizationType">Tipo de tenant</Label>
+            <Input id="organizationType" value={organizationType || "mvz"} readOnly />
           </div>
           <div className="md:col-span-2">
-            <Button onClick={handleSave} disabled={saving}>
+            <Button onClick={handleSave} disabled={!canEditOrganization || saving}>
               {saving ? "Guardando..." : "Guardar cambios"}
             </Button>
           </div>
         </CardContent>
       </Card>
+
+      {canViewMembers ? (
+        <MvzMembersPage
+          title="Equipo MVZ"
+          description="Altas, suspensiones y cambio de rol entre MVZ Gobierno y MVZ Interno."
+        />
+      ) : null}
     </div>
   );
 }

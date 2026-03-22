@@ -1,6 +1,6 @@
 Status: History
 Owner: Engineering
-Last Updated: 2026-03-19
+Last Updated: 2026-03-22
 Source of Truth: Historical log of documentation-only changes. Current operational guidance lives in `docs/README.md` and the linked canonical docs.
 
 # Docs Changelog
@@ -19,6 +19,11 @@ Source of Truth: Historical log of documentation-only changes. Current operation
 
 ### Changed
 
+- `docs/architecture/routing.md`: documenta el split `Mi perfil` vs `Configuracion del panel`, las rutas `/producer/profile` y `/mvz/profile`, y los guards nuevos por permisos `*.tenant.read`.
+- `docs/architecture/auth-admin.md`: actualiza roles soportados, redirects reales (`/producer`, `/mvz`) y endpoints nuevos de perfil/equipo MVZ.
+- `docs/architecture/tenant-iam.md`: agrega `producer_viewer`, permisos `producer.tenant.*`, `mvz.tenant.*`, `mvz.profile.*`, `mvz.members.*` y el cambio de `auth_mvz_assigned_to_upp()` a membresia tenant-based.
+- `docs/architecture/overview.md` y `src/app/api/README.md`: reflejan ownership de `producer/profile`, `mvz/profile` y `mvz/members`.
+- `docs/data/database.md`: actualiza el catalogo de roles/permisos tenant y documenta `profiles.email` como espejo de `auth.users.email`.
 - `docs/architecture/routing.md`: actualiza el mapa tenant a navegacion de dos niveles (`/producer` y `/mvz` como home organizacional, rutas de proyecto y redirects legacy).
 - `docs/architecture/multitenancy.md`: documenta el workspace de dos niveles, persistencia de proyecto activo y uso de `tenant.name` desde `GET /api/auth/me`.
 - `docs/architecture/routing.md`: documenta el shell tenant compacto, el breadcrumb `Inicio > proyecto actual` y la eliminacion del badge/selector separado en topbar.

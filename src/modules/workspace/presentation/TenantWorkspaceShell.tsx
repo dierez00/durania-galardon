@@ -3,10 +3,17 @@
 import { Building2 } from "lucide-react";
 import { TenantAppShell } from "@/shared/ui/layout/TenantAppShell";
 import { useTenantWorkspace } from "@/modules/workspace/presentation/TenantWorkspaceContext";
-import { buildSettingsHref } from "@/modules/workspace/presentation/workspace-routing";
+import {
+  buildProfileHref,
+  buildSettingsHref,
+} from "@/modules/workspace/presentation/workspace-routing";
 
 export function TenantWorkspaceShell({ children }: { children: React.ReactNode }) {
   const workspace = useTenantWorkspace();
+  const canAccessPanelSettings =
+    workspace.panel === "producer"
+      ? Boolean(workspace.user?.permissions.includes("producer.tenant.read"))
+      : Boolean(workspace.user?.permissions.includes("mvz.tenant.read"));
 
   if (workspace.loading) {
     return (
@@ -27,6 +34,8 @@ export function TenantWorkspaceShell({ children }: { children: React.ReactNode }
       userDisplayName={workspace.user?.displayName ?? "Usuario"}
       userEmail={workspace.user?.email ?? ""}
       userRoleLabel={workspace.user?.roleLabel ?? ""}
+      profileHref={buildProfileHref(workspace.panel)}
+      canAccessPanelSettings={canAccessPanelSettings}
       settingsHref={buildSettingsHref(workspace.panel)}
       onProjectChange={workspace.navigateToProject}
       errorMessage={workspace.error}

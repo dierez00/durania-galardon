@@ -24,6 +24,8 @@ interface ProfileMenuProps {
   displayName: string;
   email: string;
   roleLabel: string;
+  profileHref: string;
+  canAccessPanelSettings: boolean;
   settingsHref: string;
 }
 
@@ -50,6 +52,8 @@ export function ProfileMenu({
   displayName,
   email,
   roleLabel,
+  profileHref,
+  canAccessPanelSettings,
   settingsHref,
 }: ProfileMenuProps) {
   const router = useRouter();
@@ -76,10 +80,16 @@ export function ProfileMenu({
           <div className="text-xs font-normal text-muted-foreground">{email}</div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => router.push(settingsHref)}>
+        <DropdownMenuItem onClick={() => router.push(profileHref)}>
           <Settings className="h-4 w-4" />
-          Configuracion
+          Mi perfil
         </DropdownMenuItem>
+        {canAccessPanelSettings ? (
+          <DropdownMenuItem onClick={() => router.push(settingsHref)}>
+            <Settings className="h-4 w-4" />
+            Configuracion del panel
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <Palette className="h-4 w-4" />

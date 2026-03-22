@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-19
+Last Updated: 2026-03-22
 Source of Truth: Canonical database reference for schema, IAM tables, views, RLS helpers, and MVZ hierarchy additions.
 # DURANIA MVP PRO — Documentación de Base de Datos
 
@@ -51,9 +51,10 @@ La base de datos está diseñada sobre un modelo **multi-tenant con tres tipos d
 | `producer` | `tenant_admin` | Administrador del rancho (mismo acceso que `producer`) |
 | `producer` | `producer` | Dueño del rancho, acceso completo a sus UPPs |
 | `producer` | `employee` | Empleado operativo del rancho |
-| `producer` | `mvz_internal` | MVZ contratado por el productor, acceso a pruebas sanitarias |
+| `producer` | `producer_viewer` | Usuario de consulta en panel productor |
 | `mvz` | `tenant_admin` | Administrador del perfil MVZ |
 | `mvz` | `mvz_government` | Auditor externo, accede a ranchos asignados por gobierno |
+| `mvz` | `mvz_internal` | Miembro interno del tenant MVZ con acceso operativo sin administrar settings |
 
 ### Cadena de Acceso IAM
 
@@ -66,7 +67,7 @@ tenant_memberships        ← el usuario pertenece a un tenant
     ↓
 tenant_user_roles         ← se le asigna un rol dentro del tenant
     ↓
-tenant_roles              ← tenant_admin | producer | employee | mvz_*
+tenant_roles              ← tenant_admin | producer | employee | producer_viewer | mvz_*
     ↓
 tenant_role_permissions   ← cada rol tiene permisos atómicos
     ↓
@@ -97,10 +98,11 @@ Extiende `auth.users` de Supabase con metadatos de la aplicación. **Se crea aut
 | Columna | Tipo | Descripción |
 |---|---|---|
 | `id` | `UUID` | PK · FK → `auth.users(id)` |
+| `email` | `TEXT` | Espejo denormalizado de `auth.users.email` para queries de aplicación |
 | `status` | `TEXT` | `'active'` \| `'inactive'` \| `'blocked'` |
 | `created_at` | `TIMESTAMPTZ` | Fecha de creación |
 
-> ⚠️ El trigger `on_auth_user_created` crea el perfil automáticamente. No insertar manualmente.
+> ⚠️ Los triggers `on_auth_user_created` y `on_auth_user_updated` mantienen `profiles.email` sincronizado con Supabase Auth. No insertar manualmente.
 
 ---
 
@@ -159,9 +161,21 @@ Catálogo global de permisos atómicos. Compartidos por todos los tenants. Forma
 - `mvz.quarantines.read` / `.write`
 - `mvz.exports.read` / `.write`
 - `mvz.notifications.read`
+- `mvz.tenant.read` / `.write`
+- `mvz.profile.read` / `.write`
+- `mvz.members.read` / `.write`
+- `mvz.ranch.read`
+- `mvz.ranch.animals.read`
+- `mvz.ranch.clinical.read`
+- `mvz.ranch.vaccinations.read` / `.write`
+- `mvz.ranch.incidents.read` / `.write`
+- `mvz.ranch.reports.read`
+- `mvz.ranch.documents.read` / `.write`
+- `mvz.ranch.visits.read` / `.write`
 
 **Módulo `producer`**
 - `producer.dashboard.read`
+- `producer.tenant.read` / `.write`
 - `producer.upp.read` / `.write`
 - `producer.bovinos.read` / `.write`
 - `producer.movements.read` / `.write`
@@ -200,7 +214,7 @@ Roles disponibles dentro de un tenant. Los roles de sistema (`is_system = true`)
 |---|---|---|
 | `id` | `UUID` | PK |
 | `tenant_id` | `UUID` | FK → `tenants(id)` |
-| `key` | `TEXT` | `tenant_admin` \| `producer` \| `employee` \| `mvz_internal` \| `mvz_government` |
+| `key` | `TEXT` | `tenant_admin` \| `producer` \| `employee` \| `producer_viewer` \| `mvz_internal` \| `mvz_government` |
 | `name` | `TEXT` | Nombre legible |
 | `is_system` | `BOOLEAN` | `TRUE` si fue creado por el seed. No eliminar. |
 | `priority` | `INTEGER` | Orden de prioridad (menor = más privilegio) |
@@ -824,7 +838,7 @@ Todas las funciones son `SECURITY DEFINER` con `SET search_path = public`.
 | `auth_has_tenant_role(p_tenant_id, p_role_key)` | `UUID, TEXT` | `BOOLEAN` | ¿El usuario tiene este rol en el tenant? |
 | `auth_has_tenant_permission(p_tenant_id, p_permission_key)` | `UUID, TEXT` | `BOOLEAN` | ¿El usuario tiene este permiso (vía cualquier rol)? |
 | `auth_has_upp_access(p_upp_id, p_min_level)` | `UUID, TEXT` | `BOOLEAN` | ¿El usuario tiene acceso a la UPP con nivel mínimo? (`'viewer'` por defecto) |
-| `auth_mvz_assigned_to_upp(p_upp_id)` | `UUID` | `BOOLEAN` | ¿El MVZ autenticado tiene este rancho asignado? Función cross-tenant. |
+| `auth_mvz_assigned_to_upp(p_upp_id)` | `UUID` | `BOOLEAN` | ¿El MVZ autenticado tiene este rancho asignado? Función cross-tenant basada en membresía activa al tenant MVZ. |
 
 ```sql
 -- Routing en login

@@ -26,6 +26,8 @@ interface TenantTopbarProps {
   userDisplayName: string;
   userEmail: string;
   userRoleLabel: string;
+  profileHref: string;
+  canAccessPanelSettings: boolean;
   settingsHref: string;
 }
 
@@ -37,6 +39,8 @@ export function TenantTopbar({
   userDisplayName,
   userEmail,
   userRoleLabel,
+  profileHref,
+  canAccessPanelSettings,
   settingsHref,
 }: TenantTopbarProps) {
   return (
@@ -83,6 +87,8 @@ export function TenantTopbar({
           displayName={userDisplayName}
           email={userEmail}
           roleLabel={userRoleLabel}
+          profileHref={profileHref}
+          canAccessPanelSettings={canAccessPanelSettings}
           settingsHref={settingsHref}
         />
       </div>

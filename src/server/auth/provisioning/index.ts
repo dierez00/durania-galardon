@@ -28,6 +28,34 @@ export async function updateAuthUserStatus(userId: string, bannedUntil?: string)
   });
 }
 
+export async function fetchAuthUserDisplayName(userId: string): Promise<string | null> {
+  const provisioning = getSupabaseProvisioningClient();
+  const result = await provisioning.auth.admin.getUserById(userId);
+
+  if (result.error || !result.data.user) {
+    return null;
+  }
+
+  const metadata = result.data.user.user_metadata ?? {};
+  const fullName = metadata.full_name;
+  const name = metadata.name;
+  const displayName = metadata.display_name;
+
+  if (typeof fullName === "string" && fullName.trim().length > 0) {
+    return fullName.trim();
+  }
+
+  if (typeof name === "string" && name.trim().length > 0) {
+    return name.trim();
+  }
+
+  if (typeof displayName === "string" && displayName.trim().length > 0) {
+    return displayName.trim();
+  }
+
+  return null;
+}
+
 /**
  * Verifica si un email ya está registrado en Supabase Auth.
  * Llama directamente a la API REST de GoTrue con el service role key.
@@ -110,4 +138,29 @@ export async function updateAuthUserEmail(userId: string, email: string): Promis
   } catch {
     return false;
   }
+}
+
+export async function updateAuthUserDisplayName(userId: string, displayName: string): Promise<boolean> {
+  const provisioning = getSupabaseProvisioningClient();
+  const userResult = await provisioning.auth.admin.getUserById(userId);
+
+  if (userResult.error || !userResult.data.user) {
+    return false;
+  }
+
+  const currentMetadata =
+    userResult.data.user.user_metadata && typeof userResult.data.user.user_metadata === "object"
+      ? userResult.data.user.user_metadata
+      : {};
+
+  const updateResult = await provisioning.auth.admin.updateUserById(userId, {
+    user_metadata: {
+      ...currentMetadata,
+      full_name: displayName,
+      display_name: displayName,
+      name: displayName,
+    },
+  });
+
+  return !updateResult.error;
 }

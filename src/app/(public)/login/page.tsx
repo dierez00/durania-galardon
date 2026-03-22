@@ -18,6 +18,7 @@ interface LoginApiResponse {
       | "tenant_admin"
       | "producer"
       | "employee"
+      | "producer_viewer"
       | "mvz_government"
       | "mvz_internal";
     redirectTo: string;

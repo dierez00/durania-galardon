@@ -19,6 +19,8 @@ interface TenantAppShellProps {
   userDisplayName: string;
   userEmail: string;
   userRoleLabel: string;
+  profileHref: string;
+  canAccessPanelSettings: boolean;
   settingsHref: string;
   onProjectChange: (projectId: string) => void;
   errorMessage?: string;
@@ -35,6 +37,8 @@ export function TenantAppShell({
   userDisplayName,
   userEmail,
   userRoleLabel,
+  profileHref,
+  canAccessPanelSettings,
   settingsHref,
   onProjectChange,
   errorMessage,
@@ -56,6 +60,8 @@ export function TenantAppShell({
           userDisplayName={userDisplayName}
           userEmail={userEmail}
           userRoleLabel={userRoleLabel}
+          profileHref={profileHref}
+          canAccessPanelSettings={canAccessPanelSettings}
           settingsHref={settingsHref}
         />
         <main className="flex-1 overflow-y-auto p-6">
