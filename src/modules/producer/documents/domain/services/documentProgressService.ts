@@ -5,11 +5,12 @@ import { DocumentProgress, DocumentProgressItem } from "../entities/DocumentProg
 export function calculateDocumentProgress(
   producerDocs: ProducerDocument[],
   uppDocs: UppDocument[],
-  upps: Array<{ id: string; name: string }>
+  upps: Array<{ id: string; name: string }>,
+  currentUppId?: string
 ): DocumentProgress {
   const items: DocumentProgressItem[] = [];
 
-  // Personal documents (3)
+  // Personal documents (3) - siempre se incluyen
   PRODUCER_PERSONAL_DOCUMENT_TYPES.forEach((type) => {
     const doc = producerDocs.find(d => d.documentTypeKey === type.key && d.isCurrent);
     items.push({
@@ -20,8 +21,10 @@ export function calculateDocumentProgress(
     });
   });
 
-  // UPP documents (2 per UPP)
-  upps.forEach((upp) => {
+  // UPP documents - filtrar a currentUppId si está especificado
+  const scopedUpps = currentUppId ? upps.filter(u => u.id === currentUppId) : upps;
+  
+  scopedUpps.forEach((upp) => {
     UPP_DOCUMENT_TYPES.forEach((type) => {
       const doc = uppDocs.find(d => d.uppId === upp.id && d.documentType === type.key && d.isCurrent);
       items.push({

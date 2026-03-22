@@ -28,16 +28,18 @@ export async function GET(request: NextRequest) {
     panelType: auth.context.user.panelType,
   });
 
-  const uppId = request.nextUrl.searchParams.get("uppId")?.trim() ?? null;
-  if (uppId) {
-    const canAccess = await auth.context.canAccessUpp(uppId);
-    if (!canAccess) {
-      return apiError("FORBIDDEN", "No tiene acceso a la UPP solicitada.", 403);
-    }
+  const uppId = request.nextUrl.searchParams.get("uppId")?.trim();
+  if (!uppId) {
+    return apiError("INVALID_PAYLOAD", "Debe proporcionar el parámetro 'uppId'.", 400);
+  }
+
+  const canAccess = await auth.context.canAccessUpp(uppId);
+  if (!canAccess) {
+    return apiError("FORBIDDEN", "No tiene acceso a la UPP solicitada.", 403);
   }
 
   const accessibleUppIds = await auth.context.getAccessibleUppIds();
-  const scopedUppIds = uppId ? accessibleUppIds.filter((accessibleUppId) => accessibleUppId === uppId) : accessibleUppIds;
+  const scopedUppIds = accessibleUppIds.filter((accessibleUppId) => accessibleUppId === uppId);
   logProducerAccessServer("producer/upp-documents:get:accessible-ids", {
     userId: auth.context.user.id,
     tenantId: auth.context.user.tenantId,
@@ -63,7 +65,21 @@ export async function GET(request: NextRequest) {
       tenantId: auth.context.user.tenantId,
       documentsCount: documents.length,
     });
-    return apiSuccess({ documents });
+    return apiSuccess({
+      documents: documents.map((document) => ({
+        id: document.id,
+        tenant_id: document.tenantId,
+        upp_id: document.uppId,
+        document_type: document.documentType,
+        file_storage_key: document.fileStorageKey,
+        file_hash: document.fileHash,
+        status: document.status,
+        is_current: document.isCurrent,
+        issued_at: document.issuedAt,
+        expiry_date: document.expiryDate,
+        uploaded_at: document.uploadedAt,
+      })),
+    });
   } catch (error) {
     logProducerAccessServer("producer/upp-documents:get:error", {
       userId: auth.context.user.id,

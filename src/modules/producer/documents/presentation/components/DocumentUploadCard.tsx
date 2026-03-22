@@ -19,7 +19,7 @@ import { useDocumentUpload } from "../hooks/useDocumentUpload";
 interface Props {
   upps: Array<{ id: string; name: string }>;
   onSuccess: () => void;
-  mode?: "all" | "personal" | "upp";
+  mode?: "all" | "personal" | "upp" | "mixed";
   defaultUppId?: string | null;
 }
 
@@ -40,6 +40,7 @@ export function DocumentUploadCard({
 
   const personalOnly = mode === "personal";
   const uppOnly = mode === "upp";
+  const isMixedMode = mode === "mixed";
 
   useEffect(() => {
     if (defaultUppId) {
@@ -49,6 +50,13 @@ export function DocumentUploadCard({
 
   const handlePersonalUpload = async () => {
     if (!personalFile || !personalDocType) return;
+    
+    const docType = PRODUCER_PERSONAL_DOCUMENT_TYPES.find((type) => type.key === personalDocType);
+    if (docType?.requiresExpiry && !personalExpiryDate) {
+      alert("Debe proporcionar la fecha para este tipo de documento.");
+      return;
+    }
+
     try {
       await uploadProducerDocument(personalFile, personalDocType, personalExpiryDate || undefined);
       setPersonalFile(null);
@@ -61,6 +69,13 @@ export function DocumentUploadCard({
 
   const handleUppUpload = async () => {
     if (!uppFile || !uppDocType || !selectedUppId) return;
+    
+    const docType = UPP_DOCUMENT_TYPES.find((type) => type.key === uppDocType);
+    if (docType?.requiresExpiry && !uppExpiryDate) {
+      alert("Debe proporcionar la fecha de vigencia para este tipo de documento.");
+      return;
+    }
+
     try {
       await uploadUppDocument(uppFile, selectedUppId, uppDocType, uppExpiryDate || undefined);
       setUppFile(null);
@@ -75,15 +90,25 @@ export function DocumentUploadCard({
     <Card>
       <CardHeader>
         <CardTitle>
-          {uppOnly ? "Cargar Documento de Rancho" : personalOnly ? "Cargar Documento Personal" : "Cargar Documento"}
+          {uppOnly
+            ? "Cargar Documento de Rancho"
+            : personalOnly
+              ? "Cargar Documento Personal"
+              : isMixedMode
+                ? "Cargar Documento"
+                : "Cargar Documento"}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue={uppOnly ? "upp" : "personal"}>
-          {mode === "all" ? (
+          {mode === "all" || mode === "mixed" ? (
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="personal">Documentos Personales</TabsTrigger>
-              <TabsTrigger value="upp">Documentos de Rancho</TabsTrigger>
+              <TabsTrigger value="personal">
+                {mode === "mixed" ? "Documentos Personales" : "Documentos Personales"}
+              </TabsTrigger>
+              <TabsTrigger value="upp">
+                {mode === "mixed" ? "Documentos del Proyecto" : "Documentos de Rancho"}
+              </TabsTrigger>
             </TabsList>
           ) : null}
 
@@ -160,18 +185,29 @@ export function DocumentUploadCard({
                       ?.issueDateBased
                       ? "Fecha de Emision"
                       : "Fecha de Vigencia"}
+                    {" "}
+                    <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     type="date"
                     value={personalExpiryDate}
                     onChange={(event) => setPersonalExpiryDate(event.target.value)}
+                    placeholder="dd/mm/yyyy"
+                    className="placeholder-gray-400"
                   />
+                  <p className="text-xs text-gray-500">Formato: dd/mm/yyyy</p>
                 </div>
               ) : null}
 
               <Button
                 onClick={handlePersonalUpload}
-                disabled={!personalFile || !personalDocType || uploading}
+                disabled={
+                  !personalFile ||
+                  !personalDocType ||
+                  uploading ||
+                  (PRODUCER_PERSONAL_DOCUMENT_TYPES.find((type) => type.key === personalDocType)
+                    ?.requiresExpiry && !personalExpiryDate)
+                }
                 className="w-full"
               >
                 {uploading ? "Subiendo..." : "Subir Documento Personal"}
@@ -264,18 +300,30 @@ export function DocumentUploadCard({
               {uppDocType &&
               UPP_DOCUMENT_TYPES.find((type) => type.key === uppDocType)?.requiresExpiry ? (
                 <div className="space-y-2">
-                  <Label>Fecha de Vigencia</Label>
+                  <Label>
+                    Fecha de Vigencia <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     type="date"
                     value={uppExpiryDate}
                     onChange={(event) => setUppExpiryDate(event.target.value)}
+                    placeholder="dd/mm/yyyy"
+                    className="placeholder-gray-400"
                   />
+                  <p className="text-xs text-gray-500">Formato: dd/mm/yyyy</p>
                 </div>
               ) : null}
 
               <Button
                 onClick={handleUppUpload}
-                disabled={!uppFile || !uppDocType || !selectedUppId || uploading}
+                disabled={
+                  !uppFile ||
+                  !uppDocType ||
+                  !selectedUppId ||
+                  uploading ||
+                  (UPP_DOCUMENT_TYPES.find((type) => type.key === uppDocType)?.requiresExpiry &&
+                    !uppExpiryDate)
+                }
                 className="w-full"
               >
                 {uploading ? "Subiendo..." : "Subir Documento de Rancho"}

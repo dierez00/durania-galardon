@@ -10,12 +10,13 @@ import { useUppDocuments } from "./hooks/useUppDocuments";
 import { useDocumentProgress } from "./hooks/useDocumentProgress";
 import { useProducerUppContext, useProducerUpps } from "@/modules/producer/ranchos/presentation";
 import { Skeleton } from "@/shared/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/shared/ui/tabs";
 import type { DocumentChangeEvent } from "@/modules/producer/documents/domain/types/DocumentEvents";
 
 const MAX_ALERT_QUEUE_SIZE = 50;
 
 export interface ProducerDocumentosPageProps {
-  scope?: "all" | "personal" | "upp";
+  scope?: "all" | "personal" | "upp" | "mixed";
   title?: string;
   description?: string;
 }
@@ -39,7 +40,7 @@ export default function ProducerDocumentosPage({
     reload: reloadUpp,
     changes: uppChanges,
     lastUpdate: uppLastUpdate,
-  } = useUppDocuments(scope === "upp" ? selectedUppId : null);
+  } = useUppDocuments(scope === "upp" || scope === "mixed" ? selectedUppId : null);
   const { upps, loading: loadingUpps } = useProducerUpps();
 
   const [alertQueue, setAlertQueue] = useState<DocumentChangeEvent[]>([]);
@@ -47,11 +48,13 @@ export default function ProducerDocumentosPage({
 
   const producerDocuments = scope === "upp" ? [] : producerDocs;
   const uppDocuments = scope === "personal" ? [] : uppDocs;
+  const isMixedScope = scope === "mixed";
 
   const progress = useDocumentProgress(
     producerDocuments,
     uppDocuments,
-    upps.map((upp) => ({ id: upp.id, name: upp.name }))
+    upps.map((upp) => ({ id: upp.id, name: upp.name })),
+    scope === "mixed" || scope === "upp" ? (selectedUppId ?? undefined) : undefined
   );
 
   const allChanges = useMemo(
@@ -68,7 +71,9 @@ export default function ProducerDocumentosPage({
       ? "Documentos del productor"
       : scope === "upp"
         ? "Documentos del proyecto"
-        : "Documentos");
+        : scope === "mixed" && selectedUpp
+          ? `Documentos: ${selectedUpp.name}`
+          : "Documentos");
 
   const headingDescription =
     description ??
@@ -76,22 +81,32 @@ export default function ProducerDocumentosPage({
       ? "Carga y seguimiento documental de la organizacion productora."
       : scope === "upp" && selectedUpp
         ? `Carga y seguimiento documental de ${selectedUpp.name}.`
-        : "Carga y seguimiento documental del productor y sus ranchos.");
+        : scope === "mixed" && selectedUpp
+          ? `Documentos personales y del proyecto ${selectedUpp.name}.`
+          : "Carga y seguimiento documental del productor y sus ranchos.");
 
   const handleUploadSuccess = () => {
-    if (scope !== "upp") {
+    if (scope !== "upp" && scope !== "mixed") {
       reloadProducer();
     }
     if (scope !== "personal") {
       reloadUpp();
     }
+    if (scope === "mixed") {
+      reloadProducer();
+      reloadUpp();
+    }
   };
 
   const handleDeleteSuccess = () => {
-    if (scope !== "upp") {
+    if (scope !== "upp" && scope !== "mixed") {
       reloadProducer();
     }
     if (scope !== "personal") {
+      reloadUpp();
+    }
+    if (scope === "mixed") {
+      reloadProducer();
       reloadUpp();
     }
   };
@@ -131,22 +146,55 @@ export default function ProducerDocumentosPage({
       <DocumentUploadCard
         upps={upps.map((upp) => ({ id: upp.id, name: upp.name }))}
         mode={scope}
-        defaultUppId={scope === "upp" ? selectedUppId : null}
+        defaultUppId={scope === "upp" || scope === "mixed" ? selectedUppId : null}
         onSuccess={handleUploadSuccess}
       />
 
-      <DocumentList
-        producerDocuments={producerDocuments}
-        uppDocuments={uppDocuments}
-        loading={loading}
-        recentChanges={allChanges}
-        isUpdating={
-          (scope === "upp" ? false : loadingProducer) ||
-          (scope === "personal" ? false : loadingUpp)
-        }
-        lastUpdate={producerLastUpdate || uppLastUpdate}
-        onDeleteSuccess={handleDeleteSuccess}
-      />
+      {isMixedScope ? (
+        <Tabs defaultValue="personal" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="personal">Documentos Personales</TabsTrigger>
+            <TabsTrigger value="proyecto">Documentos del Proyecto</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="personal" className="space-y-4">
+            <DocumentList
+              producerDocuments={producerDocuments}
+              uppDocuments={[]}
+              loading={loading}
+              recentChanges={producerChanges || []}
+              isUpdating={loadingProducer}
+              lastUpdate={producerLastUpdate}
+              onDeleteSuccess={handleDeleteSuccess}
+            />
+          </TabsContent>
+
+          <TabsContent value="proyecto" className="space-y-4">
+            <DocumentList
+              producerDocuments={[]}
+              uppDocuments={uppDocuments}
+              loading={loading}
+              recentChanges={uppChanges || []}
+              isUpdating={loadingUpp}
+              lastUpdate={uppLastUpdate}
+              onDeleteSuccess={handleDeleteSuccess}
+            />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <DocumentList
+          producerDocuments={producerDocuments}
+          uppDocuments={uppDocuments}
+          loading={loading}
+          recentChanges={allChanges}
+          isUpdating={
+            (scope === "upp" ? false : loadingProducer) ||
+            (scope === "personal" ? false : loadingUpp)
+          }
+          lastUpdate={producerLastUpdate || uppLastUpdate}
+          onDeleteSuccess={handleDeleteSuccess}
+        />
+      )}
 
       {currentAlert ? (
         <DocumentStatusNotification

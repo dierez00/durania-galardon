@@ -73,8 +73,21 @@ export class ServerUppDocumentsRepository implements IUppDocumentsRepository {
     await ensureBucketExists(DOCUMENTS_BUCKET);
 
     const supabaseAdmin = getSupabaseAdminClient();
+    
+    // Obtener el producer_id del upp
+    const uppResult = await supabaseAdmin
+      .from("upps")
+      .select("producer_id")
+      .eq("id", uppId)
+      .single();
+
+    if (uppResult.error || !uppResult.data) {
+      throw new Error("No fue posible obtener información del rancho (UPP).");
+    }
+
+    const producerId = uppResult.data.producer_id;
     const calculatedHash = await calculateFileHash(file);
-    const fileStorageKey = `${this.tenantId}/upp/${uppId}/${documentType}/${Date.now()}_${file.name}`;
+    const fileStorageKey = `${this.tenantId}/${producerId}/upp/${uppId}/${documentType}/${Date.now()}_${file.name}`;
 
     await uploadFileToSupabase(file, fileStorageKey);
     await supabaseAdmin
@@ -125,13 +138,24 @@ export class ServerUppDocumentsRepository implements IUppDocumentsRepository {
     const supabaseAdmin = getSupabaseAdminClient();
     const docResult = await supabaseAdmin
       .from("upp_documents")
-      .select("file_storage_key")
+      .select("file_storage_key, upp_id")
       .eq("tenant_id", this.tenantId)
       .eq("id", documentId)
       .maybeSingle();
 
     if (docResult.error || !docResult.data) {
       throw new Error("Documento no encontrado.");
+    }
+
+    // Obtener el producer_id del upp para validar acceso
+    const uppResult = await supabaseAdmin
+      .from("upps")
+      .select("producer_id")
+      .eq("id", docResult.data.upp_id)
+      .single();
+
+    if (uppResult.error || !uppResult.data) {
+      throw new Error("No fue posible validar el acceso al rancho.");
     }
 
     await supabaseAdmin.storage.from(DOCUMENTS_BUCKET).remove([docResult.data.file_storage_key]);

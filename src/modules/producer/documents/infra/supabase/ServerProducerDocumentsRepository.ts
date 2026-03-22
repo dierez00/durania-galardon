@@ -101,7 +101,7 @@ export class ServerProducerDocumentsRepository implements IProducerDocumentsRepo
     }
 
     const calculatedHash = await calculateFileHash(file);
-    const fileStorageKey = `${this.tenantId}/personal/${producerId}/${normalizedKey}/${Date.now()}_${file.name}`;
+    const fileStorageKey = `${this.tenantId}/${producerId}/personal/${normalizedKey}/${Date.now()}_${file.name}`;
     await uploadFileToSupabase(file, fileStorageKey);
 
     await supabaseAdmin
