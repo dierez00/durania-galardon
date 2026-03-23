@@ -3,5 +3,5 @@
 import ProducerDocumentosPage from "@/modules/producer/documents/presentation/ProducerDocumentosPage";
 
 export default function ProducerProjectDocumentsPage() {
-  return <ProducerDocumentosPage scope="upp" />;
+  return <ProducerDocumentosPage scope="mixed" />;
 }

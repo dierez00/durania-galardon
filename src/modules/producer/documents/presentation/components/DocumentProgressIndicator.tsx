@@ -49,33 +49,59 @@ export function DocumentProgressIndicator({ progress }: Props) {
         </div>
 
         <div className="space-y-2 pt-2 border-t">
-          <h4 className="text-sm font-medium">Documentos Requeridos</h4>
-          {progress.items.map((item) => (
-            <div
-              key={`${item.level}-${item.documentKey}-${item.uppId ?? "global"}`}
-              className="flex items-center justify-between text-sm"
-            >
-              <div className="flex items-center gap-2">
-                {item.status === "completed" && (
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                )}
-                {item.status === "uploaded" && (
-                  <Clock className="h-4 w-4 text-blue-500" />
-                )}
-                {item.status === "pending" && <Circle className="h-4 w-4 text-gray-400" />}
-                {item.status === "expired" && (
-                  <AlertCircle className="h-4 w-4 text-yellow-600" />
-                )}
-                {item.status === "rejected" && <XCircle className="h-4 w-4 text-red-600" />}
-                <span>
-                  {item.documentName}
-                  {item.uppName && (
-                    <span className="text-muted-foreground ml-1">({item.uppName})</span>
+          <h4 className="text-sm font-medium">Documentos Personales Requeridos</h4>
+          {progress.items
+            .filter((item) => item.level === "personal")
+            .map((item) => (
+              <div
+                key={`${item.level}-${item.documentKey}-${item.uppId ?? "global"}`}
+                className="flex items-center justify-between text-sm"
+              >
+                <div className="flex items-center gap-2">
+                  {item.status === "completed" && (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
                   )}
-                </span>
+                  {item.status === "uploaded" && (
+                    <Clock className="h-4 w-4 text-blue-500" />
+                  )}
+                  {item.status === "pending" && <Circle className="h-4 w-4 text-gray-400" />}
+                  {item.status === "expired" && (
+                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                  )}
+                  {item.status === "rejected" && <XCircle className="h-4 w-4 text-red-600" />}
+                  <span>{item.documentName}</span>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+
+          {progress.items.some((item) => item.level === "upp") && (
+            <>
+              <h4 className="text-sm font-medium mt-4">Documentos del Proyecto Requeridos</h4>
+              {progress.items
+                .filter((item) => item.level === "upp")
+                .map((item) => (
+                  <div
+                    key={`${item.level}-${item.documentKey}-${item.uppId ?? "global"}`}
+                    className="flex items-center justify-between text-sm"
+                  >
+                    <div className="flex items-center gap-2">
+                      {item.status === "completed" && (
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      )}
+                      {item.status === "uploaded" && (
+                        <Clock className="h-4 w-4 text-blue-500" />
+                      )}
+                      {item.status === "pending" && <Circle className="h-4 w-4 text-gray-400" />}
+                      {item.status === "expired" && (
+                        <AlertCircle className="h-4 w-4 text-yellow-600" />
+                      )}
+                      {item.status === "rejected" && <XCircle className="h-4 w-4 text-red-600" />}
+                      <span>{item.documentName}</span>
+                    </div>
+                  </div>
+                ))}
+            </>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -7,8 +7,9 @@ export class CalculateDocumentProgress {
   execute(
     producerDocs: ProducerDocument[],
     uppDocs: UppDocument[],
-    upps: Array<{ id: string; name: string }>
+    upps: Array<{ id: string; name: string }>,
+    currentUppId?: string
   ): DocumentProgress {
-    return calculateDocumentProgress(producerDocs, uppDocs, upps);
+    return calculateDocumentProgress(producerDocs, uppDocs, upps, currentUppId);
   }
 }

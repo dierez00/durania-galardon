@@ -1,1 +1,4 @@
-export { GET } from "@/modules/admin/productores/infra/http/documentsHandlers";
+export {
+	GET,
+	PATCH,
+} from "@/modules/admin/productores/infra/http/documentsHandlers";

@@ -21,12 +21,29 @@ export function resolveExpiryDate(documentTypeKey: string, inputDate: string): s
   const docType = PRODUCER_PERSONAL_DOCUMENT_TYPES.find((t) => t.key === documentTypeKey);
 
   if (docType?.issueDateBased) {
-    const [year, month, day] = inputDate.split("-").map(Number);
-    const expiry = new Date(year, month - 1 + ISSUE_DATE_VALIDITY_MONTHS, day);
-    const yy = expiry.getFullYear();
-    const mm = String(expiry.getMonth() + 1).padStart(2, "0");
-    const dd = String(expiry.getDate()).padStart(2, "0");
-    return `${yy}-${mm}-${dd}`;
+    try {
+      const [year, month, day] = inputDate.split("-").map(Number);
+      
+      // Validar que los valores son números válidos
+      if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+        throw new Error(`Fecha inválida: formato esperado YYYY-MM-DD, recibido '${inputDate}'`);
+      }
+      
+      // Validar rangos básicos
+      if (month < 1 || month > 12 || day < 1 || day > 31) {
+        throw new Error(`Fecha fuera de rango: mes ${month}, día ${day}`);
+      }
+      
+      const expiry = new Date(year, month - 1 + ISSUE_DATE_VALIDITY_MONTHS, day);
+      const yy = expiry.getFullYear();
+      const mm = String(expiry.getMonth() + 1).padStart(2, "0");
+      const dd = String(expiry.getDate()).padStart(2, "0");
+      return `${yy}-${mm}-${dd}`;
+    } catch (error) {
+      throw new Error(
+        `Error al procesar fecha de emisión '${inputDate}': ${error instanceof Error ? error.message : 'valor inválido'}`
+      );
+    }
   }
 
   return inputDate;

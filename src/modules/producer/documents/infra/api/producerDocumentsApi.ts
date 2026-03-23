@@ -16,6 +16,7 @@ interface ProducerDocumentDTO {
   file_storage_key: string;
   file_hash: string;
   status: string;
+  comments?: string | null;
   is_current: boolean;
   expiry_date?: string;
   uploaded_at: string;
@@ -70,7 +71,7 @@ export class ProducerDocumentsApiRepository implements IProducerDocumentsReposit
     return this.mapToEntity(body.data.document);
   }
 
-  async updateStatus(documentId: string, status: string): Promise<void> {
+  async updateStatus(documentId: string, status: string, comments?: string | null): Promise<void> {
     const token = await getAccessToken();
     if (!token) throw new Error("No existe sesión activa.");
 
@@ -80,7 +81,7 @@ export class ProducerDocumentsApiRepository implements IProducerDocumentsReposit
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ id: documentId, status }),
+      body: JSON.stringify({ id: documentId, status, comments }),
     });
 
     const body = await response.json();
@@ -115,6 +116,7 @@ export class ProducerDocumentsApiRepository implements IProducerDocumentsReposit
       fileStorageKey: raw.file_storage_key,
       fileHash: raw.file_hash,
       status: raw.status as DocumentStatus,
+      comments: raw.comments ?? null,
       isCurrent: raw.is_current,
       expiryDate: raw.expiry_date ?? null,
       uploadedAt: raw.uploaded_at,

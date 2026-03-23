@@ -5,6 +5,7 @@ import { CheckCircle2, MinusCircle, XCircle } from "lucide-react";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import {
@@ -17,6 +18,8 @@ import {
 } from "@/shared/ui/table";
 import { getAccessToken } from "@/shared/lib/auth-session";
 import { useProducerUppContext } from "@/modules/producer/ranchos/presentation";
+import { useDocumentUpload } from "@/modules/producer/documents/presentation";
+import { UPP_EXPORTACION_DOCUMENT_TYPES } from "@/modules/producer/documents/domain/entities/UppDocumentEntity";
 
 interface ExportRow {
   id: string;
@@ -74,11 +77,15 @@ function BoolChip({ value, label }: { value: boolean | null; label: string }) {
 
 export default function ProducerExportacionesPage() {
   const { upps, selectedUppId, selectedUpp } = useProducerUppContext();
+  const { uploading, uploadUppDocument } = useDocumentUpload();
   const [rows, setRows] = useState<ExportRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [formUppId, setFormUppId] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [exportDocType, setExportDocType] = useState("");
+  const [exportDocExpiryDate, setExportDocExpiryDate] = useState("");
+  const [exportDocFile, setExportDocFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (selectedUppId && !formUppId) setFormUppId(selectedUppId);
@@ -142,6 +149,32 @@ export default function ProducerExportacionesPage() {
     await loadRows();
   };
 
+  const uploadExportDocument = async () => {
+    if (!formUppId || !exportDocType || !exportDocFile) {
+      return;
+    }
+
+    const selectedDocumentType = UPP_EXPORTACION_DOCUMENT_TYPES.find((type) => type.key === exportDocType);
+    if (selectedDocumentType?.requiresExpiry && !exportDocExpiryDate) {
+      setErrorMessage("Debe capturar vigencia para este tipo de documento.");
+      return;
+    }
+
+    try {
+      setErrorMessage("");
+      await uploadUppDocument(
+        exportDocFile,
+        formUppId,
+        exportDocType,
+        exportDocExpiryDate || undefined
+      );
+      setExportDocFile(null);
+      setExportDocExpiryDate("");
+    } catch {
+      // useDocumentUpload already handles user-facing toast.
+    }
+  };
+
   const uppName = (uppId: string | null) =>
     !uppId ? "-" : upps.find((upp) => upp.id === uppId)?.name ?? uppId.slice(0, 8);
 
@@ -178,6 +211,69 @@ export default function ProducerExportacionesPage() {
             <Button onClick={createExport} disabled={!formUppId || submitting}>
               {submitting ? "Enviando..." : "Solicitar exportacion"}
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Documentación obligatoria para exportación</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-2 md:grid-cols-2">
+            {UPP_EXPORTACION_DOCUMENT_TYPES.map((documentType) => (
+              <div key={documentType.key} className="text-sm text-muted-foreground">
+                • {documentType.name}
+              </div>
+            ))}
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="space-y-2">
+              <Label htmlFor="exportDocType">Tipo de documento</Label>
+              <Select value={exportDocType} onValueChange={setExportDocType}>
+                <SelectTrigger id="exportDocType">
+                  <SelectValue placeholder="Seleccionar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {UPP_EXPORTACION_DOCUMENT_TYPES.map((type) => (
+                    <SelectItem key={type.key} value={type.key}>
+                      {type.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="exportDocFile">Archivo (PDF/JPG)</Label>
+              <Input
+                id="exportDocFile"
+                type="file"
+                accept=".pdf,.jpg,.jpeg"
+                onChange={(event) => setExportDocFile(event.target.files?.[0] ?? null)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="exportDocExpiry">Vigencia (si aplica)</Label>
+              <Input
+                id="exportDocExpiry"
+                type="date"
+                value={exportDocExpiryDate}
+                onChange={(event) => setExportDocExpiryDate(event.target.value)}
+              />
+            </div>
+
+            <div className="flex items-end">
+              <Button
+                onClick={uploadExportDocument}
+                disabled={!formUppId || !exportDocType || !exportDocFile || uploading}
+                className="w-full"
+              >
+                {uploading ? "Subiendo..." : "Subir documento"}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

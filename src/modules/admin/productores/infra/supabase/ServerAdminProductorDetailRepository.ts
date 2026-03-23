@@ -162,6 +162,7 @@ export class ServerAdminProductorDetailRepository implements IAdminProductorDeta
     type DocumentRow = {
       id: string;
       status: string;
+      comments: string | null;
       is_current: boolean;
       expiry_date: string | null;
       uploaded_at: string;
@@ -170,7 +171,7 @@ export class ServerAdminProductorDetailRepository implements IAdminProductorDeta
 
     const docsResult = await supabaseAdmin
       .from("producer_documents")
-      .select("id,status,is_current,expiry_date,uploaded_at,document_types(name)")
+      .select("id,status,comments,is_current,expiry_date,uploaded_at,document_types(name)")
       .eq("producer_id", id)
       .order("uploaded_at", { ascending: false });
 
@@ -182,6 +183,7 @@ export class ServerAdminProductorDetailRepository implements IAdminProductorDeta
       id: doc.id,
       documentType: doc.document_types?.name ?? "Documento",
       status: doc.status,
+      comments: doc.comments,
       isCurrent: doc.is_current,
       expiryDate: doc.expiry_date,
       uploadedAt: doc.uploaded_at,

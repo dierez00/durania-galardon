@@ -39,6 +39,7 @@ export interface AdminProductorDocument {
   id: string;
   documentType: string;
   status: string;
+  comments: string | null;
   isCurrent: boolean;
   expiryDate: string | null;
   uploadedAt: string;

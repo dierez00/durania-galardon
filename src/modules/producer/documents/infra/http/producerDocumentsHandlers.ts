@@ -12,6 +12,7 @@ interface ProducerDocumentBody {
   id?: string;
   expiryDate?: string;
   status?: "pending" | "validated" | "expired" | "rejected";
+  comments?: string;
   isCurrent?: boolean;
 }
 
@@ -42,6 +43,7 @@ export async function GET(request: Request) {
         file_hash: document.fileHash,
         uploaded_at: document.uploadedAt,
         status: document.status,
+        comments: document.comments,
         is_current: document.isCurrent,
         expiry_date: document.expiryDate,
         ocr_confidence: document.ocrConfidence,
@@ -118,6 +120,7 @@ export async function POST(request: Request) {
           file_hash: document.fileHash,
           uploaded_at: document.uploadedAt,
           status: document.status,
+          comments: document.comments,
           is_current: document.isCurrent,
           expiry_date: document.expiryDate,
           document_type: {
@@ -164,6 +167,9 @@ export async function PATCH(request: Request) {
   }
 
   const updatePayload: Record<string, unknown> = {};
+  if (body.comments !== undefined) {
+    return apiError("FORBIDDEN", "Solo gobierno/admin puede actualizar comentarios de documentos.", 403);
+  }
   if (body.status) {
     updatePayload.status = body.status;
   }
@@ -186,7 +192,7 @@ export async function PATCH(request: Request) {
     .eq("producer_id", producerId)
     .eq("id", id)
     .select(
-      "id,tenant_id,producer_id,document_type_id,file_storage_key,file_hash,uploaded_at,status,is_current,expiry_date,ocr_confidence"
+      "id,tenant_id,producer_id,document_type_id,file_storage_key,file_hash,uploaded_at,status,comments,is_current,expiry_date,ocr_confidence"
     )
     .maybeSingle();
 

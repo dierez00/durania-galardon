@@ -16,6 +16,7 @@ type UppDocumentRow = {
   file_storage_key: string;
   file_hash: string;
   status: string;
+  comments: string | null;
   is_current: boolean;
   issued_at: string | null;
   expiry_date: string | null;
@@ -31,6 +32,7 @@ function mapUppDocument(row: UppDocumentRow): UppDocument {
     fileStorageKey: row.file_storage_key,
     fileHash: row.file_hash,
     status: row.status as UppDocument["status"],
+    comments: row.comments,
     isCurrent: row.is_current,
     issuedAt: row.issued_at,
     expiryDate: row.expiry_date,
@@ -65,7 +67,7 @@ export class ServerUppDocumentsRepository implements IUppDocumentsRepository {
     return (result.data ?? []).map((row) => mapUppDocument(row as UppDocumentRow));
   }
 
-  async upload(file: File, uppId: string, documentType: string, expiryDate?: string): Promise<UppDocument> {
+  async upload(file: File, uppId: string, documentType: string, expiryDate?: string, bovinoId?: string): Promise<UppDocument> {
     if (!this.accessibleUppIds.includes(uppId)) {
       throw new Error("No tiene acceso a la UPP solicitada.");
     }
@@ -73,8 +75,38 @@ export class ServerUppDocumentsRepository implements IUppDocumentsRepository {
     await ensureBucketExists(DOCUMENTS_BUCKET);
 
     const supabaseAdmin = getSupabaseAdminClient();
+    
+    // Obtener el producer_id del upp
+    const uppResult = await supabaseAdmin
+      .from("upps")
+      .select("producer_id")
+      .eq("id", uppId)
+      .single();
+
+    if (uppResult.error || !uppResult.data) {
+      throw new Error("No fue posible obtener información del rancho (UPP).");
+    }
+
+    const producerId = uppResult.data.producer_id;
+
+    if (bovinoId) {
+      const animalResult = await supabaseAdmin
+        .from("animals")
+        .select("id")
+        .eq("tenant_id", this.tenantId)
+        .eq("upp_id", uppId)
+        .eq("id", bovinoId)
+        .maybeSingle();
+
+      if (animalResult.error || !animalResult.data) {
+        throw new Error("El bovino seleccionado no pertenece a la UPP indicada.");
+      }
+    }
+
     const calculatedHash = await calculateFileHash(file);
-    const fileStorageKey = `${this.tenantId}/upp/${uppId}/${documentType}/${Date.now()}_${file.name}`;
+    const fileStorageKey = bovinoId
+      ? `${this.tenantId}/${producerId}/upp/${uppId}/${bovinoId}/${documentType}/${Date.now()}_${file.name}`
+      : `${this.tenantId}/${producerId}/upp/${uppId}/${documentType}/${Date.now()}_${file.name}`;
 
     await uploadFileToSupabase(file, fileStorageKey);
     await supabaseAdmin
@@ -94,6 +126,7 @@ export class ServerUppDocumentsRepository implements IUppDocumentsRepository {
         file_storage_key: fileStorageKey,
         file_hash: calculatedHash,
         status: "pending",
+        comments: null,
         is_current: true,
         expiry_date: expiryDate || null,
         uploaded_by_user_id: this.userId,
@@ -108,11 +141,16 @@ export class ServerUppDocumentsRepository implements IUppDocumentsRepository {
     return mapUppDocument(insertResult.data as UppDocumentRow);
   }
 
-  async updateStatus(documentId: string, status: string): Promise<void> {
+  async updateStatus(documentId: string, status: string, comments?: string | null): Promise<void> {
     const supabaseAdmin = getSupabaseAdminClient();
+    const payload: { status: string; comments?: string | null } = { status };
+    if (comments !== undefined) {
+      payload.comments = comments;
+    }
+
     const result = await supabaseAdmin
       .from("upp_documents")
-      .update({ status })
+      .update(payload)
       .eq("tenant_id", this.tenantId)
       .eq("id", documentId);
 
@@ -125,13 +163,24 @@ export class ServerUppDocumentsRepository implements IUppDocumentsRepository {
     const supabaseAdmin = getSupabaseAdminClient();
     const docResult = await supabaseAdmin
       .from("upp_documents")
-      .select("file_storage_key")
+      .select("file_storage_key, upp_id")
       .eq("tenant_id", this.tenantId)
       .eq("id", documentId)
       .maybeSingle();
 
     if (docResult.error || !docResult.data) {
       throw new Error("Documento no encontrado.");
+    }
+
+    // Obtener el producer_id del upp para validar acceso
+    const uppResult = await supabaseAdmin
+      .from("upps")
+      .select("producer_id")
+      .eq("id", docResult.data.upp_id)
+      .single();
+
+    if (uppResult.error || !uppResult.data) {
+      throw new Error("No fue posible validar el acceso al rancho.");
     }
 
     await supabaseAdmin.storage.from(DOCUMENTS_BUCKET).remove([docResult.data.file_storage_key]);

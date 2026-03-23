@@ -11,6 +11,7 @@ interface UppDocumentDTO {
   file_storage_key: string;
   file_hash: string;
   status: string;
+  comments?: string | null;
   is_current: boolean;
   issued_at?: string;
   expiry_date?: string;
@@ -41,7 +42,8 @@ export class UppDocumentsApiRepository implements IUppDocumentsRepository {
     file: File,
     uppId: string,
     documentType: string,
-    expiryDate?: string
+    expiryDate?: string,
+    bovinoId?: string
   ): Promise<UppDocument> {
     const token = await getAccessToken();
     if (!token) throw new Error("No existe sesiÃ³n activa.");
@@ -52,6 +54,7 @@ export class UppDocumentsApiRepository implements IUppDocumentsRepository {
     formData.append("documentType", documentType);
     formData.append("fileHash", await calculateFileHash(file));
     if (expiryDate) formData.append("expiryDate", expiryDate);
+    if (bovinoId) formData.append("bovinoId", bovinoId);
 
     const response = await fetch(this.BASE_URL, {
       method: "POST",
@@ -67,7 +70,7 @@ export class UppDocumentsApiRepository implements IUppDocumentsRepository {
     return this.mapToEntity(body.data.document);
   }
 
-  async updateStatus(documentId: string, status: string): Promise<void> {
+  async updateStatus(documentId: string, status: string, comments?: string | null): Promise<void> {
     const token = await getAccessToken();
     if (!token) throw new Error("No existe sesiÃ³n activa.");
 
@@ -77,7 +80,7 @@ export class UppDocumentsApiRepository implements IUppDocumentsRepository {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, comments }),
     });
 
     const body = await response.json();
@@ -110,6 +113,7 @@ export class UppDocumentsApiRepository implements IUppDocumentsRepository {
       fileStorageKey: raw.file_storage_key,
       fileHash: raw.file_hash,
       status: raw.status as DocumentStatus,
+      comments: raw.comments ?? null,
       isCurrent: raw.is_current,
       issuedAt: raw.issued_at ?? null,
       expiryDate: raw.expiry_date ?? null,
