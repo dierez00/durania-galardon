@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-19
+Last Updated: 2026-03-22
 Source of Truth: Canonical local setup, environment, and SQL execution order for the repository.
 
 # Setup y comandos
@@ -22,6 +22,7 @@ Define en `.env`:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SITE_URL` (recomendado para redirects de auth; en local suele ser `http://localhost:3000`)
 - `SUPABASE_SERVICE_ROLE_KEY` (solo backend)
 - `DATABASE_URL`
 - `DATABASE_URL_DIRECT`
@@ -46,11 +47,23 @@ Verificar despues de migrar:
 - Trigger `on_auth_user_created` en `auth.users`.
 - Tenant inicial activo (`default-tenant` o el que uses local).
 - Roles de sistema por tenant.
+- `SITE_URL` de Supabase apuntando a la URL canónica del entorno.
+- Redirect URLs incluyendo `http://localhost:3000/**` para desarrollo.
+- Templates de email `invite` y `recovery` apuntando a `/auth/set-password` o, en su defecto, redirects compatibles con esa ruta.
 - Publicacion `supabase_realtime` incluyendo:
   - `mvz_visits`
   - `animal_vaccinations`
   - `sanitary_incidents`
   - `upp_documents`
+
+## Auth redirects de Supabase
+
+- Para produccion, configura `NEXT_PUBLIC_SITE_URL` con la URL publica real de la app.
+- Para desarrollo, agrega `http://localhost:3000/**` en Redirect URLs de Supabase Auth.
+- El flujo nuevo usa:
+  - `/forgot-password` para solicitar recovery.
+  - `/auth/set-password` para aceptar invitaciones y definir nueva contrasena.
+- Si personalizas templates de Supabase, apunta los enlaces de invitacion/recovery a esa ruta con `token_hash` y `type`.
 
 ## Desarrollo
 
@@ -63,7 +76,7 @@ npm run dev
 1. `GET /api/health` responde `ok`.
 2. `GET /api/tenant/resolve` devuelve `tenantSlug`.
 3. Login en `/login` con `tenant_admin` redirige a `/admin`.
-4. Login con MVZ redirige a `/mvz/dashboard`.
+4. Login con MVZ redirige a `/mvz`.
 
 ## Calidad
 

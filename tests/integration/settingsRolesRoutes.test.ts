@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { GET as getProducerRoles, POST as postProducerRoles, PATCH as patchProducerRoles } from "../../src/app/api/producer/roles/route";
-import { GET as getMvzRoles, POST as postMvzRoles, PATCH as patchMvzRoles } from "../../src/app/api/mvz/roles/route";
+import {
+  DELETE as deleteProducerRoles,
+  GET as getProducerRoles,
+  POST as postProducerRoles,
+  PATCH as patchProducerRoles,
+} from "../../src/app/api/producer/roles/route";
+import {
+  DELETE as deleteMvzRoles,
+  GET as getMvzRoles,
+  POST as postMvzRoles,
+  PATCH as patchMvzRoles,
+} from "../../src/app/api/mvz/roles/route";
 import { GET as getProducerSettingsRanchos } from "../../src/app/api/producer/settings/ranchos/route";
 
 describe("settings roles routes", () => {
@@ -45,6 +55,21 @@ describe("settings roles routes", () => {
     expect(body.error.code).toBe("UNAUTHORIZED");
   });
 
+  it("DELETE /api/producer/roles rejects requests without token", async () => {
+    const response = await deleteProducerRoles(
+      new Request("http://localhost:3000/api/producer/roles", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roleId: "role-1" }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("UNAUTHORIZED");
+  });
+
   it("GET /api/mvz/roles rejects requests without token", async () => {
     const response = await getMvzRoles(
       new Request("http://localhost:3000/api/mvz/roles", { method: "GET" })
@@ -77,6 +102,21 @@ describe("settings roles routes", () => {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roleId: "role-1", name: "Supervisor MVZ" }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("UNAUTHORIZED");
+  });
+
+  it("DELETE /api/mvz/roles rejects requests without token", async () => {
+    const response = await deleteMvzRoles(
+      new Request("http://localhost:3000/api/mvz/roles", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roleId: "role-1" }),
       })
     );
     const body = await response.json();

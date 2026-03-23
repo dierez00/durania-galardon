@@ -9,6 +9,7 @@ Source of Truth: Historical log of documentation-only changes. Current operation
 
 ### Added
 
+- `src/app/api/README.md`: agrega ownership y contratos para `auth/password/recovery` y `auth/invite-context`.
 - `docs/architecture/tenant-iam.md`: documenta roles base protegidos, roles custom `custom_<slug>`, permisos `producer.roles.*` y `mvz.roles.*`, y nuevos endpoints de roles por tenant.
 - `src/app/api/README.md`: agrega ownership y contratos para `producer/roles`, `mvz/roles` y `producer/settings/ranchos`.
 - `docs/architecture/mvz-hierarchy.md`: guia funcional y tecnica del flujo MVZ jerarquico (dashboard global + panel por rancho).
@@ -21,6 +22,8 @@ Source of Truth: Historical log of documentation-only changes. Current operation
 
 ### Changed
 
+- `docs/architecture/auth-admin.md`: documenta el flujo de invitacion/recovery, las rutas publicas `/forgot-password` y `/auth/set-password`, y el endpoint `GET /api/auth/invite-context`.
+- `docs/guides/setup.md`: agrega `NEXT_PUBLIC_SITE_URL`, requisitos de Redirect URLs/Auth templates en Supabase y actualiza el redirect MVZ esperado a `/mvz`.
 - `docs/architecture/auth-admin.md`: actualiza routing tenant basado en permisos reales, payload expandido de `GET /api/auth/me`, tabs de settings y restricciones especiales de `mvz_internal`.
 - `docs/architecture/routing.md`: documenta acceso a settings por permisos de tabs, landing por panel/permisos y el comportamiento de `/mvz` para `mvz_internal`.
 - `docs/architecture/overview.md`: registra `src/modules/iam`, los owners de `producer/roles`, `mvz/roles` y `producer/settings/ranchos`, y el helper transversal `src/server/authz/tenantRoles.ts`.

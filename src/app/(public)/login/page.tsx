@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -38,6 +39,7 @@ interface LoginApiResponse {
 
 export default function PublicLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -75,6 +77,18 @@ export default function PublicLoginPage() {
 
     void run();
   }, [router]);
+
+  useEffect(() => {
+    const hashParams = new URLSearchParams(window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash);
+    const callbackError =
+      searchParams.get("error_description") ??
+      searchParams.get("auth_message") ??
+      hashParams.get("error_description");
+
+    if (callbackError) {
+      setErrorMessage(callbackError);
+    }
+  }, [searchParams]);
 
   return (
     <div className="min-h-screen flex">
@@ -212,6 +226,12 @@ export default function PublicLoginPage() {
                 <Button type="submit" className="w-full h-11 text-base font-medium" disabled={loading}>
                   {loading ? "Validando..." : "Iniciar Sesion"}
                 </Button>
+
+                <div className="text-right">
+                  <Link className="text-sm text-primary hover:underline" href="/forgot-password">
+                    Olvide mi contrasena
+                  </Link>
+                </div>
               </form>
             </CardContent>
           </Card>

@@ -50,16 +50,16 @@ export default function AdminProducersBatchCreatePage() {
   const handleDownloadCredentials = () => {
     if (createdRows.length === 0) return;
     const buffer = buildExcelBuffer(
-      ["Fila", "ID entidad", "Tenant", "Email", "Password temporal"],
+      ["Fila", "ID entidad", "Tenant", "Email", "Invitacion enviada"],
       createdRows.map((row) => [
         String(row.rowIndex + 1),
         row.entityId,
         row.tenantId,
         row.email,
-        row.temporaryPassword,
+        row.invitationSent ? "Si" : "No",
       ])
     );
-    downloadExcel("productores-credenciales.xlsx", buffer);
+    downloadExcel("productores-invitaciones.xlsx", buffer);
   };
 
   return (
@@ -68,7 +68,8 @@ export default function AdminProducersBatchCreatePage() {
         <div>
           <h1 className="text-2xl font-bold">Alta masiva de Productores</h1>
           <p className="text-sm text-muted-foreground">
-            Pega filas desde Excel, valida y crea hasta 100 registros por lote.
+            Pega filas desde Excel, valida y crea hasta 100 registros por lote. Los usuarios nuevos
+            recibiran una invitacion por correo para definir su contrasena.
           </p>
         </div>
         <Button asChild variant="outline">
@@ -108,7 +109,7 @@ export default function AdminProducersBatchCreatePage() {
                   <TableHead>ID entidad</TableHead>
                   <TableHead>Tenant</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Password temporal</TableHead>
+                  <TableHead>Invitacion enviada</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -118,7 +119,7 @@ export default function AdminProducersBatchCreatePage() {
                     <TableCell className="font-mono text-xs">{row.entityId}</TableCell>
                     <TableCell className="font-mono text-xs">{row.tenantId}</TableCell>
                     <TableCell>{row.email}</TableCell>
-                    <TableCell className="font-mono text-xs">{row.temporaryPassword}</TableCell>
+                    <TableCell>{row.invitationSent ? "Invitacion enviada" : "Asignado a cuenta existente"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

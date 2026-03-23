@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { MailPlus } from "lucide-react";
 import { getAccessToken } from "@/shared/lib/auth-session";
+import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
@@ -22,13 +24,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
 import { useProducerUppContext } from "@/modules/producer/ranchos/presentation";
 
 interface EmployeeRow {
   id: string;
   userId: string;
   email: string;
+  profileStatus?: string;
   membershipStatus: string;
+  accessLifecycleStatus?: "invitation_sent" | "pending" | "active" | "offboarded";
   roleId: string | null;
   roleKey: string | null;
   roleName: string | null;
@@ -55,6 +60,10 @@ interface ProducerEmployeesPayload {
   data?: {
     employees?: EmployeeRow[];
     availableRoles?: AvailableRole[];
+    membershipId?: string;
+    userId?: string;
+    email?: string;
+    invitationSent?: boolean;
   };
   error?: {
     message?: string;
@@ -82,6 +91,16 @@ const MEMBERSHIP_VARIANT: Record<string, "default" | "secondary" | "destructive"
   active: "default",
   inactive: "secondary",
   suspended: "destructive",
+};
+
+const ACCESS_LIFECYCLE_META: Record<
+  NonNullable<EmployeeRow["accessLifecycleStatus"]>,
+  { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
+> = {
+  invitation_sent: { label: "Invitacion enviada", variant: "outline" },
+  pending: { label: "Pendiente", variant: "secondary" },
+  active: { label: "Activo", variant: "default" },
+  offboarded: { label: "Dado de baja", variant: "destructive" },
 };
 
 interface ProducerEmpleadosPageProps {
@@ -115,10 +134,10 @@ export default function ProducerEmpleadosPage({
   const [availableUpps, setAvailableUpps] = useState<UppOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [email, setEmail] = useState("");
   const [roleId, setRoleId] = useState("");
   const [selectedUppIds, setSelectedUppIds] = useState<string[]>([]);
-  const [accessLevel, setAccessLevel] = useState<"viewer" | "editor" | "owner">("viewer");
   const [submitting, setSubmitting] = useState(false);
   const [updatingMembershipId, setUpdatingMembershipId] = useState<string | null>(null);
 
@@ -137,6 +156,35 @@ export default function ProducerEmpleadosPage({
 
     setAvailableUpps(mapWorkspaceUpps(workspaceUpps));
   }, [workspaceUpps]);
+
+  const loadUppOptions = useCallback(
+    async (accessToken: string) => {
+      const ranchosResponse = await fetch("/api/producer/settings/ranchos", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      });
+
+      if (!ranchosResponse.ok) {
+        if (workspaceUpps.length === 0) {
+          setAvailableUpps([]);
+        }
+        return;
+      }
+
+      const ranchosBody = (await ranchosResponse.json()) as ProducerSettingsRanchosPayload;
+      const nextUpps =
+        ranchosBody.ok && ranchosBody.data?.upps
+          ? ranchosBody.data.upps.map((upp) => ({
+              id: upp.id,
+              name: upp.name,
+              uppCode: upp.uppCode,
+            }))
+          : [];
+
+      setAvailableUpps(nextUpps.length > 0 ? nextUpps : mapWorkspaceUpps(workspaceUpps));
+    },
+    [workspaceUpps]
+  );
 
   const loadRows = useCallback(async () => {
     setLoading(true);
@@ -163,31 +211,10 @@ export default function ProducerEmpleadosPage({
 
     setRows(body.data?.employees ?? []);
     setAvailableRoles(body.data?.availableRoles ?? []);
-
-    if (workspaceUpps.length === 0) {
-      const ranchosResponse = await fetch("/api/producer/settings/ranchos", {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        cache: "no-store",
-      });
-
-      if (ranchosResponse.ok) {
-        const ranchosBody = (await ranchosResponse.json()) as ProducerSettingsRanchosPayload;
-        const nextUpps =
-          ranchosBody.ok && ranchosBody.data?.upps
-            ? ranchosBody.data.upps.map((upp) => ({
-                id: upp.id,
-                name: upp.name,
-                uppCode: upp.uppCode,
-              }))
-            : [];
-        if (nextUpps.length > 0) {
-          setAvailableUpps(nextUpps);
-        }
-      }
-    }
+    await loadUppOptions(accessToken);
 
     setLoading(false);
-  }, [workspaceUpps]);
+  }, [loadUppOptions]);
 
   useEffect(() => {
     void loadRows();
@@ -215,6 +242,7 @@ export default function ProducerEmpleadosPage({
 
     setSubmitting(true);
     setErrorMessage("");
+    setSuccessMessage("");
 
     try {
       const accessToken = await getAccessToken();
@@ -231,7 +259,7 @@ export default function ProducerEmpleadosPage({
           roleId: roleId || undefined,
           uppAccess: selectedUppIds.map((uppId) => ({
             uppId,
-            accessLevel,
+            accessLevel: "editor" as const,
           })),
         }),
       });
@@ -245,7 +273,11 @@ export default function ProducerEmpleadosPage({
       setEmail("");
       setRoleId(availableRoles.find((role) => role.key === "employee")?.id ?? roleId);
       setSelectedUppIds([]);
-      setAccessLevel("viewer");
+      setSuccessMessage(
+        body.data?.invitationSent
+          ? `Invitacion enviada a ${body.data.email ?? email.trim()}. El empleado podra crear su contrasena desde el correo recibido.`
+          : `La cuenta ${body.data?.email ?? email.trim()} ya existia y fue asignada al tenant correctamente.`
+      );
       await loadRows();
     } finally {
       setSubmitting(false);
@@ -265,6 +297,7 @@ export default function ProducerEmpleadosPage({
 
     setUpdatingMembershipId(membershipId);
     setErrorMessage("");
+    setSuccessMessage("");
 
     try {
       const accessToken = await getAccessToken();
@@ -291,6 +324,51 @@ export default function ProducerEmpleadosPage({
     }
   };
 
+  const resendInvite = async (row: EmployeeRow) => {
+    if (!canManage) {
+      return;
+    }
+
+    setUpdatingMembershipId(row.id);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        setErrorMessage("No existe sesion activa.");
+        return;
+      }
+
+      const response = await fetch("/api/producer/employees/resend-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ membershipId: row.id }),
+      });
+
+      const body = (await response.json()) as ProducerEmployeesPayload & {
+        data?: {
+          email?: string;
+          deliveryType?: "invite" | "recovery";
+        };
+      };
+
+      if (!response.ok || !body.ok) {
+        setErrorMessage(body.error?.message ?? "No fue posible reenviar la invitacion.");
+        return;
+      }
+
+      setSuccessMessage(
+        body.data?.deliveryType === "recovery"
+          ? `Enlace de acceso reenviado a ${body.data.email ?? row.email}.`
+          : `Invitacion reenviada a ${body.data?.email ?? row.email}.`
+      );
+      await loadRows();
+    } finally {
+      setUpdatingMembershipId(null);
+    }
+  };
+
   const uppName = (uppId: string) =>
     uppOptions.find((upp) => upp.id === uppId)?.name ?? uppId.slice(0, 8);
 
@@ -304,7 +382,7 @@ export default function ProducerEmpleadosPage({
       {canManage ? (
         <Card>
           <CardHeader>
-            <CardTitle>Agregar empleado existente</CardTitle>
+            <CardTitle>Agregar o invitar empleado</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
@@ -317,9 +395,12 @@ export default function ProducerEmpleadosPage({
                   placeholder="empleado@ejemplo.com"
                   onChange={(event) => setEmail(event.target.value)}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Si el correo ya existe, se asignara al tenant. Si no existe, enviaremos una invitacion.
+                </p>
               </div>
               <div className="space-y-2">
-                <Label>Rol del empleado</Label>
+                <Label>Rol dentro del panel</Label>
                 <Select value={roleId || undefined} onValueChange={setRoleId}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Selecciona un rol" />
@@ -332,32 +413,15 @@ export default function ProducerEmpleadosPage({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label>Nivel de acceso inicial</Label>
-                <div className="flex gap-2">
-                  {(["viewer", "editor", "owner"] as const).map((level) => (
-                    <button
-                      key={level}
-                      type="button"
-                      onClick={() => setAccessLevel(level)}
-                      className={[
-                        "rounded border px-3 py-1 text-sm capitalize transition",
-                        accessLevel === level
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border hover:border-primary/50",
-                      ].join(" ")}
-                    >
-                      {level}
-                    </button>
-                  ))}
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  El rol define las acciones disponibles en el panel. El acceso operativo dentro de los ranchos asignados se crea automaticamente.
+                </p>
               </div>
             </div>
 
             {uppOptions.length > 0 ? (
               <div className="space-y-2">
-                <Label>UPPs asignadas</Label>
+                <Label>Ranchos asignados</Label>
                 <div className="flex flex-wrap gap-2">
                   {uppOptions.map((upp) => (
                     <button
@@ -375,11 +439,14 @@ export default function ProducerEmpleadosPage({
                     </button>
                   ))}
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Los ranchos seleccionados se asignan con acceso operativo inicial. Si necesitas ajustar niveles finos, puedes hacerlo despues en Ranchos y asignaciones.
+                </p>
               </div>
             ) : null}
 
             <Button onClick={createEmployee} disabled={!email.trim() || !roleId || submitting}>
-              {submitting ? "Agregando..." : "Agregar empleado"}
+              {submitting ? "Procesando..." : "Agregar o invitar"}
             </Button>
           </CardContent>
         </Card>
@@ -390,6 +457,12 @@ export default function ProducerEmpleadosPage({
           <CardTitle>Empleados actuales</CardTitle>
         </CardHeader>
         <CardContent>
+          {successMessage ? (
+            <Alert className="mb-3 border-emerald-200 bg-emerald-50/80 text-emerald-950">
+              <AlertTitle>Operacion completada</AlertTitle>
+              <AlertDescription className="text-emerald-900">{successMessage}</AlertDescription>
+            </Alert>
+          ) : null}
           {errorMessage ? <p className="mb-3 text-sm text-destructive">{errorMessage}</p> : null}
           {loading ? (
             <p className="text-sm text-muted-foreground">Cargando...</p>
@@ -400,6 +473,7 @@ export default function ProducerEmpleadosPage({
               <TableHeader>
                 <TableRow>
                   <TableHead>Correo</TableHead>
+                  <TableHead>Acceso</TableHead>
                   <TableHead>Rol</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Acceso a UPPs</TableHead>
@@ -410,9 +484,20 @@ export default function ProducerEmpleadosPage({
               <TableBody>
                 {rows.map((row) => {
                   const isBusy = updatingMembershipId === row.id;
+                  const canResendInvite =
+                    row.accessLifecycleStatus === "invitation_sent" || row.accessLifecycleStatus === "pending";
                   return (
                     <TableRow key={row.id}>
                       <TableCell className="font-medium">{row.email}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            ACCESS_LIFECYCLE_META[row.accessLifecycleStatus ?? "active"]?.variant ?? "secondary"
+                          }
+                        >
+                          {ACCESS_LIFECYCLE_META[row.accessLifecycleStatus ?? "active"]?.label ?? "Activo"}
+                        </Badge>
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span>{row.roleName ?? row.roleKey ?? "-"}</span>
@@ -447,6 +532,22 @@ export default function ProducerEmpleadosPage({
                       <TableCell className="text-right">
                         {canManage ? (
                           <div className="flex justify-end gap-2">
+                            {canResendInvite ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => resendInvite(row)}
+                                    disabled={isBusy}
+                                    aria-label={`Reenviar invitacion a ${row.email}`}
+                                  >
+                                    <MailPlus className="size-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Reenviar invitacion</TooltipContent>
+                              </Tooltip>
+                            ) : null}
                             <Select
                               value={row.roleId ?? undefined}
                               onValueChange={(nextRoleId) => updateEmployee(row.id, { roleId: nextRoleId })}

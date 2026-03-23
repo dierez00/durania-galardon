@@ -24,9 +24,14 @@ export interface ListAdminProductoresResult {
 
 export interface AdminProductorCreateInput {
   email: string;
-  password: string;
+  password?: string;
   fullName: string;
   curp?: string;
+}
+
+export interface AdminProductorCreateResult {
+  producer: AdminProductor;
+  invitationSent: boolean;
 }
 
 export interface AdminProductorBatchRowInput {
@@ -47,7 +52,7 @@ export interface AdminBatchCreateSuccessItem {
   entityId: string;
   tenantId: string;
   email: string;
-  temporaryPassword: string;
+  invitationSent: boolean;
 }
 
 export interface AdminProductorBatchCreateResult {
@@ -57,6 +62,6 @@ export interface AdminProductorBatchCreateResult {
 
 export interface AdminProductoresRepository {
   list(params: ListAdminProductoresParams): Promise<ListAdminProductoresResult>;
-  create(input: AdminProductorCreateInput): Promise<AdminProductor>;
+  create(input: AdminProductorCreateInput): Promise<AdminProductorCreateResult>;
   createBatch(input: AdminProductorBatchCreateInput): Promise<AdminProductorBatchCreateResult>;
 }

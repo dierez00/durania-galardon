@@ -5,7 +5,10 @@ import {
   listTenantRolesForPanel,
   resolveAssignableRoleForPanel,
 } from "@/server/authz/tenantRoles";
+import { ensureAuthUserForEmail } from "@/server/admin/provisioning";
 import { logAuditEvent } from "@/server/audit";
+import { deleteAuthUser, fetchAuthUserLifecycleSnapshot } from "@/server/auth/provisioning";
+import { buildSetPasswordRedirectUrl } from "@/modules/auth/shared/redirects";
 
 interface EmployeeBody {
   membershipId?: string;
@@ -22,6 +25,40 @@ interface EmployeeBody {
 
 const EMPLOYEE_ROLE_KEY = "employee";
 const EMPLOYEE_ROLE_NAME = "Empleado";
+
+type EmployeeAccessLifecycleStatus =
+  | "invitation_sent"
+  | "pending"
+  | "active"
+  | "offboarded";
+
+function resolveEmployeeAccessLifecycleStatus(input: {
+  membershipStatus: string;
+  profileStatus: string | null | undefined;
+  authLifecycle: {
+    invitedAt: string | null;
+    emailConfirmedAt: string | null;
+    lastSignInAt: string | null;
+  } | null;
+}): EmployeeAccessLifecycleStatus {
+  if (input.membershipStatus === "inactive" || input.membershipStatus === "suspended") {
+    return "offboarded";
+  }
+
+  if (input.profileStatus === "blocked") {
+    return "offboarded";
+  }
+
+  if (input.authLifecycle?.invitedAt && !input.authLifecycle.emailConfirmedAt) {
+    return "invitation_sent";
+  }
+
+  if (input.authLifecycle?.emailConfirmedAt && !input.authLifecycle.lastSignInAt) {
+    return "pending";
+  }
+
+  return "active";
+}
 
 function normalizeUppAccessInput(body: EmployeeBody) {
   if (Array.isArray(body.uppAccess)) {
@@ -154,7 +191,7 @@ export async function GET(request: Request) {
   const membershipIds = memberships.map((row) => row.id);
   const userIds = memberships.map((row) => row.user_id);
 
-  const [profilesResult, rolesResult, accessResult] = await Promise.all([
+  const [profilesResult, rolesResult, accessResult, authLifecycleEntries] = await Promise.all([
     supabaseAdmin.from("profiles").select("id,email,status,created_at").in("id", userIds),
     supabaseAdmin
       .from("tenant_user_roles")
@@ -165,6 +202,12 @@ export async function GET(request: Request) {
       .select("user_id,upp_id,access_level,status")
       .eq("tenant_id", auth.context.user.tenantId)
       .in("user_id", userIds),
+    Promise.all(
+      userIds.map(async (userId) => ({
+        userId,
+        snapshot: await fetchAuthUserLifecycleSnapshot(userId),
+      }))
+    ),
   ]);
 
   if (profilesResult.error || rolesResult.error || accessResult.error) {
@@ -176,6 +219,7 @@ export async function GET(request: Request) {
   }
 
   const profileByUserId = new Map((profilesResult.data ?? []).map((profile) => [profile.id, profile]));
+  const authLifecycleByUserId = new Map(authLifecycleEntries.map((entry) => [entry.userId, entry.snapshot]));
   const roleByMembership = new Map<
     string,
     { id: string | null; key: string | null; name: string | null; isSystem: boolean }
@@ -225,6 +269,11 @@ export async function GET(request: Request) {
           email: profile?.email ?? "",
           profileStatus: profile?.status ?? "unknown",
           membershipStatus: membership.status,
+          accessLifecycleStatus: resolveEmployeeAccessLifecycleStatus({
+            membershipStatus: membership.status,
+            profileStatus: profile?.status,
+            authLifecycle: authLifecycleByUserId.get(membership.user_id) ?? null,
+          }),
           roleId: roleInfo.id,
           roleKey: roleInfo.key,
           roleName: roleInfo.name,
@@ -269,23 +318,32 @@ export async function POST(request: Request) {
   const uppIds = uppAccess.map((item) => item.uppId);
 
   const supabaseAdmin = getSupabaseAdminClient();
-  const profileResult = await supabaseAdmin
-    .from("profiles")
-    .select("id,email")
-    .eq("email", email)
-    .maybeSingle();
-
-  if (profileResult.error || !profileResult.data) {
-    return apiError("EMPLOYEE_PROFILE_NOT_FOUND", "No existe usuario con ese correo.", 404);
+  let authUser: { userId: string; invitationSent: boolean };
+  try {
+    authUser = await ensureAuthUserForEmail({
+      email,
+      redirectTo: buildSetPasswordRedirectUrl(),
+    });
+  } catch (error) {
+    return apiError(
+      "EMPLOYEE_AUTH_RESOLVE_FAILED",
+      error instanceof Error ? error.message : "No fue posible crear o invitar al usuario.",
+      400
+    );
   }
-  const profile = profileResult.data;
+
+  const rollbackInvitedUser = async () => {
+    if (authUser.invitationSent) {
+      await deleteAuthUser(authUser.userId);
+    }
+  };
 
   let membershipId: string;
   const membershipLookup = await supabaseAdmin
     .from("tenant_memberships")
     .select("id")
     .eq("tenant_id", auth.context.user.tenantId)
-    .eq("user_id", profile.id)
+    .eq("user_id", authUser.userId)
     .maybeSingle();
 
   if (!membershipLookup.error && membershipLookup.data) {
@@ -303,7 +361,7 @@ export async function POST(request: Request) {
       .from("tenant_memberships")
       .insert({
         tenant_id: auth.context.user.tenantId,
-        user_id: profile.id,
+        user_id: authUser.userId,
         status: "active",
         invited_by_user_id: auth.context.user.id,
       })
@@ -311,6 +369,7 @@ export async function POST(request: Request) {
       .single();
 
     if (membershipInsert.error || !membershipInsert.data) {
+      await rollbackInvitedUser();
       return apiError(
         "EMPLOYEE_MEMBERSHIP_CREATE_FAILED",
         membershipInsert.error?.message ?? "No fue posible crear membresia.",
@@ -330,12 +389,22 @@ export async function POST(request: Request) {
       fallbackRoleKey: EMPLOYEE_ROLE_KEY,
     });
     employeeRoleId = selectedRole.id;
-  } catch {
-    employeeRoleId = await ensureEmployeeRole(auth.context.user.tenantId);
+  } catch (error) {
+    try {
+      employeeRoleId = await ensureEmployeeRole(auth.context.user.tenantId);
+    } catch {
+      await rollbackInvitedUser();
+      return apiError(
+        "EMPLOYEE_ROLE_RESOLVE_FAILED",
+        error instanceof Error ? error.message : "No fue posible resolver el rol del empleado.",
+        400
+      );
+    }
   }
 
   const clearRoles = await supabaseAdmin.from("tenant_user_roles").delete().eq("membership_id", membershipId);
   if (clearRoles.error) {
+    await rollbackInvitedUser();
     return apiError("EMPLOYEE_ROLE_CLEAR_FAILED", clearRoles.error.message, 400);
   }
 
@@ -346,6 +415,7 @@ export async function POST(request: Request) {
   });
 
   if (assignRole.error) {
+    await rollbackInvitedUser();
     return apiError("EMPLOYEE_ROLE_ASSIGN_FAILED", assignRole.error.message, 400);
   }
 
@@ -358,6 +428,7 @@ export async function POST(request: Request) {
         .in("id", uppIds);
 
       if (uppsCheck.error || (uppsCheck.data ?? []).length !== uppIds.length) {
+        await rollbackInvitedUser();
         return apiError("INVALID_UPP_SCOPE", "Uno o mas uppIds no pertenecen al tenant.", 400);
       }
     }
@@ -366,12 +437,12 @@ export async function POST(request: Request) {
       .from("user_upp_access")
       .delete()
       .eq("tenant_id", auth.context.user.tenantId)
-      .eq("user_id", profile.id);
+      .eq("user_id", authUser.userId);
 
     const accessInsert = await supabaseAdmin.from("user_upp_access").insert(
       uppAccess.map((item) => ({
         tenant_id: auth.context.user.tenantId,
-        user_id: profile.id,
+        user_id: authUser.userId,
         upp_id: item.uppId,
         access_level: item.accessLevel,
         status: "active",
@@ -380,6 +451,7 @@ export async function POST(request: Request) {
     );
 
     if (accessInsert.error) {
+      await rollbackInvitedUser();
       return apiError("EMPLOYEE_UPP_ACCESS_FAILED", accessInsert.error.message, 400);
     }
   }
@@ -394,14 +466,16 @@ export async function POST(request: Request) {
       email,
       roleId: body.roleId?.trim() ?? employeeRoleId,
       uppAccess,
+      invitationSent: authUser.invitationSent,
     },
   });
 
   return apiSuccess(
     {
       membershipId,
-      userId: profile.id,
-      email: profile.email,
+      userId: authUser.userId,
+      email,
+      invitationSent: authUser.invitationSent,
     },
     { status: 201 }
   );

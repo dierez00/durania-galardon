@@ -214,7 +214,7 @@ export async function listTenantRolesForPanel(
       memberCount: membersByRoleId.get(role.id)?.size ?? 0,
       permissions: [...new Set(permissionsByRoleId.get(role.id) ?? [])].sort(),
       isBase: role.is_system,
-      isEditable: !role.is_system,
+      isEditable: true,
       isCloneable: true,
     })),
     permissionCatalog,
@@ -383,10 +383,6 @@ export async function updateCustomRoleForPanel(input: {
     throw new Error("ROLE_NOT_FOUND");
   }
 
-  if (roleResult.data.is_system) {
-    throw new Error("ROLE_SYSTEM_EDIT_FORBIDDEN");
-  }
-
   const permissionCatalog = await resolvePermissionCatalog(input.panel);
   const permissionByKey = new Map(permissionCatalog.map((permission) => [permission.key, permission]));
   const nextPermissionKeys =
@@ -443,5 +439,58 @@ export async function updateCustomRoleForPanel(input: {
     key: roleResult.data.key,
     name: input.name?.trim() || roleResult.data.name,
     permissions: nextPermissionKeys,
+  };
+}
+
+export async function deleteRoleForPanel(input: {
+  tenantId: string;
+  panel: TenantRolePanel;
+  roleId: string;
+}) {
+  const supabaseAdmin = getSupabaseAdminClient();
+  const roleResult = await supabaseAdmin
+    .from("tenant_roles")
+    .select("id,key,name,is_system")
+    .eq("tenant_id", input.tenantId)
+    .eq("id", input.roleId)
+    .maybeSingle();
+
+  if (roleResult.error || !roleResult.data || !isVisibleRoleForPanel(input.panel, roleResult.data)) {
+    throw new Error("ROLE_NOT_FOUND");
+  }
+
+  const assignmentsResult = await supabaseAdmin
+    .from("tenant_user_roles")
+    .select("membership_id", { count: "exact", head: true })
+    .eq("tenant_role_id", input.roleId);
+
+  if (assignmentsResult.error) {
+    throw new Error(assignmentsResult.error.message);
+  }
+
+  if ((assignmentsResult.count ?? 0) > 0) {
+    throw new Error("ROLE_DELETE_IN_USE");
+  }
+
+  const clearPermissionsResult = await supabaseAdmin
+    .from("tenant_role_permissions")
+    .delete()
+    .eq("tenant_role_id", input.roleId);
+
+  if (clearPermissionsResult.error) {
+    throw new Error(clearPermissionsResult.error.message);
+  }
+
+  const deleteRoleResult = await supabaseAdmin.from("tenant_roles").delete().eq("id", input.roleId);
+
+  if (deleteRoleResult.error) {
+    throw new Error(deleteRoleResult.error.message);
+  }
+
+  return {
+    id: roleResult.data.id,
+    key: roleResult.data.key,
+    name: roleResult.data.name,
+    isSystem: roleResult.data.is_system,
   };
 }

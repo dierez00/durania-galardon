@@ -6,15 +6,15 @@ import type {
   ListAdminMvzParams,
   ListAdminMvzResult,
 } from "@/modules/admin/mvz/domain/repositories/adminMvzRepository";
-import { authEmailsExistBulk, createAuthUser, deleteAuthUser } from "@/server/auth/provisioning";
+import { deleteAuthUser } from "@/server/auth/provisioning";
 import { getSupabaseProvisioningClient } from "@/server/auth/supabase";
 import {
   createMembershipAndAssignRole,
   createTenantWithUniqueSlug,
+  ensureAuthUserForEmail,
   ensureTenantRole,
-  generateTemporaryPassword,
-  waitForProfile,
 } from "@/server/admin/provisioning";
+import { buildSetPasswordRedirectUrl } from "@/modules/auth/shared/redirects";
 
 interface NormalizedMvzRow {
   email: string;
@@ -27,7 +27,7 @@ interface BatchCreatedItem {
   entityId: string;
   tenantId: string;
   email: string;
-  temporaryPassword: string;
+  invitationSent: boolean;
 }
 
 class BatchRowError extends Error {
@@ -153,7 +153,12 @@ export class ServerAdminMvzRepository implements AdminMvzRepository {
     await this.validateBatchRows(normalizedRows);
 
     const created: BatchCreatedItem[] = [];
-    const rollbackStack: Array<{ mvzProfileId: string; tenantId: string; userId: string }> = [];
+    const rollbackStack: Array<{
+      mvzProfileId: string;
+      tenantId: string;
+      userId: string;
+      invitationSent: boolean;
+    }> = [];
 
     try {
       for (let rowIndex = 0; rowIndex < normalizedRows.length; rowIndex += 1) {
@@ -208,13 +213,6 @@ export class ServerAdminMvzRepository implements AdminMvzRepository {
       }
     }
 
-    const existingAuthEmails = await authEmailsExistBulk(rows.map((row) => row.email));
-    for (let index = 0; index < rows.length; index += 1) {
-      if (existingAuthEmails.has(rows[index].email)) {
-        throw new BatchRowError(index, `El email ya esta registrado: ${rows[index].email}`);
-      }
-    }
-
     const supabaseAdmin = getSupabaseProvisioningClient();
     const licenses = rows.map((row) => row.licenseNumber);
     const existingLicensesResult = await supabaseAdmin
@@ -248,37 +246,28 @@ export class ServerAdminMvzRepository implements AdminMvzRepository {
     roleKey: AdminMvzRoleKey
   ): Promise<{
     item: BatchCreatedItem;
-    rollback: { mvzProfileId: string; tenantId: string; userId: string };
+    rollback: { mvzProfileId: string; tenantId: string; userId: string; invitationSent: boolean };
   }> {
     const supabaseAdmin = getSupabaseProvisioningClient();
-    const rowState: { mvzProfileId: string | null; tenantId: string | null; userId: string | null } = {
+    const rowState: {
+      mvzProfileId: string | null;
+      tenantId: string | null;
+      userId: string | null;
+      invitationSent: boolean;
+    } = {
       mvzProfileId: null,
       tenantId: null,
       userId: null,
+      invitationSent: false,
     };
 
     try {
-      const temporaryPassword = generateTemporaryPassword();
-      const authUserResult = await createAuthUser({
+      const authUser = await ensureAuthUserForEmail({
         email: row.email,
-        password: temporaryPassword,
-        emailConfirmed: true,
+        redirectTo: buildSetPasswordRedirectUrl(),
       });
-
-      if (authUserResult.error || !authUserResult.data.user) {
-        throw new BatchRowError(
-          rowIndex,
-          authUserResult.error?.message ?? "No fue posible crear usuario Auth."
-        );
-      }
-
-      const userId = authUserResult.data.user.id;
-      rowState.userId = userId;
-
-      const profileExists = await waitForProfile(userId);
-      if (!profileExists) {
-        throw new BatchRowError(rowIndex, "No se pudo confirmar perfil del usuario.");
-      }
+      rowState.userId = authUser.userId;
+      rowState.invitationSent = authUser.invitationSent;
 
       const tenant = await createTenantWithUniqueSlug({
         type: "mvz",
@@ -297,7 +286,7 @@ export class ServerAdminMvzRepository implements AdminMvzRepository {
 
       await createMembershipAndAssignRole({
         tenantId: tenant.tenantId,
-        userId,
+        userId: authUser.userId,
         roleId,
         invitedByUserId: this.actingUserId,
         assignedByUserId: this.actingUserId,
@@ -307,7 +296,7 @@ export class ServerAdminMvzRepository implements AdminMvzRepository {
         .from("mvz_profiles")
         .insert({
           owner_tenant_id: tenant.tenantId,
-          user_id: userId,
+          user_id: authUser.userId,
           full_name: row.fullName,
           license_number: row.licenseNumber,
           status: "active",
@@ -327,12 +316,13 @@ export class ServerAdminMvzRepository implements AdminMvzRepository {
           entityId: mvzInsert.data.id,
           tenantId: tenant.tenantId,
           email: row.email,
-          temporaryPassword,
+          invitationSent: authUser.invitationSent,
         },
         rollback: {
           mvzProfileId: mvzInsert.data.id,
           tenantId: tenant.tenantId,
-          userId,
+          userId: authUser.userId,
+          invitationSent: authUser.invitationSent,
         },
       };
     } catch (rowError) {
@@ -348,14 +338,16 @@ export class ServerAdminMvzRepository implements AdminMvzRepository {
   }
 
   private async rollbackRows(
-    createdRows: Array<{ mvzProfileId: string; tenantId: string; userId: string }>
+    createdRows: Array<{ mvzProfileId: string; tenantId: string; userId: string; invitationSent: boolean }>
   ): Promise<void> {
     const supabaseAdmin = getSupabaseProvisioningClient();
     for (let index = createdRows.length - 1; index >= 0; index -= 1) {
       const created = createdRows[index];
       await supabaseAdmin.from("mvz_profiles").delete().eq("id", created.mvzProfileId);
       await supabaseAdmin.from("tenants").delete().eq("id", created.tenantId);
-      await deleteAuthUser(created.userId);
+      if (created.invitationSent) {
+        await deleteAuthUser(created.userId);
+      }
     }
   }
 
@@ -363,6 +355,7 @@ export class ServerAdminMvzRepository implements AdminMvzRepository {
     mvzProfileId: string | null;
     tenantId: string | null;
     userId: string | null;
+    invitationSent: boolean;
   }): Promise<void> {
     const supabaseAdmin = getSupabaseProvisioningClient();
     if (state.mvzProfileId) {
@@ -371,7 +364,7 @@ export class ServerAdminMvzRepository implements AdminMvzRepository {
     if (state.tenantId) {
       await supabaseAdmin.from("tenants").delete().eq("id", state.tenantId);
     }
-    if (state.userId) {
+    if (state.userId && state.invitationSent) {
       await deleteAuthUser(state.userId);
     }
   }

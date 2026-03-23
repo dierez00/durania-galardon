@@ -13,6 +13,7 @@
 
 - `admin/producers` -> `src/modules/admin/productores`
 - `admin/mvz` -> `src/modules/admin/mvz`
+- `auth/password/recovery` y `auth/invite-context` -> `src/modules/auth`
 - `admin/appointments` y `public/appointments` -> `src/modules/admin/citas`
 - `admin/audit` -> `src/modules/admin/auditoria`
 - `producer/bovinos` -> `src/modules/bovinos`
@@ -41,6 +42,8 @@ Si el modulo aun no expone alias desde `index.ts`, el reexport puede apuntar tem
 - `GET /api/auth/me`
 - `POST /api/auth/login`
 - `POST /api/auth/logout`
+- `POST /api/auth/password/recovery`
+- `GET /api/auth/invite-context`
 - `GET /api/tenant/resolve`
 
 ## Admin

@@ -1,8 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CopyPlus, ShieldCheck, SquarePen } from "lucide-react";
+import { CopyPlus, ShieldCheck, SquarePen, Trash2 } from "lucide-react";
 import { getAccessToken } from "@/shared/lib/auth-session";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/shared/ui/alert-dialog";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
@@ -75,6 +85,7 @@ export default function TenantRolesManager({
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
   const [roleName, setRoleName] = useState("");
   const [selectedPermissionKeys, setSelectedPermissionKeys] = useState<string[]>([]);
+  const [rolePendingDelete, setRolePendingDelete] = useState<TenantRoleSummary | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -211,6 +222,43 @@ export default function TenantRolesManager({
     }
   };
 
+  const deleteRole = async () => {
+    if (!rolePendingDelete) {
+      return;
+    }
+
+    setSaving(true);
+    setErrorMessage("");
+
+    try {
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        setErrorMessage("No existe sesion activa.");
+        return;
+      }
+
+      const response = await fetch(endpoint, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ roleId: rolePendingDelete.id }),
+      });
+
+      const body = (await response.json()) as TenantRolesPayload & { ok?: boolean };
+      if (!response.ok || !body.ok) {
+        setErrorMessage(body.error?.message ?? "No fue posible eliminar el rol.");
+        return;
+      }
+
+      setRolePendingDelete(null);
+      await load();
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -259,6 +307,12 @@ export default function TenantRolesManager({
                       Clonar
                     </Button>
                   ) : null}
+                  {canManage ? (
+                    <Button variant="outline" size="sm" onClick={() => setRolePendingDelete(role)}>
+                      <Trash2 className="size-4" />
+                      Eliminar
+                    </Button>
+                  ) : null}
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -283,7 +337,7 @@ export default function TenantRolesManager({
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="flex max-h-[calc(100vh-2rem)] max-w-3xl flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>
               {dialogMode === "edit"
@@ -293,11 +347,11 @@ export default function TenantRolesManager({
                   : "Crear rol"}
             </DialogTitle>
             <DialogDescription>
-              Configura nombre y permisos del rol. Los roles base solo se pueden clonar.
+              Configura nombre y permisos del rol.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
             <div className="space-y-2">
               <Label htmlFor="roleName">Nombre del rol</Label>
               <Input
@@ -353,6 +407,32 @@ export default function TenantRolesManager({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={rolePendingDelete !== null} onOpenChange={(open) => !open && setRolePendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar rol</AlertDialogTitle>
+            <AlertDialogDescription>
+              {rolePendingDelete
+                ? `Se eliminara el rol "${rolePendingDelete.name}". Si el rol aun tiene miembros asignados, la operacion se bloqueara hasta desasignarlos.`
+                : "Confirma la eliminacion del rol."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void deleteRole();
+              }}
+              disabled={saving || !canManage}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {saving ? "Eliminando..." : "Eliminar rol"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

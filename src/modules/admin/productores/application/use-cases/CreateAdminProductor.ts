@@ -1,5 +1,5 @@
-import type { AdminProductor } from "../../domain/entities/AdminProductorEntity";
 import type {
+  AdminProductorCreateResult,
   AdminProductoresRepository,
   AdminProductorCreateInput,
 } from "../../domain/repositories/adminProductoresRepository";
@@ -11,7 +11,7 @@ import type {
 export class CreateAdminProductor {
   constructor(private readonly repository: AdminProductoresRepository) {}
 
-  async execute(input: AdminProductorCreateInput): Promise<AdminProductor> {
+  async execute(input: AdminProductorCreateInput): Promise<AdminProductorCreateResult> {
     return this.repository.create(input);
   }
 }

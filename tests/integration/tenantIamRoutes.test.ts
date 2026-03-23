@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { GET as getDocuments } from "../../src/app/api/producer/documents/route";
 import { POST as postEmployee } from "../../src/app/api/producer/employees/route";
 import { PATCH as patchEmployee } from "../../src/app/api/producer/employees/route";
+import { POST as postEmployeeResendInvite } from "../../src/app/api/producer/employees/resend-invite/route";
 import { DELETE as deleteUppDocument } from "../../src/app/api/producer/upp-documents/[id]/route";
 
 describe("producer employees/documents routes", () => {
@@ -52,6 +53,25 @@ describe("producer employees/documents routes", () => {
     });
 
     const response = await patchEmployee(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("UNAUTHORIZED");
+  });
+
+  it("POST /api/producer/employees/resend-invite rejects requests without token", async () => {
+    const request = new Request("http://localhost:3000/api/producer/employees/resend-invite", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        membershipId: "membership-1",
+      }),
+    });
+
+    const response = await postEmployeeResendInvite(request);
     const body = await response.json();
 
     expect(response.status).toBe(401);

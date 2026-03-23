@@ -2,24 +2,21 @@ import type {
   AdminProductorBatchCreateInput,
   AdminProductorBatchCreateResult,
   AdminProductorCreateInput,
+  AdminProductorCreateResult,
   AdminProductoresRepository,
   ListAdminProductoresParams,
   ListAdminProductoresResult,
 } from "@/modules/admin/productores/domain/repositories/adminProductoresRepository";
 import type { AdminProductor } from "@/modules/admin/productores/domain/entities/AdminProductorEntity";
-import {
-  authEmailsExistBulk,
-  createAuthUser,
-  deleteAuthUser,
-} from "@/server/auth/provisioning";
+import { deleteAuthUser } from "@/server/auth/provisioning";
 import { getSupabaseProvisioningClient } from "@/server/auth/supabase";
 import {
   createMembershipAndAssignRole,
   createTenantWithUniqueSlug,
+  ensureAuthUserForEmail,
   ensureTenantRole,
-  generateTemporaryPassword,
-  waitForProfile,
 } from "@/server/admin/provisioning";
+import { buildSetPasswordRedirectUrl } from "@/modules/auth/shared/redirects";
 
 interface ProducerBatchRowBody {
   email?: string;
@@ -38,7 +35,7 @@ interface BatchCreatedItem {
   entityId: string;
   tenantId: string;
   email: string;
-  temporaryPassword: string;
+  invitationSent: boolean;
 }
 
 class BatchRowError extends Error {
@@ -222,32 +219,19 @@ export class ServerAdminProductoresRepository implements AdminProductoresReposit
     };
   }
 
-  async create(input: AdminProductorCreateInput): Promise<AdminProductor> {
+  async create(input: AdminProductorCreateInput): Promise<AdminProductorCreateResult> {
     const email = input.email.trim().toLowerCase();
-    const password = input.password.trim() || generateTemporaryPassword();
     const fullName = input.fullName.trim();
     const curp = input.curp?.trim() || null;
 
     const supabaseAdmin = getSupabaseProvisioningClient();
-    const authUserResult = await createAuthUser({
+    const authUser = await ensureAuthUserForEmail({
       email,
-      password,
-      emailConfirmed: true,
+      redirectTo: buildSetPasswordRedirectUrl(),
     });
-
-    if (authUserResult.error || !authUserResult.data.user) {
-      throw new Error(authUserResult.error?.message ?? "No fue posible crear usuario Auth.");
-    }
-
-    const createdUserId = authUserResult.data.user.id;
     let createdTenantId: string | null = null;
 
     try {
-      const hasProfile = await waitForProfile(createdUserId);
-      if (!hasProfile) {
-        throw new Error("PROFILE_NOT_CREATED");
-      }
-
       const tenant = await createTenantWithUniqueSlug({
         type: "producer",
         fullName,
@@ -265,7 +249,7 @@ export class ServerAdminProductoresRepository implements AdminProductoresReposit
 
       await createMembershipAndAssignRole({
         tenantId: tenant.tenantId,
-        userId: createdUserId,
+        userId: authUser.userId,
         roleId: producerRoleId,
         invitedByUserId: this.actingUserId,
         assignedByUserId: this.actingUserId,
@@ -275,7 +259,7 @@ export class ServerAdminProductoresRepository implements AdminProductoresReposit
         .from("producers")
         .insert({
           owner_tenant_id: tenant.tenantId,
-          user_id: createdUserId,
+          user_id: authUser.userId,
           curp,
           full_name: fullName,
           status: "active",
@@ -287,13 +271,18 @@ export class ServerAdminProductoresRepository implements AdminProductoresReposit
         throw new Error(producerInsert.error?.message ?? "PRODUCER_CREATE_FAILED");
       }
 
-      return toAdminProductor(producerInsert.data);
+      return {
+        producer: toAdminProductor(producerInsert.data),
+        invitationSent: authUser.invitationSent,
+      };
     } catch (error) {
       if (createdTenantId) {
         await supabaseAdmin.from("tenants").delete().eq("id", createdTenantId);
       }
 
-      await deleteAuthUser(createdUserId);
+      if (authUser.invitationSent) {
+        await deleteAuthUser(authUser.userId);
+      }
       throw error;
     }
   }
@@ -314,7 +303,12 @@ export class ServerAdminProductoresRepository implements AdminProductoresReposit
     await this.validateBatchRows(normalizedRows);
 
     const created: BatchCreatedItem[] = [];
-    const rollbackStack: Array<{ producerId: string; tenantId: string; userId: string }> = [];
+    const rollbackStack: Array<{
+      producerId: string;
+      tenantId: string;
+      userId: string;
+      invitationSent: boolean;
+    }> = [];
 
     try {
       for (let rowIndex = 0; rowIndex < normalizedRows.length; rowIndex += 1) {
@@ -365,13 +359,6 @@ export class ServerAdminProductoresRepository implements AdminProductoresReposit
       }
     }
 
-    const existingAuthEmails = await authEmailsExistBulk(rows.map((row) => row.email));
-    for (let index = 0; index < rows.length; index += 1) {
-      if (existingAuthEmails.has(rows[index].email)) {
-        throw new BatchRowError(index, `El email ya esta registrado: ${rows[index].email}`);
-      }
-    }
-
     const supabaseAdmin = getSupabaseProvisioningClient();
     const curps = rows.flatMap((row) => (row.curp ? [row.curp] : []));
     const existingCurpsResult =
@@ -402,37 +389,28 @@ export class ServerAdminProductoresRepository implements AdminProductoresReposit
     rowIndex: number
   ): Promise<{
     item: BatchCreatedItem;
-    rollback: { producerId: string; tenantId: string; userId: string };
+    rollback: { producerId: string; tenantId: string; userId: string; invitationSent: boolean };
   }> {
     const supabaseAdmin = getSupabaseProvisioningClient();
-    const rowState: { producerId: string | null; tenantId: string | null; userId: string | null } = {
+    const rowState: {
+      producerId: string | null;
+      tenantId: string | null;
+      userId: string | null;
+      invitationSent: boolean;
+    } = {
       producerId: null,
       tenantId: null,
       userId: null,
+      invitationSent: false,
     };
 
     try {
-      const temporaryPassword = generateTemporaryPassword();
-      const authUserResult = await createAuthUser({
+      const authUser = await ensureAuthUserForEmail({
         email: row.email,
-        password: temporaryPassword,
-        emailConfirmed: true,
+        redirectTo: buildSetPasswordRedirectUrl(),
       });
-
-      if (authUserResult.error || !authUserResult.data.user) {
-        throw new BatchRowError(
-          rowIndex,
-          authUserResult.error?.message ?? "No fue posible crear usuario Auth."
-        );
-      }
-
-      const userId = authUserResult.data.user.id;
-      rowState.userId = userId;
-
-      const profileExists = await waitForProfile(userId);
-      if (!profileExists) {
-        throw new BatchRowError(rowIndex, "No se pudo confirmar perfil del usuario.");
-      }
+      rowState.userId = authUser.userId;
+      rowState.invitationSent = authUser.invitationSent;
 
       const tenant = await createTenantWithUniqueSlug({
         type: "producer",
@@ -451,7 +429,7 @@ export class ServerAdminProductoresRepository implements AdminProductoresReposit
 
       await createMembershipAndAssignRole({
         tenantId: tenant.tenantId,
-        userId,
+        userId: authUser.userId,
         roleId,
         invitedByUserId: this.actingUserId,
         assignedByUserId: this.actingUserId,
@@ -461,7 +439,7 @@ export class ServerAdminProductoresRepository implements AdminProductoresReposit
         .from("producers")
         .insert({
           owner_tenant_id: tenant.tenantId,
-          user_id: userId,
+          user_id: authUser.userId,
           curp: row.curp,
           full_name: row.fullName,
           status: "active",
@@ -484,9 +462,14 @@ export class ServerAdminProductoresRepository implements AdminProductoresReposit
           entityId: producerInsert.data.id,
           tenantId: tenant.tenantId,
           email: row.email,
-          temporaryPassword,
+          invitationSent: authUser.invitationSent,
         },
-        rollback: { producerId: producerInsert.data.id, tenantId: tenant.tenantId, userId },
+        rollback: {
+          producerId: producerInsert.data.id,
+          tenantId: tenant.tenantId,
+          userId: authUser.userId,
+          invitationSent: authUser.invitationSent,
+        },
       };
     } catch (rowError) {
       await this.rollbackPartialRow(rowState);
@@ -501,14 +484,16 @@ export class ServerAdminProductoresRepository implements AdminProductoresReposit
   }
 
   private async rollbackRows(
-    createdRows: Array<{ producerId: string; tenantId: string; userId: string }>
+    createdRows: Array<{ producerId: string; tenantId: string; userId: string; invitationSent: boolean }>
   ): Promise<void> {
     const supabaseAdmin = getSupabaseProvisioningClient();
     for (let index = createdRows.length - 1; index >= 0; index -= 1) {
       const created = createdRows[index];
       await supabaseAdmin.from("producers").delete().eq("id", created.producerId);
       await supabaseAdmin.from("tenants").delete().eq("id", created.tenantId);
-      await deleteAuthUser(created.userId);
+      if (created.invitationSent) {
+        await deleteAuthUser(created.userId);
+      }
     }
   }
 
@@ -516,6 +501,7 @@ export class ServerAdminProductoresRepository implements AdminProductoresReposit
     producerId: string | null;
     tenantId: string | null;
     userId: string | null;
+    invitationSent: boolean;
   }): Promise<void> {
     const supabaseAdmin = getSupabaseProvisioningClient();
     if (state.producerId) {
@@ -524,7 +510,7 @@ export class ServerAdminProductoresRepository implements AdminProductoresReposit
     if (state.tenantId) {
       await supabaseAdmin.from("tenants").delete().eq("id", state.tenantId);
     }
-    if (state.userId) {
+    if (state.userId && state.invitationSent) {
       await deleteAuthUser(state.userId);
     }
   }

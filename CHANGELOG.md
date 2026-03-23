@@ -6,6 +6,11 @@ Todas las fechas usan formato YYYY-MM-DD.
 
 ### Added
 
+- Flujo publico de recovery e invitacion con:
+  - `POST /api/auth/password/recovery`
+  - `GET /api/auth/invite-context`
+  - `/forgot-password`
+  - `/auth/set-password`
 - Migracion `sql/migration_006_tenant_custom_roles.sql` para permisos `producer.roles.*` y `mvz.roles.*` con backfill a roles base.
 - Nuevos endpoints API para roles editables por tenant:
   - `GET|POST|PATCH /api/producer/roles`
@@ -45,6 +50,7 @@ Todas las fechas usan formato YYYY-MM-DD.
 
 ### Changed
 
+- Altas nuevas de productores, MVZ, empleados y miembros MVZ ya no retornan contrasenas temporales; ahora invitan cuentas nuevas por email y reasignan cuentas existentes al tenant.
 - `producer/settings` y `mvz/settings` ahora se renderizan por tabs (`Perfil`, `Ranchos`, `Empleados/Equipo`, `Roles`) y dejan de depender de una sola carga monolitica.
 - La resolucion de panel tenant ya no depende de un `AppRole` fijo; ahora usa `tenant.type`, permisos y metadata del rol principal.
 - `GET /api/auth/me` y el shell tenant ahora exponen/consumen `roleKey`, `roleName`, `isSystemRole` e `isMvzInternal`.

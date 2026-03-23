@@ -15,6 +15,8 @@ Source of Truth: Canonical auth flow, role routing, and tenant-level authorizati
 
 - Landing publica: `/`
 - Login unico: `/login`
+- Recovery publico: `/forgot-password`
+- Activacion / nueva contrasena: `/auth/set-password`
 - Admin tenant: `/admin/*`
 - Vistas tenant productor: `/producer/*` (`/producer/settings` con cualquier permiso de sus tabs: `producer.tenant.*`, `producer.upp.*`, `producer.employees.*`, `producer.roles.*`)
 - Vistas tenant MVZ:
@@ -49,11 +51,22 @@ Redireccion inicial por panel y permisos:
 4. Backend responde `redirectTo` segun panel y permisos efectivos.
 5. Cliente persiste sesion (`supabase.auth.setSession`) y navega.
 
+## Flujo de invitacion y recovery
+
+1. Altas nuevas desde admin, productor y MVZ preprovisionan tenant/rol/accesos y envian invitacion por email.
+2. Recovery publico usa `POST /api/auth/password/recovery`.
+3. El enlace de invite o recovery aterriza en `/auth/set-password`.
+4. Cliente acepta el callback de Supabase (`verifyOtp` o sesion ya redirigida), consulta `GET /api/auth/invite-context` y muestra panel/tenant/rol.
+5. Cliente guarda la nueva contrasena con `supabase.auth.updateUser`.
+6. La app resuelve `GET /api/auth/me` y redirige al home correcto por panel/permisos.
+
 ## Endpoints de autenticacion
 
 - `POST /api/auth/login`
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
+- `POST /api/auth/password/recovery`
+- `GET /api/auth/invite-context`
 
 ## Endpoints MVZ jerarquicos
 
@@ -84,8 +97,10 @@ Redireccion inicial por panel y permisos:
 ## Reglas de autorizacion
 
 - `GET /api/auth/me` entrega `panelType`, `permissions`, `tenant.name`, `displayName`, `roleKey`, `roleName`, `isSystemRole` e `isMvzInternal` para el shell tenant.
+- `GET /api/auth/invite-context` entrega `panelType`, `tenantId`, `tenantSlug`, `tenantName`, `roleKey`, `roleName` y `assignedUpps[]` para onboarding por invitacion.
 - El nombre visible self-service vive en `auth.user_metadata.full_name` y se sincroniza en topbar al editar `Mi perfil`.
 - `profiles.email` funciona como espejo denormalizado de `auth.users.email` para lecturas de perfil.
+- Las altas nuevas ya no retornan contrasenas temporales; las cuentas nuevas se activan por invitacion one-time y las cuentas existentes se asignan directo al tenant.
 - `producer/settings` ya no expone ni edita `producers.full_name`; esa ficha se mueve a `producer/profile`.
 - `mvz/settings` ya no expone ni edita `mvz_profiles.full_name` ni `license_number`; esa ficha se mueve a `mvz/profile`.
 - `producer/settings` se compone por tabs (`Perfil`, `Ranchos`, `Empleados`, `Roles`) y cada tab se habilita por permisos del modulo correspondiente.

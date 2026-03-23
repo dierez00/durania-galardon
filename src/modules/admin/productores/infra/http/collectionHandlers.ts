@@ -7,7 +7,6 @@ import { ServerAdminProductoresRepository } from "@/modules/admin/productores/in
 interface ProducerBody {
   id?: string;
   email?: string;
-  password?: string;
   fullName?: string;
   curp?: string;
   status?: "active" | "inactive";
@@ -85,9 +84,8 @@ export async function POST(request: Request) {
   );
 
   try {
-    const producer = await repository.create({
+    const result = await repository.create({
       email,
-      password: body.password?.trim() || "",
       fullName,
       curp: body.curp?.trim() || undefined,
     });
@@ -97,14 +95,21 @@ export async function POST(request: Request) {
       user: auth.context.user,
       action: "create",
       resource: "admin.producers",
-      resourceId: producer.id,
+      resourceId: result.producer.id,
       payload: {
         email,
         fullName,
+        invitationSent: result.invitationSent,
       },
     });
 
-    return apiSuccess({ producer }, { status: 201 });
+    return apiSuccess(
+      {
+        producer: result.producer,
+        invitationSent: result.invitationSent,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     return apiError(
       "ADMIN_PRODUCER_CREATE_FAILED",

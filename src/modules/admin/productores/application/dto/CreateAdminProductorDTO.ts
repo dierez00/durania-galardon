@@ -1,6 +1,6 @@
 export interface CreateAdminProductorDTO {
   email: string;
-  password: string;
+  password?: string;
   fullName: string;
   curp?: string;
 }

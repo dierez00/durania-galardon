@@ -1,16 +1,16 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { createAuthUser, deleteAuthUser } from "@/server/auth/provisioning";
 import { getSupabaseProvisioningClient } from "@/server/auth/supabase";
 import { logAuditEvent } from "@/server/audit";
 import {
   createMembershipAndAssignRole,
   createTenantWithUniqueSlug,
+  ensureAuthUserForEmail,
   ensureTenantRole,
-  generateTemporaryPassword,
-  waitForProfile,
 } from "@/server/admin/provisioning";
 import { ServerAdminMvzRepository } from "@/modules/admin/mvz/infra/supabase/ServerAdminMvzRepository";
+import { deleteAuthUser } from "@/server/auth/provisioning";
+import { buildSetPasswordRedirectUrl } from "@/modules/auth/shared/redirects";
 
 const MVZ_PERMISSIONS = [
   "mvz.dashboard.read",
@@ -99,31 +99,30 @@ export async function POST(request: Request) {
   }
 
   const supabaseAdmin = getSupabaseProvisioningClient();
-  const temporaryPassword = generateTemporaryPassword();
-  const authResult = await createAuthUser({ email, password: temporaryPassword, emailConfirmed: true });
-  if (authResult.error || !authResult.data.user) {
+  let authUser: { userId: string; invitationSent: boolean };
+  let createdTenantId: string | null = null;
+
+  try {
+    authUser = await ensureAuthUserForEmail({
+      email,
+      redirectTo: buildSetPasswordRedirectUrl(),
+    });
+  } catch (error) {
     return apiError(
       "ADMIN_MVZ_CREATE_FAILED",
-      authResult.error?.message ?? "No fue posible crear usuario.",
+      error instanceof Error ? error.message : "No fue posible crear o invitar al usuario.",
       400
     );
   }
 
-  const userId = authResult.data.user.id;
-
   try {
-    const profileExists = await waitForProfile(userId);
-    if (!profileExists) {
-      await deleteAuthUser(userId);
-      return apiError("ADMIN_MVZ_CREATE_FAILED", "No se pudo confirmar perfil del usuario.", 500);
-    }
-
     const tenant = await createTenantWithUniqueSlug({
       type: "mvz",
       fullName,
       email,
       createdByUserId: auth.context.user.id,
     });
+    createdTenantId = tenant.tenantId;
 
     const roleId = await ensureTenantRole({
       tenantId: tenant.tenantId,
@@ -134,7 +133,7 @@ export async function POST(request: Request) {
 
     await createMembershipAndAssignRole({
       tenantId: tenant.tenantId,
-      userId,
+      userId: authUser.userId,
       roleId,
       invitedByUserId: auth.context.user.id,
       assignedByUserId: auth.context.user.id,
@@ -144,7 +143,7 @@ export async function POST(request: Request) {
       .from("mvz_profiles")
       .insert({
         owner_tenant_id: tenant.tenantId,
-        user_id: userId,
+        user_id: authUser.userId,
         full_name: fullName,
         license_number: licenseNumber,
         status: "active",
@@ -162,19 +161,30 @@ export async function POST(request: Request) {
       action: "create",
       resource: "admin.mvz",
       resourceId: mvzInsert.data.id,
-      payload: { email, fullName, licenseNumber, tenantId: tenant.tenantId },
+      payload: {
+        email,
+        fullName,
+        licenseNumber,
+        tenantId: tenant.tenantId,
+        invitationSent: authUser.invitationSent,
+      },
     });
 
     return apiSuccess(
       {
         mvzProfile: mvzInsert.data,
         tenantId: tenant.tenantId,
-        temporaryPassword,
+        invitationSent: authUser.invitationSent,
       },
       { status: 201 }
     );
   } catch (error) {
-    await deleteAuthUser(userId);
+    if (typeof createdTenantId === "string") {
+      await supabaseAdmin.from("tenants").delete().eq("id", createdTenantId);
+    }
+    if (authUser.invitationSent) {
+      await deleteAuthUser(authUser.userId);
+    }
     return apiError(
       "ADMIN_MVZ_CREATE_FAILED",
       error instanceof Error ? error.message : "No fue posible crear MVZ.",

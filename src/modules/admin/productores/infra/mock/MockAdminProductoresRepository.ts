@@ -1,12 +1,12 @@
 import type {
   AdminProductorBatchCreateInput,
   AdminProductorBatchCreateResult,
+  AdminProductorCreateResult,
   AdminProductoresRepository,
   AdminProductorCreateInput,
   ListAdminProductoresParams,
   ListAdminProductoresResult,
 } from "../../domain/repositories/adminProductoresRepository";
-import type { AdminProductor } from "../../domain/entities/AdminProductorEntity";
 import { adminProductoresMock } from "./adminProductores.mock";
 
 export class MockAdminProductoresRepository implements AdminProductoresRepository {
@@ -19,7 +19,7 @@ export class MockAdminProductoresRepository implements AdminProductoresRepositor
     };
   }
 
-  async create(_input: AdminProductorCreateInput): Promise<AdminProductor> {
+  async create(_input: AdminProductorCreateInput): Promise<AdminProductorCreateResult> {
     throw new Error("Not implemented in mock.");
   }
 

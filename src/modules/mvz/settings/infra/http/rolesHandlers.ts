@@ -2,6 +2,7 @@ import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
 import {
   createCustomRoleForPanel,
+  deleteRoleForPanel,
   listTenantRolesForPanel,
   updateCustomRoleForPanel,
 } from "@/server/authz/tenantRoles";
@@ -139,6 +140,58 @@ export async function PATCH(request: Request) {
     return apiError(
       "MVZ_ROLE_UPDATE_FAILED",
       error instanceof Error ? error.message : "No fue posible actualizar el rol.",
+      400
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  const auth = await requireAuthorized(request, {
+    roles: ["mvz_government"],
+    permissions: ["mvz.roles.write"],
+    resource: "mvz.roles",
+  });
+  if (!auth.ok) {
+    return auth.response;
+  }
+
+  let body: MvzRoleBody;
+  try {
+    body = (await request.json()) as MvzRoleBody;
+  } catch {
+    return apiError("INVALID_BODY", "El cuerpo de la solicitud no es JSON valido.");
+  }
+
+  const roleId = body.roleId?.trim();
+  if (!roleId) {
+    return apiError("INVALID_PAYLOAD", "Debe enviar roleId para eliminar el rol.");
+  }
+
+  try {
+    const deletedRole = await deleteRoleForPanel({
+      tenantId: auth.context.user.tenantId,
+      panel: "mvz",
+      roleId,
+    });
+
+    await logAuditEvent({
+      request,
+      user: auth.context.user,
+      action: "delete",
+      resource: "mvz.roles",
+      resourceId: deletedRole.id,
+      payload: {
+        key: deletedRole.key,
+        name: deletedRole.name,
+        isSystem: deletedRole.isSystem,
+      },
+    });
+
+    return apiSuccess(deletedRole);
+  } catch (error) {
+    return apiError(
+      "MVZ_ROLE_DELETE_FAILED",
+      error instanceof Error ? error.message : "No fue posible eliminar el rol.",
       400
     );
   }

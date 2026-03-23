@@ -16,7 +16,7 @@ export interface BatchCreateSuccessItemDTO {
   entityId: string;
   tenantId: string;
   email: string;
-  temporaryPassword: string;
+  invitationSent: boolean;
 }
 
 export interface BatchCreateSuccessDTO {

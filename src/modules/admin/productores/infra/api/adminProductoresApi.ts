@@ -8,6 +8,7 @@ import type { UpdateAdminProductorDTO } from "@/modules/admin/productores/applic
 import type {
   AdminProductorBatchCreateInput,
   AdminProductorBatchCreateResult,
+  AdminProductorCreateResult,
   AdminProductorCreateInput,
   AdminProductoresRepository,
   ListAdminProductoresParams,
@@ -113,7 +114,7 @@ export async function fetchAdminProductores(
 
 export async function createAdminProductor(
   params: CreateAdminProductorParams
-): Promise<AdminProductor> {
+): Promise<AdminProductorCreateResult> {
   const { accessToken, ...dto } = params;
   const response = await fetch(BASE_URL, {
     method: "POST",
@@ -126,7 +127,10 @@ export async function createAdminProductor(
     throw new Error(body.error?.message ?? "No fue posible crear productor.");
   }
 
-  return body.data.producer as AdminProductor;
+  return {
+    producer: body.data.producer as AdminProductor,
+    invitationSent: body.data.invitationSent === true,
+  };
 }
 
 export async function createAdminProductoresBatch(
@@ -176,7 +180,7 @@ export class AdminProductoresApiRepository implements AdminProductoresRepository
     return fetchAdminProductores({ accessToken, ...params });
   }
 
-  async create(input: AdminProductorCreateInput): Promise<AdminProductor> {
+  async create(input: AdminProductorCreateInput): Promise<AdminProductorCreateResult> {
     const accessToken = await getAccessToken();
     if (!accessToken) throw new Error("No existe sesion activa.");
     return createAdminProductor({ accessToken, ...input });

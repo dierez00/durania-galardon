@@ -10,7 +10,10 @@ import {
   listTenantRolesForPanel,
   resolveAssignableRoleForPanel,
 } from "@/server/authz/tenantRoles";
+import { ensureAuthUserForEmail } from "@/server/admin/provisioning";
 import { logAuditEvent } from "@/server/audit";
+import { deleteAuthUser } from "@/server/auth/provisioning";
+import { buildSetPasswordRedirectUrl } from "@/modules/auth/shared/redirects";
 
 const MVZ_MEMBER_ROLES = ["mvz_government", "mvz_internal"] as const;
 
@@ -239,29 +242,40 @@ export async function POST(request: Request) {
   }
 
   const supabaseAdmin = getSupabaseAdminClient();
-  const profileResult = await supabaseAdmin
-    .from("profiles")
-    .select("id,email")
-    .eq("email", email)
-    .maybeSingle();
-
-  if (profileResult.error || !profileResult.data) {
-    return apiError("MVZ_MEMBER_PROFILE_NOT_FOUND", "No existe usuario con ese correo.", 404);
+  let authUser: { userId: string; invitationSent: boolean };
+  try {
+    authUser = await ensureAuthUserForEmail({
+      email,
+      redirectTo: buildSetPasswordRedirectUrl(),
+    });
+  } catch (error) {
+    return apiError(
+      "MVZ_MEMBER_AUTH_RESOLVE_FAILED",
+      error instanceof Error ? error.message : "No fue posible crear o invitar al usuario.",
+      400
+    );
   }
 
-  if (profileResult.data.id === auth.context.user.id) {
+  if (authUser.userId === auth.context.user.id) {
     return apiError("INVALID_MEMBER", "No puede reasignarse a si mismo desde este flujo.", 400);
   }
+
+  const rollbackInvitedUser = async () => {
+    if (authUser.invitationSent) {
+      await deleteAuthUser(authUser.userId);
+    }
+  };
 
   let membershipId: string;
   const membershipLookup = await supabaseAdmin
     .from("tenant_memberships")
     .select("id")
     .eq("tenant_id", auth.context.user.tenantId)
-    .eq("user_id", profileResult.data.id)
+    .eq("user_id", authUser.userId)
     .maybeSingle();
 
   if (membershipLookup.error) {
+    await rollbackInvitedUser();
     return apiError("MVZ_MEMBER_LOOKUP_FAILED", membershipLookup.error.message, 400);
   }
 
@@ -280,7 +294,7 @@ export async function POST(request: Request) {
       .from("tenant_memberships")
       .insert({
         tenant_id: auth.context.user.tenantId,
-        user_id: profileResult.data.id,
+        user_id: authUser.userId,
         status: "active",
         invited_by_user_id: auth.context.user.id,
       })
@@ -288,6 +302,7 @@ export async function POST(request: Request) {
       .single();
 
     if (membershipInsert.error || !membershipInsert.data) {
+      await rollbackInvitedUser();
       return apiError(
         "MVZ_MEMBER_MEMBERSHIP_CREATE_FAILED",
         membershipInsert.error?.message ?? "No fue posible crear la membresia.",
@@ -315,6 +330,7 @@ export async function POST(request: Request) {
       resolvedRoleKey = roleKey;
     }
   } catch (error) {
+    await rollbackInvitedUser();
     return apiError(
       "MVZ_MEMBER_ROLE_RESOLVE_FAILED",
       error instanceof Error ? error.message : "No fue posible resolver el rol MVZ.",
@@ -328,6 +344,7 @@ export async function POST(request: Request) {
     .eq("membership_id", membershipId);
 
   if (clearRoles.error) {
+    await rollbackInvitedUser();
     return apiError("MVZ_MEMBER_ROLE_CLEAR_FAILED", clearRoles.error.message, 400);
   }
 
@@ -338,6 +355,7 @@ export async function POST(request: Request) {
   });
 
   if (assignRole.error) {
+    await rollbackInvitedUser();
     return apiError("MVZ_MEMBER_ROLE_ASSIGN_FAILED", assignRole.error.message, 400);
   }
 
@@ -351,16 +369,18 @@ export async function POST(request: Request) {
       email,
       roleId,
       roleKey: resolvedRoleKey,
+      invitationSent: authUser.invitationSent,
     },
   });
 
   return apiSuccess(
     {
       membershipId,
-      userId: profileResult.data.id,
-      email: profileResult.data.email,
+      userId: authUser.userId,
+      email,
       roleId,
       roleKey: resolvedRoleKey,
+      invitationSent: authUser.invitationSent,
     },
     { status: 201 }
   );

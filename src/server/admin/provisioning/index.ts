@@ -1,3 +1,7 @@
+import {
+  deleteAuthUser,
+  inviteAuthUserByEmail,
+} from "@/server/auth/provisioning";
 import { getSupabaseProvisioningClient } from "@/server/auth/supabase";
 
 function sleep(ms: number) {
@@ -191,5 +195,50 @@ export async function createMembershipAndAssignRole(input: {
 
   return {
     membershipId: membershipInsert.data.id,
+  };
+}
+
+export async function ensureAuthUserForEmail(input: {
+  email: string;
+  redirectTo: string;
+}): Promise<{ userId: string; invitationSent: boolean }> {
+  const supabaseAdmin = getSupabaseProvisioningClient();
+  const existingProfile = await supabaseAdmin
+    .from("profiles")
+    .select("id")
+    .eq("email", input.email)
+    .maybeSingle();
+
+  if (existingProfile.error) {
+    throw new Error(existingProfile.error.message);
+  }
+
+  if (existingProfile.data?.id) {
+    return {
+      userId: existingProfile.data.id,
+      invitationSent: false,
+    };
+  }
+
+  const inviteResult = await inviteAuthUserByEmail({
+    email: input.email,
+    redirectTo: input.redirectTo,
+  });
+
+  if (inviteResult.error || !inviteResult.data.user) {
+    throw new Error(inviteResult.error?.message ?? "AUTH_INVITE_FAILED");
+  }
+
+  const userId = inviteResult.data.user.id;
+  const profileExists = await waitForProfile(userId);
+
+  if (!profileExists) {
+    await deleteAuthUser(userId);
+    throw new Error("PROFILE_NOT_CREATED");
+  }
+
+  return {
+    userId,
+    invitationSent: true,
   };
 }

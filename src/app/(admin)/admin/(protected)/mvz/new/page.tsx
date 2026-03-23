@@ -48,16 +48,16 @@ export default function AdminMvzBatchCreatePage() {
   const handleDownloadCredentials = () => {
     if (createdRows.length === 0) return;
     const buffer = buildExcelBuffer(
-      ["Fila", "ID entidad", "Tenant", "Email", "Password temporal"],
+      ["Fila", "ID entidad", "Tenant", "Email", "Invitacion enviada"],
       createdRows.map((row) => [
         String(row.rowIndex + 1),
         row.entityId,
         row.tenantId,
         row.email,
-        row.temporaryPassword,
+        row.invitationSent ? "Si" : "No",
       ])
     );
-    downloadExcel("mvz-credenciales.xlsx", buffer);
+    downloadExcel("mvz-invitaciones.xlsx", buffer);
   };
 
   return (
@@ -67,6 +67,7 @@ export default function AdminMvzBatchCreatePage() {
           <h1 className="text-2xl font-bold">Alta masiva de MVZ</h1>
           <p className="text-sm text-muted-foreground">
             Pega filas desde Excel o importa un archivo .xlsx para crear hasta 100 registros.
+            Las cuentas nuevas recibiran una invitacion por correo para activar su acceso.
           </p>
         </div>
         <Button asChild variant="outline">
@@ -106,7 +107,7 @@ export default function AdminMvzBatchCreatePage() {
                   <TableHead>ID entidad</TableHead>
                   <TableHead>Tenant</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Password temporal</TableHead>
+                  <TableHead>Invitacion enviada</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -116,7 +117,7 @@ export default function AdminMvzBatchCreatePage() {
                     <TableCell className="font-mono text-xs">{row.entityId}</TableCell>
                     <TableCell className="font-mono text-xs">{row.tenantId}</TableCell>
                     <TableCell>{row.email}</TableCell>
-                    <TableCell className="font-mono text-xs">{row.temporaryPassword}</TableCell>
+                    <TableCell>{row.invitationSent ? "Invitacion enviada" : "Asignado a cuenta existente"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

@@ -43,7 +43,7 @@ export interface AdminMvzBatchCreateSuccessItem {
   entityId: string;
   tenantId: string;
   email: string;
-  temporaryPassword: string;
+  invitationSent: boolean;
 }
 
 export interface AdminMvzBatchCreateResult {

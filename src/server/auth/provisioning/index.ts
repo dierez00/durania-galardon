@@ -1,10 +1,18 @@
 import { getServerEnv, publicEnv } from "@/shared/config";
-import { getSupabaseProvisioningClient } from "@/server/auth/supabase";
+import {
+  createSupabaseAnonServerClient,
+  getSupabaseProvisioningClient,
+} from "@/server/auth/supabase";
 
 export interface ProvisionUserInput {
   email: string;
   password: string;
   emailConfirmed?: boolean;
+}
+
+export interface InviteAuthUserInput {
+  email: string;
+  redirectTo?: string;
 }
 
 export async function createAuthUser(input: ProvisionUserInput) {
@@ -25,6 +33,13 @@ export async function updateAuthUserStatus(userId: string, bannedUntil?: string)
   const provisioning = getSupabaseProvisioningClient();
   return provisioning.auth.admin.updateUserById(userId, {
     ban_duration: bannedUntil,
+  });
+}
+
+export async function inviteAuthUserByEmail(input: InviteAuthUserInput) {
+  const provisioning = getSupabaseProvisioningClient();
+  return provisioning.auth.admin.inviteUserByEmail(input.email, {
+    redirectTo: input.redirectTo,
   });
 }
 
@@ -54,6 +69,35 @@ export async function fetchAuthUserDisplayName(userId: string): Promise<string |
   }
 
   return null;
+}
+
+export interface AuthUserLifecycleSnapshot {
+  invitedAt: string | null;
+  emailConfirmedAt: string | null;
+  lastSignInAt: string | null;
+}
+
+export async function fetchAuthUserLifecycleSnapshot(
+  userId: string
+): Promise<AuthUserLifecycleSnapshot | null> {
+  const provisioning = getSupabaseProvisioningClient();
+  const result = await provisioning.auth.admin.getUserById(userId);
+
+  if (result.error || !result.data.user) {
+    return null;
+  }
+
+  const user = result.data.user as {
+    invited_at?: string | null;
+    email_confirmed_at?: string | null;
+    last_sign_in_at?: string | null;
+  };
+
+  return {
+    invitedAt: user.invited_at ?? null,
+    emailConfirmedAt: user.email_confirmed_at ?? null,
+    lastSignInAt: user.last_sign_in_at ?? null,
+  };
 }
 
 /**
@@ -163,4 +207,37 @@ export async function updateAuthUserDisplayName(userId: string, displayName: str
   });
 
   return !updateResult.error;
+}
+
+export async function requestPasswordRecoveryEmail(email: string, redirectTo: string) {
+  const supabase = createSupabaseAnonServerClient();
+  return supabase.auth.resetPasswordForEmail(email, {
+    redirectTo,
+  });
+}
+
+export async function resendAuthOnboardingEmail(input: {
+  userId: string;
+  email: string;
+  redirectTo: string;
+}): Promise<"invite" | "recovery"> {
+  const lifecycle = await fetchAuthUserLifecycleSnapshot(input.userId);
+
+  if (lifecycle?.invitedAt && !lifecycle.emailConfirmedAt) {
+    const inviteResult = await inviteAuthUserByEmail({
+      email: input.email,
+      redirectTo: input.redirectTo,
+    });
+
+    if (!inviteResult.error) {
+      return "invite";
+    }
+  }
+
+  const recoveryResult = await requestPasswordRecoveryEmail(input.email, input.redirectTo);
+  if (recoveryResult.error) {
+    throw new Error(recoveryResult.error.message);
+  }
+
+  return "recovery";
 }

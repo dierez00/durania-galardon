@@ -201,7 +201,7 @@ export default function MvzMembersPage({
       {canManage ? (
         <Card>
           <CardHeader>
-            <CardTitle>Agregar miembro existente</CardTitle>
+            <CardTitle>Agregar o invitar miembro</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
@@ -214,6 +214,9 @@ export default function MvzMembersPage({
                   placeholder="mvz@ejemplo.com"
                   onChange={(event) => setEmail(event.target.value)}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Si el correo ya existe, se asignara al tenant. Si no existe, enviaremos una invitacion.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label>Rol</Label>
@@ -233,7 +236,7 @@ export default function MvzMembersPage({
             </div>
 
             <Button onClick={createMember} disabled={!email.trim() || !roleId || submitting}>
-              {submitting ? "Agregando..." : "Agregar miembro"}
+              {submitting ? "Procesando..." : "Agregar o invitar"}
             </Button>
           </CardContent>
         </Card>
