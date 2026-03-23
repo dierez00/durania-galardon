@@ -67,7 +67,7 @@ export class ServerUppDocumentsRepository implements IUppDocumentsRepository {
     return (result.data ?? []).map((row) => mapUppDocument(row as UppDocumentRow));
   }
 
-  async upload(file: File, uppId: string, documentType: string, expiryDate?: string): Promise<UppDocument> {
+  async upload(file: File, uppId: string, documentType: string, expiryDate?: string, bovinoId?: string): Promise<UppDocument> {
     if (!this.accessibleUppIds.includes(uppId)) {
       throw new Error("No tiene acceso a la UPP solicitada.");
     }
@@ -88,8 +88,25 @@ export class ServerUppDocumentsRepository implements IUppDocumentsRepository {
     }
 
     const producerId = uppResult.data.producer_id;
+
+    if (bovinoId) {
+      const animalResult = await supabaseAdmin
+        .from("animals")
+        .select("id")
+        .eq("tenant_id", this.tenantId)
+        .eq("upp_id", uppId)
+        .eq("id", bovinoId)
+        .maybeSingle();
+
+      if (animalResult.error || !animalResult.data) {
+        throw new Error("El bovino seleccionado no pertenece a la UPP indicada.");
+      }
+    }
+
     const calculatedHash = await calculateFileHash(file);
-    const fileStorageKey = `${this.tenantId}/${producerId}/upp/${uppId}/${documentType}/${Date.now()}_${file.name}`;
+    const fileStorageKey = bovinoId
+      ? `${this.tenantId}/${producerId}/upp/${uppId}/${bovinoId}/${documentType}/${Date.now()}_${file.name}`
+      : `${this.tenantId}/${producerId}/upp/${uppId}/${documentType}/${Date.now()}_${file.name}`;
 
     await uploadFileToSupabase(file, fileStorageKey);
     await supabaseAdmin

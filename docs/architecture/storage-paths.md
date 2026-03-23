@@ -26,6 +26,9 @@ Documents_producer/
         {uppId}/
           {documentType}/
             {timestamp}_{filename}
+        {bovinoId}/
+          {documentType}/
+            {timestamp}_{filename}
 ```
 
 ### Ejemplo Real
@@ -80,6 +83,23 @@ Documents_producer/
 **Ruta:**
 ```
 {tenantId}/{producerId}/upp/{uppId}/{documentType}/{timestamp}_{originalFilename}
+```
+
+### 🐄 Evidencias por Bovino (Movilización)
+
+**Ruta:**
+```
+{tenantId}/{producerId}/upp/{uppId}/{bovinoId}/{documentType}/{timestamp}_{originalFilename}
+```
+
+**Uso recomendado:**
+- Solicitudes de movilización con validación por animal.
+- Evidencias TB/BR y soportes regulatorios ligados a un bovino específico.
+- Persistencia en `upp_documents` manteniendo `file_storage_key` como fuente de vinculación a `bovinoId`.
+
+**Ejemplo:**
+```
+550e8400-e29b-41d4-a716-446655440000/a16e3e8f-c99f-4e1e-a1f1-9d5c4e8b7f1a/upp/f09e7d8c-b88e-4f0d-8e1c-7c5b4d3e2f1a/7f22f1c8-93cc-4d9d-b8aa-a1f5e5d76d20/tb_resultado/1710951400_tb.pdf
 ```
 
 **Documentos soportados:**
@@ -160,7 +180,9 @@ Documents_producer/
 3. **Calcular hash:** SHA256
 4. **Construir ruta:**
    ```typescript
-   const fileStorageKey = `${tenantId}/${producerId}/upp/${uppId}/${documentType}/${Date.now()}_${file.name}`;
+  const fileStorageKey = bovinoId
+    ? `${tenantId}/${producerId}/upp/${uppId}/${bovinoId}/${documentType}/${Date.now()}_${file.name}`
+    : `${tenantId}/${producerId}/upp/${uppId}/${documentType}/${Date.now()}_${file.name}`;
    ```
 5. **Subir a storage**
 6. **Marcar versión anterior:** Por UPP + documentType

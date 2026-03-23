@@ -27,11 +27,12 @@ export function useDocumentUpload() {
     file: File,
     uppId: string,
     documentType: string,
-    expiryDate?: string
+    expiryDate?: string,
+    bovinoId?: string
   ) => {
     setUploading(true);
     try {
-      await uploadUppDocumentUseCase.execute(file, uppId, documentType, expiryDate);
+      await uploadUppDocumentUseCase.execute(file, uppId, documentType, expiryDate, bovinoId);
       toast.success("Documento subido exitosamente");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error al subir documento";

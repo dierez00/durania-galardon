@@ -42,7 +42,8 @@ export class UppDocumentsApiRepository implements IUppDocumentsRepository {
     file: File,
     uppId: string,
     documentType: string,
-    expiryDate?: string
+    expiryDate?: string,
+    bovinoId?: string
   ): Promise<UppDocument> {
     const token = await getAccessToken();
     if (!token) throw new Error("No existe sesiÃ³n activa.");
@@ -53,6 +54,7 @@ export class UppDocumentsApiRepository implements IUppDocumentsRepository {
     formData.append("documentType", documentType);
     formData.append("fileHash", await calculateFileHash(file));
     if (expiryDate) formData.append("expiryDate", expiryDate);
+    if (bovinoId) formData.append("bovinoId", bovinoId);
 
     const response = await fetch(this.BASE_URL, {
       method: "POST",

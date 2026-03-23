@@ -1,8 +1,8 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { createSupabaseRlsServerClient } from "@/server/auth/supabase";
 import { resolveProducerId } from "@/server/authz/profiles";
 import { logAuditEvent } from "@/server/audit";
+import { createMovementContainer } from "../container";
 import {
   logProducerAccessServer,
   sampleProducerAccessIds,
@@ -13,10 +13,17 @@ interface MovementBody {
   uppId?: string;
   movementDate?: string;
   routeNote?: string;
+  destinationText?: string;
+  validUntil?: string;
+  authorizedTags?: string[];
 }
 
-function createMovementQr(id: string): string {
-  return `REEMO-${id.slice(0, 8).toUpperCase()}`;
+interface ConfirmArrivalBody {
+  movementId?: string;
+  destinationType?: "internal" | "external";
+  destinationUppId?: string;
+  receivedTags?: string[];
+  incidenceNote?: string;
 }
 
 export async function GET(request: Request) {
@@ -60,30 +67,39 @@ export async function GET(request: Request) {
     return apiSuccess({ movements: [] });
   }
 
-  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
-  const rowsResult = await supabase
-    .from("movement_requests")
-    .select("id,upp_id,status,qr_code,route_note,incidence_note,movement_date,created_at,updated_at")
-    .eq("tenant_id", auth.context.user.tenantId)
-    .in("upp_id", scopedUppIds)
-    .order("created_at", { ascending: false });
+  try {
+    const container = createMovementContainer({
+      tenantId: auth.context.user.tenantId,
+      accessToken: auth.context.user.accessToken,
+    });
+    const rows = await container.listMovementsUseCase.execute(scopedUppIds);
 
-  if (rowsResult.error) {
+    logProducerAccessServer("producer/movements:get:end", {
+      userId: auth.context.user.id,
+      tenantId: auth.context.user.tenantId,
+      movementsCount: rows.length,
+    });
+
+    return apiSuccess({
+      movements: rows.map((row) => ({
+        id: row.id,
+        upp_id: row.uppId,
+        status: row.status,
+        qr_code: row.qrCode,
+        route_note: row.routeNote,
+        incidence_note: row.incidenceNote,
+        movement_date: row.movementDate,
+        created_at: row.createdAt,
+      })),
+    });
+  } catch (error) {
     logProducerAccessServer("producer/movements:get:error", {
       userId: auth.context.user.id,
       tenantId: auth.context.user.tenantId,
-      error: summarizeProducerAccessError(rowsResult.error),
+      error: summarizeProducerAccessError(error),
     });
-    return apiError("PRODUCER_MOVEMENTS_QUERY_FAILED", rowsResult.error.message, 500);
+    return apiError("PRODUCER_MOVEMENTS_QUERY_FAILED", error instanceof Error ? error.message : "Error consultando movilizaciones.", 500);
   }
-
-  logProducerAccessServer("producer/movements:get:end", {
-    userId: auth.context.user.id,
-    tenantId: auth.context.user.tenantId,
-    movementsCount: rowsResult.data?.length ?? 0,
-  });
-
-  return apiSuccess({ movements: rowsResult.data ?? [] });
 }
 
 export async function POST(request: Request) {
@@ -114,56 +130,155 @@ export async function POST(request: Request) {
   }
 
   const producerId = await resolveProducerId(auth.context.user);
-  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
-  const createResult = await supabase
-    .from("movement_requests")
-    .insert({
-      tenant_id: auth.context.user.tenantId,
-      producer_id: producerId,
-      upp_id: uppId,
-      requested_by_user_id: auth.context.user.id,
-      status: "requested",
-      route_note: body.routeNote?.trim() || null,
-      movement_date: body.movementDate ?? null,
-    })
-    .select("id,upp_id,status,qr_code,route_note,incidence_note,movement_date,created_at,updated_at")
-    .single();
+  if (!producerId) {
+    return apiError("PRODUCER_NOT_FOUND", "No fue posible resolver el perfil del productor.", 400);
+  }
 
-  if (createResult.error || !createResult.data) {
+  const authorizedTags = (body.authorizedTags ?? []).map((tag) => tag.trim()).filter(Boolean);
+  if (authorizedTags.length === 0) {
+    return apiError("INVALID_PAYLOAD", "Debe enviar authorizedTags con al menos un arete.", 400);
+  }
+
+  try {
+    const container = createMovementContainer({
+      tenantId: auth.context.user.tenantId,
+      accessToken: auth.context.user.accessToken,
+    });
+
+    const result = await container.createReemoMovementUseCase.execute({
+      tenantId: auth.context.user.tenantId,
+      producerId,
+      requestedByUserId: auth.context.user.id,
+      request: {
+        uppId,
+        movementDate: body.movementDate,
+        routeNote: body.routeNote,
+        destinationText: body.destinationText,
+        validUntil: body.validUntil,
+        authorizedTags,
+      },
+    });
+
+    await logAuditEvent({
+      request,
+      user: auth.context.user,
+      action: "create",
+      resource: "producer.movements",
+      resourceId: result.movement.id,
+      payload: {
+        uppId,
+        movementDate: body.movementDate ?? null,
+        destinationText: body.destinationText ?? null,
+        validUntil: body.validUntil ?? null,
+        authorizedTags,
+      },
+    });
+
+    return apiSuccess(
+      {
+        movement: {
+          id: result.movement.id,
+          upp_id: result.movement.uppId,
+          status: result.movement.status,
+          qr_code: result.movement.qrCode,
+          route_note: result.movement.routeNote,
+          incidence_note: result.movement.incidenceNote,
+          movement_date: result.movement.movementDate,
+          created_at: result.movement.createdAt,
+        },
+        sanitaryValidation: result.sanitaryValidation,
+      },
+      { status: 201 }
+    );
+  } catch (error) {
     return apiError(
       "PRODUCER_MOVEMENT_CREATE_FAILED",
-      createResult.error?.message ?? "No fue posible crear solicitud de movilizacion.",
+      error instanceof Error ? error.message : "No fue posible crear solicitud de movilización.",
       400
     );
   }
+}
 
-  const qrCode = createMovementQr(createResult.data.id);
-  await supabase
-    .from("movement_requests")
-    .update({ qr_code: qrCode, updated_at: new Date().toISOString() })
-    .eq("tenant_id", auth.context.user.tenantId)
-    .eq("id", createResult.data.id);
-
-  await logAuditEvent({
-    request,
-    user: auth.context.user,
-    action: "create",
+export async function PATCH(request: Request) {
+  const auth = await requireAuthorized(request, {
+    roles: ["producer", "employee"],
+    permissions: ["producer.movements.write"],
     resource: "producer.movements",
-    resourceId: createResult.data.id,
-    payload: {
-      uppId,
-      movementDate: body.movementDate ?? null,
-      qrCode,
-    },
   });
+  if (!auth.ok) {
+    return auth.response;
+  }
 
-  return apiSuccess(
-    {
-      movement: {
-        ...createResult.data,
-        qr_code: qrCode,
+  let body: ConfirmArrivalBody;
+  try {
+    body = (await request.json()) as ConfirmArrivalBody;
+  } catch {
+    return apiError("INVALID_BODY", "El cuerpo de la solicitud no es JSON valido.");
+  }
+
+  if (!body.movementId?.trim()) {
+    return apiError("INVALID_PAYLOAD", "Debe enviar movementId.", 400);
+  }
+  if (!body.destinationType || !["internal", "external"].includes(body.destinationType)) {
+    return apiError("INVALID_PAYLOAD", "Debe enviar destinationType interno o externo.", 400);
+  }
+
+  const normalizedReceivedTags = (body.receivedTags ?? []).map((tag) => tag.trim()).filter(Boolean);
+  if (normalizedReceivedTags.length === 0) {
+    return apiError("INVALID_PAYLOAD", "Debe enviar receivedTags con al menos un arete.", 400);
+  }
+
+  if (body.destinationType === "internal") {
+    if (!body.destinationUppId?.trim()) {
+      return apiError("INVALID_PAYLOAD", "Debe enviar destinationUppId para destino interno.", 400);
+    }
+
+    const canAccessDestination = await auth.context.canAccessUpp(body.destinationUppId.trim());
+    if (!canAccessDestination) {
+      return apiError("FORBIDDEN", "No tiene acceso a la UPP destino.", 403);
+    }
+  }
+
+  try {
+    const container = createMovementContainer({
+      tenantId: auth.context.user.tenantId,
+      accessToken: auth.context.user.accessToken,
+    });
+
+    await container.confirmMovementArrivalUseCase.execute({
+      tenantId: auth.context.user.tenantId,
+      request: {
+        movementId: body.movementId.trim(),
+        destinationType: body.destinationType,
+        destinationUppId: body.destinationUppId?.trim(),
+        receivedTags: normalizedReceivedTags,
+        incidenceNote: body.incidenceNote,
       },
-    },
-    { status: 201 }
-  );
+    });
+
+    await logAuditEvent({
+      request,
+      user: auth.context.user,
+      action: "update",
+      resource: "producer.movements",
+      resourceId: body.movementId.trim(),
+      payload: {
+        destinationType: body.destinationType,
+        destinationUppId: body.destinationUppId?.trim() ?? null,
+        receivedTags: normalizedReceivedTags,
+        incidenceNote: body.incidenceNote ?? null,
+      },
+    });
+
+    return apiSuccess({
+      movementId: body.movementId.trim(),
+      confirmed: true,
+    });
+  } catch (error) {
+    return apiError(
+      "PRODUCER_MOVEMENT_CONFIRM_FAILED",
+      error instanceof Error ? error.message : "No fue posible confirmar la llegada.",
+      400
+    );
+  }
 }

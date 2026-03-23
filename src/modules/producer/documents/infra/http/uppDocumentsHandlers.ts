@@ -111,6 +111,7 @@ export async function POST(request: NextRequest) {
   const documentType = formData.get("documentType")?.toString().trim();
   const expiryDate = formData.get("expiryDate")?.toString().trim();
   const providedHash = formData.get("fileHash")?.toString().trim();
+  const bovinoId = formData.get("bovinoId")?.toString().trim();
 
   if (!file || !uppId || !documentType) {
     return apiError("INVALID_PAYLOAD", "Debe enviar file, uppId y documentType.");
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest) {
   );
 
   try {
-    const document = await repository.upload(file, uppId, documentType, expiryDate);
+    const document = await repository.upload(file, uppId, documentType, expiryDate, bovinoId);
 
     await logAuditEvent({
       request,
@@ -144,7 +145,7 @@ export async function POST(request: NextRequest) {
       action: "create",
       resource: "producer.upp_documents",
       resourceId: document.id,
-      payload: { uppId, documentType },
+      payload: { uppId, documentType, bovinoId: bovinoId || null },
     });
 
     return apiSuccess({ document }, { status: 201 });
