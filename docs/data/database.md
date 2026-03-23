@@ -218,7 +218,7 @@ Roles disponibles dentro de un tenant. Los roles de sistema (`is_system = true`)
 | `tenant_id` | `UUID` | FK → `tenants(id)` |
 | `key` | `TEXT` | `tenant_admin` \| `producer` \| `employee` \| `producer_viewer` \| `mvz_internal` \| `mvz_government` \| `custom_<slug>` |
 | `name` | `TEXT` | Nombre legible |
-| `is_system` | `BOOLEAN` | `TRUE` si fue creado por el seed. No eliminar. |
+| `is_system` | `BOOLEAN` | `TRUE` si fue creado por el seed y corresponde a un rol base visible del panel |
 | `priority` | `INTEGER` | Orden de prioridad (menor = más privilegio) |
 
 **Constraint:** `UNIQUE(tenant_id, key)`
@@ -228,7 +228,8 @@ Reglas operativas actuales:
 - `government` reserva `tenant_admin`.
 - `producer` reserva `producer`, `employee` y `producer_viewer`.
 - `mvz` reserva `mvz_government` y `mvz_internal`.
-- Los roles base son visibles, asignables y clonables, pero sus permisos no se editan desde la UI.
+- Los roles base visibles y los roles custom pueden editarse desde la UI de settings.
+- La eliminacion de un rol base o custom se permite solo si no tiene filas activas en `tenant_user_roles`; si sigue asignado a miembros, la operacion debe bloquearse.
 - Los roles custom usan `is_system = false` y la `key` interna sigue el patron `custom_<slug>`.
 
 ---

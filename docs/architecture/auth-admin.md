@@ -90,9 +90,11 @@ Redireccion inicial por panel y permisos:
 - `GET|PATCH /api/producer/profile`
 - `GET|PATCH /api/producer/settings`
 - `GET /api/producer/settings/ranchos`
-- `GET|POST|PATCH /api/producer/roles`
+- `GET|POST|PATCH|DELETE /api/producer/roles`
+- `POST /api/producer/employees/resend-invite`
 - `GET|PATCH /api/mvz/profile`
 - `GET|PATCH /api/mvz/settings`
+- `GET|POST|PATCH|DELETE /api/mvz/roles`
 
 ## Reglas de autorizacion
 
@@ -106,8 +108,12 @@ Redireccion inicial por panel y permisos:
 - `producer/settings` se compone por tabs (`Perfil`, `Ranchos`, `Empleados`, `Roles`) y cada tab se habilita por permisos del modulo correspondiente.
 - `mvz/settings` se compone por tabs (`Perfil`, `Ranchos`, `Equipo`, `Roles`) y queda bloqueado para `mvz_internal`.
 - `producer/employees` usa `roleId` y `uppAccess[]` como contrato principal para membresias y alcance por rancho.
+- La UI de `producer/settings -> Empleados` simplifica el alta a `rol dentro del panel` + `ranchos asignados`; el acceso inicial por rancho se crea con alcance operativo por defecto y el ajuste fino queda en la tab `Ranchos`.
+- La tabla de `producer/employees` deriva un estado de acceso visible (`Invitacion enviada`, `Pendiente`, `Activo`, `Dado de baja`) a partir de `tenant_memberships`, `profiles.status` y señales de lifecycle en Supabase Auth.
+- `POST /api/producer/employees/resend-invite` solo se habilita para empleados con onboarding pendiente y reenvia invitacion o recovery hacia `/auth/set-password`.
 - `mvz/members` usa `roleId` tenant-based como contrato principal, sin depender de `roleKey` fijo.
-- `producer/roles` y `mvz/roles` exponen roles base protegidos y roles custom por tenant.
+- `producer/roles` y `mvz/roles` exponen roles base visibles y roles custom por tenant; ambos permiten crear, editar, clonar y eliminar desde settings.
+- La eliminacion de roles tenant se bloquea cuando el rol aun tiene membresias asignadas; primero debe desasignarse de `tenant_user_roles`.
 - Todos los endpoints MVZ de rancho validan:
   - rol MVZ
   - permisos del modulo

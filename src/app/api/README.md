@@ -22,6 +22,7 @@
 - `producer/settings` -> `src/modules/producer/settings`
 - `producer/settings/ranchos` -> `src/modules/producer/settings`
 - `producer/roles` -> `src/modules/producer/settings`
+- `producer/employees/resend-invite` -> `src/modules/producer/empleados`
 - `producer/upp` -> `src/modules/producer/ranchos`
 - `mvz/assignments` -> `src/modules/ranchos`
 - `mvz/members` -> `src/modules/mvz/members`
@@ -67,13 +68,14 @@ Si el modulo aun no expone alias desde `index.ts`, el reexport puede apuntar tem
 - `GET|PATCH /api/producer/profile`
 - `GET|PATCH /api/producer/settings`
 - `GET /api/producer/settings/ranchos`
-- `GET|POST|PATCH /api/producer/roles`
+- `GET|POST|PATCH|DELETE /api/producer/roles`
 - `GET|POST /api/producer/bovinos`
 - `GET|POST /api/producer/movements`
 - `GET|POST /api/producer/exports`
 - `GET|POST|PATCH /api/producer/documents`
 - `GET|POST /api/producer/upp-documents`
 - `GET|POST|PATCH /api/producer/employees`
+- `POST /api/producer/employees/resend-invite`
 
 ### Scope de proyecto productor
 
@@ -97,7 +99,7 @@ Politica de comentarios en documentos:
 - `GET|POST|PATCH /api/mvz/members`
 - `GET|PATCH /api/mvz/profile`
 - `GET|PATCH /api/mvz/settings`
-- `GET|POST|PATCH /api/mvz/roles`
+- `GET|POST|PATCH|DELETE /api/mvz/roles`
 - `GET|POST /api/mvz/tests`
 - `POST /api/mvz/tests/sync`
 - `GET|PATCH /api/mvz/exports`
