@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-19
+Last Updated: 2026-03-23
 Source of Truth: This index routes the team to the canonical documentation for each topic and classifies non-canonical material.
 
 # Durania Docs
@@ -23,6 +23,7 @@ If you touch HTTP entrypoints or API ownership, also read [src/app/api/README.md
 - [Canonical] [Multi-tenant model](./architecture/multitenancy.md)
 - [Canonical] [Auth and tenant IAM](./architecture/auth-admin.md)
 - [Canonical] [Tenant IAM catalog](./architecture/tenant-iam.md)
+- [Canonical] [UI color system](./architecture/ui-color-system.md)
 - [Canonical] [MVZ hierarchy](./architecture/mvz-hierarchy.md)
 - [Canonical] [Archived modules policy](./architecture/archived-modules.md)
 

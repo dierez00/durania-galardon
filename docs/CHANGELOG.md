@@ -1,6 +1,6 @@
 Status: History
 Owner: Engineering
-Last Updated: 2026-03-22
+Last Updated: 2026-03-23
 Source of Truth: Historical log of documentation-only changes. Current operational guidance lives in `docs/README.md` and the linked canonical docs.
 
 # Docs Changelog
@@ -9,6 +9,7 @@ Source of Truth: Historical log of documentation-only changes. Current operation
 
 ### Added
 
+- `docs/architecture/ui-color-system.md`: documenta la paleta canonica, tokens globales, tonos semanticos, reglas de consumo y el guard `npm run check:ui-colors`.
 - `src/app/api/README.md`: agrega ownership y contratos para `auth/password/recovery` y `auth/invite-context`.
 - `docs/architecture/tenant-iam.md`: documenta roles base protegidos, roles custom `custom_<slug>`, permisos `producer.roles.*` y `mvz.roles.*`, y nuevos endpoints de roles por tenant.
 - `src/app/api/README.md`: agrega ownership y contratos para `producer/roles`, `mvz/roles` y `producer/settings/ranchos`.
@@ -22,6 +23,8 @@ Source of Truth: Historical log of documentation-only changes. Current operation
 
 ### Changed
 
+- `docs/README.md`: indexa el sistema de color UI como documentacion canonica de arquitectura.
+- `docs/architecture/overview.md`: registra `src/shared/ui/theme` y el guard `scripts/check-ui-colors.mjs` como parte de la arquitectura frontend compartida.
 - `docs/architecture/auth-admin.md`: documenta el flujo de invitacion/recovery, las rutas publicas `/forgot-password` y `/auth/set-password`, y el endpoint `GET /api/auth/invite-context`.
 - `docs/guides/setup.md`: agrega `NEXT_PUBLIC_SITE_URL`, requisitos de Redirect URLs/Auth templates en Supabase y actualiza el redirect MVZ esperado a `/mvz`.
 - `docs/architecture/auth-admin.md`: actualiza routing tenant basado en permisos reales, payload expandido de `GET /api/auth/me`, tabs de settings y restricciones especiales de `mvz_internal`.

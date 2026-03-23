@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-22
+Last Updated: 2026-03-23
 Source of Truth: Active architecture, ownership rules, and layering conventions for the application.
 
 # Arquitectura
@@ -57,6 +57,7 @@ src/
     config/
     lib/
     ui/
+      theme/
 sql/
 ```
 
@@ -67,6 +68,14 @@ sql/
 - `src/modules` contiene negocio, presentacion feature-owned, handlers HTTP y adaptadores por capacidad.
 - `src/server` contiene infraestructura transversal de backend.
 - `src/shared` contiene utilidades, config y UI neutral sin ownership de negocio.
+
+## UI y theming
+
+- `src/app/globals.css` define los tokens globales de color para `light`, `dark` y `classic-dark`.
+- `src/shared/ui/theme/*` expone helpers tipados para tonos semanticos (`brand`, `secondary`, `accent`, `neutral`, `info`, `success`, `warning`, `error`).
+- `src/shared/ui/*` consume tokens semanticos; los modulos deben mapear estados de dominio a tonos y no crear clases de color locales.
+- `scripts/check-ui-colors.mjs` protege el repo contra hex, `rgb/hsl` y paletas Tailwind fuera de la capa canonica.
+- Ver `docs/architecture/ui-color-system.md` para reglas de consumo y enforcement.
 
 ## Que quedo hecho
 
