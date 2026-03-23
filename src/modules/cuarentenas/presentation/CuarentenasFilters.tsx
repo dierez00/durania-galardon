@@ -37,8 +37,8 @@ const getEstadoIcon = (value: string): LucideIcon => {
 };
 
 const getEstadoColor = (value: string): string => {
-  if (value === "Activa")     return "text-amber-600";
-  if (value === "Completada") return "text-emerald-600";
+  if (value === "Activa")     return "text-warning";
+  if (value === "Completada") return "text-success";
   return "text-muted-foreground";
 };
 
@@ -106,7 +106,7 @@ export const CuarentenasFilters: React.FC<CuarentenasFiltersProps> = ({
               label="Búsqueda"
               value={filters.search}
               onRemove={() => set("search", "")}
-              colorClass="bg-blue-100 text-blue-700"
+              tone="info"
             />
           )}
           {filters.estado && (
@@ -115,7 +115,7 @@ export const CuarentenasFilters: React.FC<CuarentenasFiltersProps> = ({
               label="Estado"
               value={filters.estado}
               onRemove={() => set("estado", "")}
-              colorClass={filters.estado === "Activa" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}
+              tone={filters.estado === "Activa" ? "warning" : "success"}
             />
           )}
           {filters.fechaDesde && (
@@ -123,7 +123,7 @@ export const CuarentenasFilters: React.FC<CuarentenasFiltersProps> = ({
               label="Inicio desde"
               value={filters.fechaDesde}
               onRemove={() => set("fechaDesde", "")}
-              colorClass="bg-sky-100 text-sky-700"
+              tone="secondary"
             />
           )}
           {filters.fechaHasta && (
@@ -131,7 +131,7 @@ export const CuarentenasFilters: React.FC<CuarentenasFiltersProps> = ({
               label="Inicio hasta"
               value={filters.fechaHasta}
               onRemove={() => set("fechaHasta", "")}
-              colorClass="bg-sky-100 text-sky-700"
+              tone="secondary"
             />
           )}
         </ActiveFiltersIndicator>

@@ -49,7 +49,7 @@ export function ExportacionesList({ exportaciones, onView }: ExportacionesListPr
                   <TableCell className="text-muted-foreground">{e.mvz}</TableCell>
                   <TableCell className="text-muted-foreground">{e.prueba}</TableCell>
                   <TableCell>
-                    <Badge className={`border-0 ${e.reactor === "Si" ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}>
+                    <Badge variant={e.reactor === "Si" ? "error" : "success"}>
                       {e.reactor}
                     </Badge>
                   </TableCell>
@@ -63,10 +63,10 @@ export function ExportacionesList({ exportaciones, onView }: ExportacionesListPr
                       {(e.estado === "Pendiente" || e.estado === "En revision") && (
                         <>
                           <Button variant="ghost" size="icon">
-                            <CheckCircle className="w-4 h-4 text-emerald-600" />
+                            <CheckCircle className="w-4 h-4 text-success" />
                           </Button>
                           <Button variant="ghost" size="icon">
-                            <XCircle className="w-4 h-4 text-red-500" />
+                            <XCircle className="w-4 h-4 text-error" />
                           </Button>
                         </>
                       )}

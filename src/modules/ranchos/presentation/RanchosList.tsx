@@ -48,13 +48,7 @@ export function RanchosList({ ranchos, onView }: RanchosListProps) {
                   <TableCell className="font-mono text-xs text-muted-foreground">{r.coords}</TableCell>
                   <TableCell className="text-center">{r.bovinos}</TableCell>
                   <TableCell>
-                    <Badge
-                      className={`border-0 ${
-                        r.estado === "Activo"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-gray-100 text-gray-500"
-                      }`}
-                    >
+                    <Badge variant={r.estado === "Activo" ? "success" : "neutral"}>
                       {r.estado}
                     </Badge>
                   </TableCell>

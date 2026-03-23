@@ -17,7 +17,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/shared/ui/table";
+import { cn } from "@/shared/lib/utils";
 import { DetailInfoGrid } from "@/shared/ui/detail/DetailInfoGrid";
+import { toneClass, toneToBadgeVariant, type SemanticTone } from "@/shared/ui/theme";
 import type { AdminExportacionAnimalDetail } from "@/modules/exportaciones/admin/domain/entities/AdminExportacionAnimalEntity";
 
 interface Props {
@@ -25,9 +27,9 @@ interface Props {
   animal: AdminExportacionAnimalDetail;
 }
 
-const TEST_RESULT_BADGE: Record<string, { label: string; className: string; icon: typeof CheckCircle2 }> = {
-  negativo: { label: "Negativo", className: "bg-emerald-100 text-emerald-700", icon: CheckCircle2 },
-  positivo: { label: "Positivo", className: "bg-red-100 text-red-700", icon: XCircle },
+const TEST_RESULT_BADGE: Record<string, { label: string; tone: SemanticTone; icon: typeof CheckCircle2 }> = {
+  negativo: { label: "Negativo", tone: "success", icon: CheckCircle2 },
+  positivo: { label: "Positivo", tone: "error", icon: XCircle },
 };
 
 function sexLabel(sex: string): string {
@@ -40,12 +42,12 @@ function ResultBadge({ result }: Readonly<{ result: string | null }>) {
   if (!result) return <span className="text-muted-foreground">â€”</span>;
   const cfg = TEST_RESULT_BADGE[result.toLowerCase()] ?? {
     label: result,
-    className: "bg-gray-100 text-gray-500",
+    tone: "neutral" as SemanticTone,
     icon: Activity,
   };
   const Icon = cfg.icon;
   return (
-    <Badge className={`border-0 text-xs flex items-center gap-1 w-fit ${cfg.className}`}>
+    <Badge variant={toneToBadgeVariant[cfg.tone]} className="text-xs flex items-center gap-1 w-fit">
       <Icon className="w-3 h-3" />
       {cfg.label}
     </Badge>
@@ -60,7 +62,7 @@ function TestValidityChip({ validUntil }: Readonly<{ validUntil: string | null }
 
   if (days < 0) {
     return (
-      <span className="text-xs text-red-600 flex items-center gap-1">
+      <span className={cn("text-xs flex items-center gap-1", toneClass("error", "text"))}>
         <XCircle className="w-3 h-3" />
         Vencida ({new Date(validUntil).toLocaleDateString("es-MX")})
       </span>
@@ -68,14 +70,14 @@ function TestValidityChip({ validUntil }: Readonly<{ validUntil: string | null }
   }
   if (days <= 30) {
     return (
-      <span className="text-xs text-amber-600 flex items-center gap-1">
+      <span className={cn("text-xs flex items-center gap-1", toneClass("warning", "text"))}>
         <Clock className="w-3 h-3" />
         {new Date(validUntil).toLocaleDateString("es-MX")} ({days}d)
       </span>
     );
   }
   return (
-    <span className="text-xs text-emerald-600 flex items-center gap-1">
+    <span className={cn("text-xs flex items-center gap-1", toneClass("success", "text"))}>
       <CheckCircle2 className="w-3 h-3" />
       {new Date(validUntil).toLocaleDateString("es-MX")}
     </span>
@@ -113,9 +115,7 @@ export function AdminExportacionBovinoDetailContent({ exportId, animal }: Readon
           )}
         </div>
         <div className="ml-auto">
-          <Badge
-            className={`border-0 ${animal.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}
-          >
+          <Badge variant={toneToBadgeVariant[animal.status === "active" ? "success" : "neutral"]}>
             {animal.status === "active" ? "Activo" : "Inactivo"}
           </Badge>
         </div>
@@ -156,7 +156,7 @@ export function AdminExportacionBovinoDetailContent({ exportId, animal }: Readon
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Activity className="w-4 h-4 text-blue-500" />
+                <Activity className={cn("w-4 h-4", toneClass("info", "icon"))} />
                 Tuberculosis (TB) â€” Ãºltima prueba
               </CardTitle>
             </CardHeader>
@@ -186,7 +186,7 @@ export function AdminExportacionBovinoDetailContent({ exportId, animal }: Readon
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <AlertTriangle className="w-4 h-4 text-amber-400" />
+                  <AlertTriangle className={cn("w-4 h-4", toneClass("warning", "icon"))} />
                   Sin pruebas de tuberculosis
                 </p>
               )}
@@ -196,7 +196,7 @@ export function AdminExportacionBovinoDetailContent({ exportId, animal }: Readon
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Activity className="w-4 h-4 text-purple-500" />
+                <Activity className={cn("w-4 h-4", toneClass("accent", "icon"))} />
                 Brucelosis (BR) â€” Ãºltima prueba
               </CardTitle>
             </CardHeader>
@@ -226,7 +226,7 @@ export function AdminExportacionBovinoDetailContent({ exportId, animal }: Readon
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <AlertTriangle className="w-4 h-4 text-amber-400" />
+                  <AlertTriangle className={cn("w-4 h-4", toneClass("warning", "icon"))} />
                   Sin pruebas de brucelosis
                 </p>
               )}
@@ -259,7 +259,7 @@ export function AdminExportacionBovinoDetailContent({ exportId, animal }: Readon
                   {animal.tests.map((t) => (
                     <TableRow key={t.id}>
                       <TableCell>
-                        <Badge className="border-0 text-xs bg-blue-50 text-blue-700 uppercase">
+                        <Badge variant="info" className="text-xs uppercase">
                           {t.testTypeKey}
                         </Badge>
                       </TableCell>

@@ -5,8 +5,9 @@ import { MapPin, MapPinOff } from "lucide-react";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
+import { toneToBadgeVariant } from "@/shared/ui/theme";
 import type { ProducerUpp } from "@/modules/producer/ranchos/domain/entities/ProducerUppEntity";
-import { buildMapHref, statusBadgeClass, statusLabel } from "./utils/cardHelpers";
+import { buildMapHref, statusBadgeTone, statusLabel } from "./utils/cardHelpers";
 
 interface ProducerUppCardProps {
   readonly upp: ProducerUpp;
@@ -46,7 +47,7 @@ export function ProducerUppCard({ upp }: ProducerUppCardProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          <Badge className={`border ${statusBadgeClass(upp.status)}`}>
+          <Badge variant={toneToBadgeVariant[statusBadgeTone(upp.status)]}>
             {statusLabel(upp.status)}
           </Badge>
         </div>
@@ -66,7 +67,7 @@ export function ProducerUppCard({ upp }: ProducerUppCardProps) {
               }
             >
               <a href={mapHref} target="_blank" rel="noopener noreferrer">
-                <MapPin className="w-4 h-4" />
+                <MapPin className="w-4 h-4 text-primary" />
               </a>
             </Button>
           ) : (

@@ -25,19 +25,9 @@ const variantMap: Record<
   React.ComponentProps<typeof Button>["variant"]
 > = {
   primary: "default",
-  success: "default",
+  success: "success",
   danger: "destructive",
-  secondary: "outline",
-};
-
-const extraColorMap: Record<
-  NonNullable<ActionButtonConfig["variant"]>,
-  string
-> = {
-  primary: "",
-  success: "bg-emerald-600 hover:bg-emerald-700 text-white",
-  danger: "",
-  secondary: "",
+  secondary: "secondary",
 };
 
 /**
@@ -51,7 +41,6 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   <div className={cn("flex gap-2", className)}>
     {buttons.map((btn) => {
       const Icon = btn.icon;
-      const extra = extraColorMap[btn.variant ?? "primary"];
       return (
         <Button
           key={`${btn.label}-${btn.variant ?? "primary"}`}
@@ -59,7 +48,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
           size="sm"
           onClick={btn.onClick}
           title={btn.title ?? btn.label}
-          className={cn("h-10 gap-2", extra)}
+          className="h-10 gap-2"
         >
           <Icon className="w-4 h-4 shrink-0" />
           <span className={cn(btn.hideLabel ? "hidden" : "hidden sm:inline")}>

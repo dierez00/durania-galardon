@@ -4,6 +4,7 @@ import { Home, MapPin, Beef, Layers } from "lucide-react";
 import { Badge } from "@/shared/ui/badge";
 import { Card, CardContent, CardHeader } from "@/shared/ui/card";
 import { cn } from "@/shared/lib/utils";
+import { toneClass, toneToBadgeVariant } from "@/shared/ui/theme";
 import { AdminProductorMvzChip } from "./AdminProductorMvzChip";
 import type { AdminProductorUpp } from "@/modules/admin/productores/domain/entities/AdminProductorDetailEntity";
 
@@ -29,8 +30,8 @@ export function AdminProductorUppCard({
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="p-1.5 bg-amber-100 rounded-md shrink-0">
-              <Home className="w-4 h-4 text-amber-700" />
+            <div className={cn("p-1.5 rounded-md shrink-0 border", toneClass("accent", "surfaceStrong"))}>
+              <Home className={cn("w-4 h-4", toneClass("accent", "icon"))} />
             </div>
             <div className="min-w-0">
               <h3 className="font-semibold text-sm truncate">{upp.name}</h3>
@@ -41,14 +42,7 @@ export function AdminProductorUppCard({
               )}
             </div>
           </div>
-          <Badge
-            className={cn(
-              "shrink-0 border-0 text-xs",
-              isActive
-                ? "bg-emerald-100 text-emerald-700"
-                : "bg-gray-100 text-gray-500"
-            )}
-          >
+          <Badge variant={toneToBadgeVariant[isActive ? "success" : "neutral"]} className="shrink-0 text-xs">
             {isActive ? "Activa" : "Inactiva"}
           </Badge>
         </div>

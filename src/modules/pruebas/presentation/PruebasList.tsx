@@ -60,10 +60,10 @@ export function PruebasList({ pruebas, onView }: PruebasListProps) {
                       {p.estado === "Pendiente" && (
                         <>
                           <Button variant="ghost" size="icon">
-                            <CheckCircle className="w-4 h-4 text-emerald-600" />
+                            <CheckCircle className="w-4 h-4 text-success" />
                           </Button>
                           <Button variant="ghost" size="icon">
-                            <XCircle className="w-4 h-4 text-red-500" />
+                            <XCircle className="w-4 h-4 text-error" />
                           </Button>
                         </>
                       )}

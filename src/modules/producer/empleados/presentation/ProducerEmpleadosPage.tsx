@@ -458,9 +458,9 @@ export default function ProducerEmpleadosPage({
         </CardHeader>
         <CardContent>
           {successMessage ? (
-            <Alert className="mb-3 border-emerald-200 bg-emerald-50/80 text-emerald-950">
+            <Alert variant="success" className="mb-3">
               <AlertTitle>Operacion completada</AlertTitle>
-              <AlertDescription className="text-emerald-900">{successMessage}</AlertDescription>
+              <AlertDescription>{successMessage}</AlertDescription>
             </Alert>
           ) : null}
           {errorMessage ? <p className="mb-3 text-sm text-destructive">{errorMessage}</p> : null}

@@ -133,7 +133,7 @@ export function DocumentUploadCard({
               <div className="space-y-2">
                 <Label>Archivo (PDF o JPG)</Label>
                 <div
-                  className="relative flex min-h-[140px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-6 transition hover:border-primary"
+                  className="relative flex min-h-[140px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-input bg-input/50 p-6 transition hover:border-primary/60"
                   onDragOver={(event) => event.preventDefault()}
                   onDrop={(event) => {
                     event.preventDefault();
@@ -146,9 +146,9 @@ export function DocumentUploadCard({
                     input?.click();
                   }}
                 >
-                  <FileText className="mb-2 h-10 w-10 text-gray-400" />
-                  <span className="mb-1 text-sm text-gray-500">Selecciona o arrastra un archivo aqui</span>
-                  <span className="text-xs text-gray-400">(PDF o JPG)</span>
+                  <FileText className="mb-2 h-10 w-10 text-muted-foreground" />
+                  <span className="mb-1 text-sm text-muted-foreground">Selecciona o arrastra un archivo aqui</span>
+                  <span className="text-xs text-muted-foreground/70">(PDF o JPG)</span>
                   <Input
                     id="personal-file-input"
                     type="file"
@@ -163,13 +163,13 @@ export function DocumentUploadCard({
                       <button
                         type="button"
                         aria-label="Quitar archivo"
-                        className="rounded p-1 hover:bg-red-100"
+                        className="rounded p-1 hover:bg-error-bg"
                         onClick={(event) => {
                           event.stopPropagation();
                           setPersonalFile(null);
                         }}
                       >
-                        <X className="h-4 w-4 text-red-500" />
+                        <X className="h-4 w-4 text-error" />
                       </button>
                     </span>
                   ) : null}
@@ -186,14 +186,13 @@ export function DocumentUploadCard({
                       ? "Fecha de Emision"
                       : "Fecha de Vigencia"}
                     {" "}
-                    <span className="text-red-500">*</span>
+                    <span className="text-error">*</span>
                   </Label>
                   <Input
                     type="date"
                     value={personalExpiryDate}
                     onChange={(event) => setPersonalExpiryDate(event.target.value)}
                     placeholder="mm/dd/yyyy"
-                    className="placeholder-gray-400"
                   />
                 </div>
               ) : null}
@@ -253,7 +252,7 @@ export function DocumentUploadCard({
               <div className="space-y-2">
                 <Label>Archivo (PDF o JPG)</Label>
                 <div
-                  className="relative flex min-h-[140px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-6 transition hover:border-primary"
+                  className="relative flex min-h-[140px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-input bg-input/50 p-6 transition hover:border-primary/60"
                   onDragOver={(event) => event.preventDefault()}
                   onDrop={(event) => {
                     event.preventDefault();
@@ -266,9 +265,9 @@ export function DocumentUploadCard({
                     input?.click();
                   }}
                 >
-                  <FileText className="mb-2 h-10 w-10 text-gray-400" />
-                  <span className="mb-1 text-sm text-gray-500">Selecciona o arrastra un archivo aqui</span>
-                  <span className="text-xs text-gray-400">(PDF o JPG)</span>
+                  <FileText className="mb-2 h-10 w-10 text-muted-foreground" />
+                  <span className="mb-1 text-sm text-muted-foreground">Selecciona o arrastra un archivo aqui</span>
+                  <span className="text-xs text-muted-foreground/70">(PDF o JPG)</span>
                   <Input
                     id="upp-file-input"
                     type="file"
@@ -283,13 +282,13 @@ export function DocumentUploadCard({
                       <button
                         type="button"
                         aria-label="Quitar archivo"
-                        className="rounded p-1 hover:bg-red-100"
+                        className="rounded p-1 hover:bg-error-bg"
                         onClick={(event) => {
                           event.stopPropagation();
                           setUppFile(null);
                         }}
                       >
-                        <X className="h-4 w-4 text-red-500" />
+                        <X className="h-4 w-4 text-error" />
                       </button>
                     </span>
                   ) : null}
@@ -300,14 +299,13 @@ export function DocumentUploadCard({
               UPP_DOCUMENT_TYPES.find((type) => type.key === uppDocType)?.requiresExpiry ? (
                 <div className="space-y-2">
                   <Label>
-                    Fecha de Vigencia <span className="text-red-500">*</span>
+                    Fecha de Vigencia <span className="text-error">*</span>
                   </Label>
                   <Input
                     type="date"
                     value={uppExpiryDate}
                     onChange={(event) => setUppExpiryDate(event.target.value)}
                     placeholder="mm/dd/yyyy"
-                    className="placeholder-gray-400"
                   />
                 </div>
               ) : null}

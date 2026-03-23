@@ -5,6 +5,7 @@ import { Button } from "@/shared/ui/button";
 import { DetailHeader } from "@/shared/ui/detail/DetailHeader";
 import { DetailInfoGrid } from "@/shared/ui/detail/DetailInfoGrid";
 import { Skeleton } from "@/shared/ui/skeleton";
+import type { SemanticTone } from "@/shared/ui/theme";
 import type { ProducerUpp } from "@/modules/producer/ranchos/domain/entities/ProducerUppEntity";
 
 interface ProducerUppDetailContentProps {
@@ -24,14 +25,14 @@ function statusLabel(status: string): string {
   }
 }
 
-function statusVariant(status: string): string {
+function statusVariant(status: string): SemanticTone {
   switch (status) {
     case "active":
-      return "active";
+      return "success";
     case "quarantined":
       return "warning";
     default:
-      return "inactive";
+      return "neutral";
   }
 }
 
@@ -102,7 +103,7 @@ export function ProducerUppDetailContent({ upp }: ProducerUppDetailContentProps)
         <div className="flex">
           <Button variant="outline" size="sm" asChild>
             <a href={mapHref} target="_blank" rel="noopener noreferrer" className="gap-2">
-              <MapPin className="w-4 h-4 text-emerald-600" />
+              <MapPin className="w-4 h-4 text-primary" />
               Ver en Google Maps
               <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
             </a>

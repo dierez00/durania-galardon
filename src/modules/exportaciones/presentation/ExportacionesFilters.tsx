@@ -42,25 +42,18 @@ const getEstadoIcon = (value: string): LucideIcon => {
 };
 
 const getEstadoColor = (value: string): string => {
-  if (value === "Aprobada")    return "text-emerald-600";
-  if (value === "Rechazada")   return "text-red-600";
-  if (value === "En revision") return "text-blue-600";
-  if (value === "Pendiente")   return "text-amber-600";
+  if (value === "Aprobada") return "text-success";
+  if (value === "Rechazada") return "text-error";
+  if (value === "En revision") return "text-info";
+  if (value === "Pendiente") return "text-warning";
   return "text-muted-foreground";
 };
 
 const getReactorColor = (value: string): string => {
-  if (value === "Si") return "text-red-600";
-  if (value === "No") return "text-emerald-600";
+  if (value === "Si") return "text-error";
+  if (value === "No") return "text-success";
   return "text-muted-foreground";
 };
-
-function getEstadoBadgeColor(estado: string): string {
-  if (estado === "Aprobada")    return "bg-emerald-100 text-emerald-700";
-  if (estado === "Rechazada")   return "bg-red-100 text-red-700";
-  if (estado === "En revision") return "bg-blue-100 text-blue-700";
-  return "bg-amber-100 text-amber-700";
-}
 
 export const ExportacionesFilters: React.FC<ExportacionesFiltersProps> = ({
   filters,
@@ -129,7 +122,7 @@ export const ExportacionesFilters: React.FC<ExportacionesFiltersProps> = ({
               label="Búsqueda"
               value={filters.search}
               onRemove={() => set("search", "")}
-              colorClass="bg-blue-100 text-blue-700"
+              tone="info"
             />
           )}
           {filters.estado && (
@@ -138,7 +131,15 @@ export const ExportacionesFilters: React.FC<ExportacionesFiltersProps> = ({
               label="Estado"
               value={filters.estado}
               onRemove={() => set("estado", "")}
-              colorClass={getEstadoBadgeColor(filters.estado)}
+              tone={
+                filters.estado === "Aprobada"
+                  ? "success"
+                  : filters.estado === "Rechazada"
+                    ? "error"
+                    : filters.estado === "En revision"
+                      ? "info"
+                      : "warning"
+              }
             />
           )}
           {filters.reactor && (
@@ -147,7 +148,7 @@ export const ExportacionesFilters: React.FC<ExportacionesFiltersProps> = ({
               label="Reactor"
               value={filters.reactor === "Si" ? "Reactor" : "No reactor"}
               onRemove={() => set("reactor", "")}
-              colorClass={filters.reactor === "Si" ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}
+              tone={filters.reactor === "Si" ? "error" : "success"}
             />
           )}
           {filters.fechaDesde && (
@@ -155,7 +156,7 @@ export const ExportacionesFilters: React.FC<ExportacionesFiltersProps> = ({
               label="Prueba desde"
               value={filters.fechaDesde}
               onRemove={() => set("fechaDesde", "")}
-              colorClass="bg-sky-100 text-sky-700"
+              tone="secondary"
             />
           )}
           {filters.fechaHasta && (
@@ -163,7 +164,7 @@ export const ExportacionesFilters: React.FC<ExportacionesFiltersProps> = ({
               label="Prueba hasta"
               value={filters.fechaHasta}
               onRemove={() => set("fechaHasta", "")}
-              colorClass="bg-sky-100 text-sky-700"
+              tone="secondary"
             />
           )}
         </ActiveFiltersIndicator>

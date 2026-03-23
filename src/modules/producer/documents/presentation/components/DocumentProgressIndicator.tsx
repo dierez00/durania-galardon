@@ -2,12 +2,31 @@ import type { DocumentProgress } from "../../domain/entities/DocumentProgressEnt
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Progress } from "@/shared/ui/progress";
 import { CheckCircle2, Circle, XCircle, AlertCircle, Clock } from "lucide-react";
+import { cn } from "@/shared/lib/utils";
+import { toneClass } from "@/shared/ui/theme";
 
 interface Props {
   progress: DocumentProgress;
 }
 
 export function DocumentProgressIndicator({ progress }: Props) {
+  const statusIcon = (status: "completed" | "uploaded" | "pending" | "expired" | "rejected") => {
+    if (status === "completed") {
+      return <CheckCircle2 className={cn("h-4 w-4", toneClass("success", "icon"))} />;
+    }
+    if (status === "uploaded") {
+      return <Clock className={cn("h-4 w-4", toneClass("info", "icon"))} />;
+    }
+    if (status === "expired") {
+      return <AlertCircle className={cn("h-4 w-4", toneClass("warning", "icon"))} />;
+    }
+    if (status === "rejected") {
+      return <XCircle className={cn("h-4 w-4", toneClass("error", "icon"))} />;
+    }
+
+    return <Circle className={cn("h-4 w-4", toneClass("neutral", "icon"))} />;
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -21,29 +40,29 @@ export function DocumentProgressIndicator({ progress }: Props) {
           </div>
           <Progress
             value={progress.percentComplete}
-            className="bg-green-100 [&>[data-slot='progress-indicator']]:bg-green-500"
+            className="bg-secondary/60 [&>[data-slot='progress-indicator']]:bg-success"
           />
         </div>
 
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            {statusIcon("completed")}
             <span>Completados: {progress.completed}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-blue-500" />
+            {statusIcon("uploaded")}
             <span>En revisión: {progress.uploaded}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Circle className="h-4 w-4 text-gray-400" />
+            {statusIcon("pending")}
             <span>Pendientes: {progress.pending}</span>
           </div>
           <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-yellow-600" />
+            {statusIcon("expired")}
             <span>Vencidos: {progress.expired}</span>
           </div>
           <div className="flex items-center gap-2">
-            <XCircle className="h-4 w-4 text-red-600" />
+            {statusIcon("rejected")}
             <span>Rechazados: {progress.rejected}</span>
           </div>
         </div>
@@ -58,17 +77,7 @@ export function DocumentProgressIndicator({ progress }: Props) {
                 className="flex items-center justify-between text-sm"
               >
                 <div className="flex items-center gap-2">
-                  {item.status === "completed" && (
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  )}
-                  {item.status === "uploaded" && (
-                    <Clock className="h-4 w-4 text-blue-500" />
-                  )}
-                  {item.status === "pending" && <Circle className="h-4 w-4 text-gray-400" />}
-                  {item.status === "expired" && (
-                    <AlertCircle className="h-4 w-4 text-yellow-600" />
-                  )}
-                  {item.status === "rejected" && <XCircle className="h-4 w-4 text-red-600" />}
+                  {statusIcon(item.status)}
                   <span>{item.documentName}</span>
                 </div>
               </div>
@@ -85,17 +94,7 @@ export function DocumentProgressIndicator({ progress }: Props) {
                     className="flex items-center justify-between text-sm"
                   >
                     <div className="flex items-center gap-2">
-                      {item.status === "completed" && (
-                        <CheckCircle2 className="h-4 w-4 text-green-600" />
-                      )}
-                      {item.status === "uploaded" && (
-                        <Clock className="h-4 w-4 text-blue-500" />
-                      )}
-                      {item.status === "pending" && <Circle className="h-4 w-4 text-gray-400" />}
-                      {item.status === "expired" && (
-                        <AlertCircle className="h-4 w-4 text-yellow-600" />
-                      )}
-                      {item.status === "rejected" && <XCircle className="h-4 w-4 text-red-600" />}
+                      {statusIcon(item.status)}
                       <span>{item.documentName}</span>
                     </div>
                   </div>

@@ -1,29 +1,30 @@
 import { Badge } from "@/shared/ui/badge";
+import { toneToBadgeVariant, type SemanticTone } from "@/shared/ui/theme";
 
-const colorMap: Record<string, string> = {
+const toneMap: Record<string, SemanticTone> = {
   // Animal status
-  Limpio: "bg-emerald-100 text-emerald-700",
-  Cuarentena: "bg-amber-100 text-amber-700",
-  Reactor: "bg-red-100 text-red-700",
+  Limpio: "success",
+  Cuarentena: "warning",
+  Reactor: "error",
   // DB-level: sanitary_alert values
-  ok: "bg-emerald-100 text-emerald-700",
-  positivo: "bg-red-100 text-red-700",
-  prueba_vencida: "bg-red-100 text-red-700",
-  sin_pruebas: "bg-gray-100 text-gray-600",
-  por_vencer: "bg-amber-100 text-amber-700",
-  cuarentena: "bg-amber-100 text-amber-700",
-  inactivo: "bg-gray-100 text-gray-500",
+  ok: "success",
+  positivo: "error",
+  prueba_vencida: "error",
+  sin_pruebas: "neutral",
+  por_vencer: "warning",
+  cuarentena: "warning",
+  inactivo: "neutral",
   // Misc
-  Negativo: "bg-emerald-100 text-emerald-700",
-  Positivo: "bg-red-100 text-red-700",
-  negative: "bg-emerald-100 text-emerald-700",
-  positive: "bg-red-100 text-red-700",
-  active: "bg-emerald-100 text-emerald-700",
-  blocked: "bg-red-100 text-red-700",
-  in_transit: "bg-blue-100 text-blue-700",
-  Aprobado: "bg-emerald-100 text-emerald-700",
-  "En proceso": "bg-blue-100 text-blue-700",
-  Pendiente: "bg-amber-100 text-amber-700",
+  Negativo: "success",
+  Positivo: "error",
+  negative: "success",
+  positive: "error",
+  active: "success",
+  blocked: "error",
+  in_transit: "info",
+  Aprobado: "success",
+  "En proceso": "info",
+  Pendiente: "warning",
 };
 
 const labelMap: Record<string, string> = {
@@ -43,9 +44,5 @@ const labelMap: Record<string, string> = {
 
 export function SanitarioBadge({ estado }: { readonly estado: string }) {
   const label = labelMap[estado] ?? estado;
-  return (
-    <Badge className={`border-0 ${colorMap[estado] ?? "bg-gray-100 text-gray-700"}`}>
-      {label}
-    </Badge>
-  );
+  return <Badge variant={toneToBadgeVariant[toneMap[estado] ?? "neutral"]}>{label}</Badge>;
 }

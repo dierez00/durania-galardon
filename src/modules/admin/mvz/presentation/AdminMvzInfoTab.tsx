@@ -123,7 +123,7 @@ function InfoRow({
                 onClick={handleConfirm}
                 disabled={isSavingField}
                 title="Guardar"
-                className="p-1 rounded text-emerald-600 hover:bg-emerald-50 disabled:opacity-40 transition-colors"
+                className="p-1 rounded text-success hover:bg-success-bg disabled:opacity-40 transition-colors"
               >
                 <Check className="w-3.5 h-3.5" />
               </button>

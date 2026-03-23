@@ -2,6 +2,7 @@
 
 import { CheckCircle2, Circle, XCircle } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
+import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
 import type { AdminExportacionStatus } from "@/modules/exportaciones/admin/domain/entities/AdminExportacionEntity";
 
 interface Step {
@@ -37,9 +38,9 @@ function stepState(
 }
 
 function StepIcon({ state }: Readonly<{ state: "done" | "active" | "pending" | "blocked" }>) {
-  if (state === "done") return <CheckCircle2 className="w-5 h-5 text-white" />;
-  if (state === "active") return <Circle className="w-4 h-4 text-white fill-white" />;
-  if (state === "blocked") return <XCircle className="w-4 h-4 text-red-400" />;
+  if (state === "done") return <CheckCircle2 className="w-5 h-5 text-success" />;
+  if (state === "active") return <Circle className="w-4 h-4 text-primary-foreground fill-primary-foreground" />;
+  if (state === "blocked") return <XCircle className="w-4 h-4 text-error" />;
   return <Circle className="w-4 h-4 text-muted-foreground" />;
 }
 
@@ -49,17 +50,17 @@ export function AdminExportacionProcesoTimeline({ status, blockedReason }: Reado
   return (
     <div className="p-4">
       {isTerminalNegative && (
-        <div className="mb-6 p-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-2">
-          <XCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+        <Alert variant="error" className="mb-6">
+          <XCircle className="w-5 h-5 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-red-700">
+            <AlertTitle>
               {status === "blocked" ? "ExportaciÃ³n bloqueada" : "ExportaciÃ³n rechazada"}
-            </p>
+            </AlertTitle>
             {blockedReason && (
-              <p className="text-sm text-red-600 mt-0.5">{blockedReason}</p>
+              <AlertDescription className="mt-0.5">{blockedReason}</AlertDescription>
             )}
           </div>
-        </div>
+        </Alert>
       )}
 
       <div className="flex items-start gap-0">
@@ -73,10 +74,10 @@ export function AdminExportacionProcesoTimeline({ status, blockedReason }: Reado
                 <div
                   className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors",
-                    state === "done" && "bg-emerald-500 border-emerald-500",
+                    state === "done" && "bg-success-bg border-success-border",
                     state === "active" && "bg-primary border-primary",
                     state === "pending" && "bg-background border-border",
-                    state === "blocked" && "bg-red-100 border-red-300"
+                    state === "blocked" && "bg-error-bg border-error-border"
                   )}
                 >
                   <StepIcon state={state} />
@@ -85,7 +86,7 @@ export function AdminExportacionProcesoTimeline({ status, blockedReason }: Reado
                   <div
                     className={cn(
                       "h-0.5 w-full mt-3.5",
-                      state === "done" ? "bg-emerald-500" : "bg-border"
+                      state === "done" ? "bg-success" : "bg-border"
                     )}
                     style={{ width: "100%" }}
                   />

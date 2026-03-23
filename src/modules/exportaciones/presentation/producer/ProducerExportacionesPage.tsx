@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/shared/ui/table";
 import { getAccessToken } from "@/shared/lib/auth-session";
+import { toneToBadgeVariant, type SemanticTone } from "@/shared/ui/theme";
 import { useProducerUppContext } from "@/modules/producer/ranchos/presentation";
 import { useDocumentUpload } from "@/modules/producer/documents/presentation";
 import { UPP_EXPORTACION_DOCUMENT_TYPES } from "@/modules/producer/documents/domain/entities/UppDocumentEntity";
@@ -41,11 +42,11 @@ const EXPORT_STATUS_LABELS: Record<string, string> = {
   rejected: "Rechazado",
 };
 
-function exportStatusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
-  if (status === "final_approved") return "default";
+function exportStatusTone(status: string): SemanticTone {
+  if (status === "final_approved") return "success";
   if (status === "mvz_validated") return "secondary";
-  if (status === "blocked" || status === "rejected") return "destructive";
-  return "outline";
+  if (status === "blocked" || status === "rejected") return "error";
+  return "neutral";
 }
 
 function BoolChip({ value, label }: { value: boolean | null; label: string }) {
@@ -60,7 +61,7 @@ function BoolChip({ value, label }: { value: boolean | null; label: string }) {
 
   if (value) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-green-600">
+      <span className="inline-flex items-center gap-1 text-xs text-success">
         <CheckCircle2 className="h-3 w-3" />
         {label}
       </span>
@@ -68,7 +69,7 @@ function BoolChip({ value, label }: { value: boolean | null; label: string }) {
   }
 
   return (
-    <span className="inline-flex items-center gap-1 text-xs text-red-500">
+    <span className="inline-flex items-center gap-1 text-xs text-error">
       <XCircle className="h-3 w-3" />
       {label}
     </span>
@@ -306,7 +307,7 @@ export default function ProducerExportacionesPage() {
                     <TableCell className="font-mono text-xs">{row.id.slice(0, 8)}</TableCell>
                     <TableCell>{uppName(row.upp_id)}</TableCell>
                     <TableCell>
-                      <Badge variant={exportStatusVariant(row.status)}>
+                      <Badge variant={toneToBadgeVariant[exportStatusTone(row.status)]}>
                         {EXPORT_STATUS_LABELS[row.status] ?? row.status}
                       </Badge>
                     </TableCell>

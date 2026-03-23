@@ -17,8 +17,8 @@ import type {
 } from "@/modules/exportaciones/admin/domain/entities/AdminExportacionEntity";
 
 function Check({ value }: Readonly<{ value: boolean | null }>) {
-  if (value === true) return <span className="text-emerald-600 font-medium">S\u00ed</span>;
-  if (value === false) return <span className="text-red-500 font-medium">No</span>;
+  if (value === true) return <span className="text-success font-medium">S\u00ed</span>;
+  if (value === false) return <span className="text-error font-medium">No</span>;
   return <span className="text-muted-foreground">&mdash;</span>;
 }
 

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/shared/ui/skeleton";
 import { getAccessToken } from "@/shared/lib/auth-session";
 import { useProducerUppContext } from "@/modules/producer/ranchos/presentation";
+import { toneClass, type SemanticTone } from "@/shared/ui/theme";
 
 interface ProducerKpis {
   totalUpps: number;
@@ -19,10 +20,10 @@ interface ProducerKpis {
   activeQuarantines: number;
 }
 
-function uppStatusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
+function uppStatusVariant(status: string): "default" | "warning" | "neutral" {
   if (status === "active") return "default";
-  if (status === "quarantined") return "destructive";
-  return "secondary";
+  if (status === "quarantined") return "warning";
+  return "neutral";
 }
 
 export default function ProducerDashboardPage() {
@@ -88,14 +89,14 @@ export function ProducerDashboardPageContent({
   }, [effectiveSelectedUppId, hydrated, loadKpis]);
 
   const kpiCards = [
-    { label: "Ranchos (UPPs)", value: kpis?.totalUpps, icon: Grid3x3, color: "text-blue-500" },
-    { label: "Bovinos activos", value: kpis?.totalAnimals, icon: Beef, color: "text-green-600" },
-    { label: "Bovinos en transito", value: kpis?.bovinosInTransit, icon: Truck, color: "text-yellow-600" },
-    { label: "Movilizaciones activas", value: kpis?.activeMovements, icon: Package, color: "text-orange-500" },
-    { label: "Exportaciones en proceso", value: kpis?.activeExports, icon: Package, color: "text-purple-500" },
-    { label: "Documentos pendientes", value: kpis?.pendingDocuments, icon: FileText, color: "text-red-500" },
-    { label: "Cuarentenas activas", value: kpis?.activeQuarantines, icon: ShieldAlert, color: "text-destructive" },
-  ];
+    { label: "Ranchos (UPPs)", value: kpis?.totalUpps, icon: Grid3x3, tone: "secondary" },
+    { label: "Bovinos activos", value: kpis?.totalAnimals, icon: Beef, tone: "brand" },
+    { label: "Bovinos en transito", value: kpis?.bovinosInTransit, icon: Truck, tone: "info" },
+    { label: "Movilizaciones activas", value: kpis?.activeMovements, icon: Package, tone: "accent" },
+    { label: "Exportaciones en proceso", value: kpis?.activeExports, icon: Package, tone: "secondary" },
+    { label: "Documentos pendientes", value: kpis?.pendingDocuments, icon: FileText, tone: "warning" },
+    { label: "Cuarentenas activas", value: kpis?.activeQuarantines, icon: ShieldAlert, tone: "error" },
+  ] satisfies Array<{ label: string; value: number | undefined; icon: typeof Grid3x3; tone: SemanticTone }>;
 
   return (
     <div className="space-y-8">
@@ -158,8 +159,8 @@ export function ProducerDashboardPageContent({
                   className={[
                     "rounded-lg border p-4 text-left transition-all hover:shadow-md",
                     effectiveSelectedUppId === upp.id
-                      ? "border-primary bg-primary/5 ring-2 ring-primary"
-                      : "border-border bg-card hover:border-primary/50",
+                      ? "border-primary bg-primary/6 ring-2 ring-primary/20"
+                      : "border-border bg-card hover:border-brand-secondary/45 hover:bg-secondary/35",
                   ].join(" ")}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -193,11 +194,11 @@ export function ProducerDashboardPageContent({
           {effectiveSelectedUpp ? `Metricas - ${effectiveSelectedUpp.name}` : "Metricas globales"}
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {kpiCards.map(({ label, value, icon: Icon, color }) => (
+          {kpiCards.map(({ label, value, icon: Icon, tone }) => (
             <Card key={label}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{label}</CardTitle>
-                <Icon className={`h-4 w-4 ${color}`} />
+                <Icon className={`h-4 w-4 ${toneClass(tone, "icon")}`} />
               </CardHeader>
               <CardContent>
                 {loading ? <Skeleton className="h-8 w-16" /> : <p className="text-2xl font-bold">{value ?? 0}</p>}

@@ -9,6 +9,7 @@ import {
   ToggleGroupItem,
 } from "@/shared/ui/toggle-group";
 import { cn } from "@/shared/lib/utils";
+import { toneClass, type SemanticTone } from "@/shared/ui/theme";
 import type { MvzCollectionViewMode } from "./types";
 
 export function SectionHeading({
@@ -115,16 +116,16 @@ export function StatusChip({
   label: string;
   tone?: "default" | "stable" | "attention" | "critical";
 }) {
-  const className =
+  const semanticTone: SemanticTone =
     tone === "stable"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      ? "success"
       : tone === "attention"
-        ? "border-amber-200 bg-amber-50 text-amber-700"
+        ? "warning"
         : tone === "critical"
-          ? "border-rose-200 bg-rose-50 text-rose-700"
-          : "border-border bg-muted text-foreground";
+          ? "error"
+          : "neutral";
 
-  return <Badge className={cn("border", className)}>{label}</Badge>;
+  return <Badge className={cn("border", toneClass(semanticTone, "chip"))}>{label}</Badge>;
 }
 
 export function PrimaryActionButton({

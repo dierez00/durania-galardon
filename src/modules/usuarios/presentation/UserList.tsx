@@ -45,7 +45,7 @@ export function UserList({ users, onEdit, onToggleEstado }: UserListProps) {
                   <TableCell className="text-muted-foreground">{u.email}</TableCell>
                   <TableCell><UserRolBadge rol={u.rol} /></TableCell>
                   <TableCell>
-                    <Badge className={`border-0 ${u.estado === "Activo" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
+                    <Badge variant={u.estado === "Activo" ? "success" : "neutral"}>
                       {u.estado}
                     </Badge>
                   </TableCell>
@@ -57,8 +57,8 @@ export function UserList({ users, onEdit, onToggleEstado }: UserListProps) {
                       </Button>
                       <Button variant="ghost" size="icon" onClick={() => onToggleEstado?.(u)}>
                         {u.estado === "Activo"
-                          ? <UserX className="w-4 h-4 text-red-500" />
-                          : <UserCheck className="w-4 h-4 text-emerald-600" />}
+                          ? <UserX className="w-4 h-4 text-error" />
+                          : <UserCheck className="w-4 h-4 text-success" />}
                       </Button>
                     </div>
                   </TableCell>

@@ -110,9 +110,9 @@ export function AdminCuarentenaActivacionForm({
         {selectedUpp && (
           <div className="md:col-span-2 rounded-md bg-muted px-3 py-2 text-xs space-y-0.5">
             <p className="font-medium">{selectedUpp.uppName} — {selectedUpp.producerName}</p>
-            <p>Animales: <span className="font-semibold">{selectedUpp.totalAnimals}</span> total | <span className="text-green-700 font-semibold">{selectedUpp.activeAnimals}</span> activos</p>
+            <p>Animales: <span className="font-semibold">{selectedUpp.totalAnimals}</span> total | <span className="text-success font-semibold">{selectedUpp.activeAnimals}</span> activos</p>
             {selectedUpp.hasActiveQuarantine && (
-              <p className="text-orange-700 font-semibold">
+              <p className="text-warning font-semibold">
                 ⚠ Ya tiene cuarentena activa: {selectedUpp.activeQuarantineTitle}
               </p>
             )}

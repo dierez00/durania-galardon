@@ -1,6 +1,8 @@
 "use client";
 
 import { CheckCircle2, XCircle } from "lucide-react";
+import { cn } from "@/shared/lib/utils";
+import { toneClass } from "@/shared/ui/theme";
 import {
   Tooltip,
   TooltipContent,
@@ -19,7 +21,12 @@ export function ExportableCheckBadge({ canExport, reason }: ExportableCheckBadge
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className="inline-flex items-center gap-1 text-xs text-emerald-700 font-medium cursor-default">
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 text-xs font-medium cursor-default",
+                toneClass("success", "text")
+              )}
+            >
               <CheckCircle2 className="w-3.5 h-3.5" />
               Apto
             </span>
@@ -34,7 +41,7 @@ export function ExportableCheckBadge({ canExport, reason }: ExportableCheckBadge
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="inline-flex items-center gap-1 text-xs text-red-600 cursor-default">
+          <span className={cn("inline-flex items-center gap-1 text-xs cursor-default", toneClass("error", "text"))}>
             <XCircle className="w-3.5 h-3.5" />
             No apto
           </span>

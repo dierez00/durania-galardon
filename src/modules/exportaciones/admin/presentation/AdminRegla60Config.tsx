@@ -6,6 +6,7 @@ import {
   Card, CardContent, CardHeader, CardTitle,
 } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
 import { getAccessToken } from "@/shared/lib/auth-session";
 
 interface Regla60Setting {
@@ -118,13 +119,13 @@ export function AdminRegla60Config() {
         ) : (
           <>
             {success && (
-              <div className="flex items-center gap-2 text-sm text-emerald-600">
+              <div className="flex items-center gap-2 text-sm text-success">
                 <CheckCircle2 className="w-4 h-4" />
                 Guardado correctamente.
               </div>
             )}
             {error && (
-              <div className="flex items-center gap-2 text-sm text-red-600">
+              <div className="flex items-center gap-2 text-sm text-error">
                 <AlertTriangle className="w-4 h-4" />
                 {error}
               </div>
@@ -135,13 +136,13 @@ export function AdminRegla60Config() {
                 <p className="text-xs text-muted-foreground">Porcentaje mínimo requerido</p>
                 {isEditing ? (
                   <div className="flex items-center gap-2 mt-1">
-                    <input
+                    <Input
                       type="number"
                       min={1}
                       max={100}
                       value={editPct}
                       onChange={(e) => setEditPct(e.target.value)}
-                      className="w-20 border border-border rounded-md px-2 py-1 text-sm"
+                      className="h-8 w-20"
                     />
                     <span className="text-sm text-muted-foreground">%</span>
                   </div>

@@ -2,6 +2,7 @@
 
 import { CheckCircle2, AlertCircle, XCircle, Minus } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
+import { toneClass } from "@/shared/ui/theme";
 
 interface PruebaStatusBadgeProps {
   readonly status: string | null;
@@ -23,7 +24,7 @@ export function PruebaStatusBadge({ status, result, label }: PruebaStatusBadgePr
 
   if (isPositive) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-red-700 font-medium">
+      <span className={cn("inline-flex items-center gap-1 text-xs font-medium", toneClass("error", "text"))}>
         <XCircle className="w-3.5 h-3.5" />
         {label ?? "Positivo"}
       </span>
@@ -32,7 +33,7 @@ export function PruebaStatusBadge({ status, result, label }: PruebaStatusBadgePr
 
   if (status === "vigente") {
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-emerald-700 font-medium">
+      <span className={cn("inline-flex items-center gap-1 text-xs font-medium", toneClass("success", "text"))}>
         <CheckCircle2 className="w-3.5 h-3.5" />
         {label ?? "Vigente"}
       </span>
@@ -41,7 +42,7 @@ export function PruebaStatusBadge({ status, result, label }: PruebaStatusBadgePr
 
   if (status === "por_vencer") {
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-amber-700 font-medium">
+      <span className={cn("inline-flex items-center gap-1 text-xs font-medium", toneClass("warning", "text"))}>
         <AlertCircle className="w-3.5 h-3.5" />
         {label ?? "Por vencer"}
       </span>
@@ -50,7 +51,7 @@ export function PruebaStatusBadge({ status, result, label }: PruebaStatusBadgePr
 
   // vencida
   return (
-    <span className={cn("inline-flex items-center gap-1 text-xs text-red-700 font-medium")}>
+    <span className={cn("inline-flex items-center gap-1 text-xs font-medium", toneClass("error", "text"))}>
       <XCircle className="w-3.5 h-3.5" />
       {label ?? "Vencida"}
     </span>

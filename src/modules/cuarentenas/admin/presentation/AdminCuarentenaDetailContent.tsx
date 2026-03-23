@@ -81,8 +81,7 @@ export function AdminCuarentenaDetailContent({
         {q.status !== "released" && (
           <Button
             size="sm"
-            variant="outline"
-            className="text-green-700 border-green-300 hover:bg-green-50"
+            variant="success"
             disabled={statusSaving}
             onClick={() => void handleStatusChange("released")}
           >
@@ -92,8 +91,7 @@ export function AdminCuarentenaDetailContent({
         {q.status === "active" && (
           <Button
             size="sm"
-            variant="outline"
-            className="text-orange-700 border-orange-300 hover:bg-orange-50"
+            variant="warning"
             disabled={statusSaving}
             onClick={() => void handleStatusChange("suspended")}
           >
@@ -103,8 +101,7 @@ export function AdminCuarentenaDetailContent({
         {q.status === "suspended" && (
           <Button
             size="sm"
-            variant="outline"
-            className="text-blue-700 border-blue-300 hover:bg-blue-50"
+            variant="info"
             disabled={statusSaving}
             onClick={() => void handleStatusChange("active")}
           >

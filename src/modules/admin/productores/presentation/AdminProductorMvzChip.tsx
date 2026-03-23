@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/shared/lib/utils";
+import { toneClass } from "@/shared/ui/theme";
 import type { AdminProductorUppMvz } from "@/modules/admin/productores/domain/entities/AdminProductorDetailEntity";
 
 interface AdminProductorMvzChipProps {
@@ -17,9 +18,7 @@ export function AdminProductorMvzChip({
     <span
       className={cn(
         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border",
-        isActive
-          ? "bg-blue-50 text-blue-700 border-blue-200"
-          : "bg-gray-50 text-gray-500 border-gray-200",
+        toneClass(isActive ? "info" : "neutral", "chip"),
         className
       )}
       title={`MVZ: ${mvz.fullName} — Licencia: ${mvz.licenseNumber}`}
@@ -27,7 +26,7 @@ export function AdminProductorMvzChip({
       <span
         className={cn(
           "w-1.5 h-1.5 rounded-full shrink-0",
-          isActive ? "bg-blue-500" : "bg-gray-400"
+          toneClass(isActive ? "info" : "neutral", "dot")
         )}
       />
       {mvz.fullName}

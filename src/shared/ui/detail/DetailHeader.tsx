@@ -5,6 +5,7 @@ import { ArrowLeft, Edit, Trash2 } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { cn } from "@/shared/lib/utils";
+import { toneToBadgeVariant, type SemanticTone } from "@/shared/ui/theme";
 
 interface DetailHeaderProps {
   title: string;
@@ -13,7 +14,7 @@ interface DetailHeaderProps {
   backLabel?: string;
   status?: string;
   statusLabel?: string;
-  statusVariant?: string;
+  statusVariant?: SemanticTone | string;
   onEdit?: () => void;
   onToggleStatus?: () => void;
   toggleStatusLabel?: string;
@@ -22,15 +23,35 @@ interface DetailHeaderProps {
   className?: string;
 }
 
-function getStatusBadgeClass(variant: string | undefined): string {
+function resolveStatusTone(variant: string | undefined): SemanticTone {
   switch (variant) {
+    case "success":
     case "active":
-      return "bg-emerald-100 text-emerald-700 border-emerald-200";
-    case "inactive":
+    case "approved":
+    case "completed":
+      return "success";
+    case "warning":
+    case "pending":
     case "suspended":
-      return "bg-gray-100 text-gray-500 border-gray-200";
+    case "in_review":
+      return "warning";
+    case "error":
+    case "blocked":
+    case "rejected":
+      return "error";
+    case "neutral":
+    case "inactive":
+    case "released":
+      return "neutral";
+    case "accent":
+      return "accent";
+    case "secondary":
+      return "secondary";
+    case "brand":
+      return "brand";
+    case "info":
     default:
-      return "bg-blue-100 text-blue-700 border-blue-200";
+      return "info";
   }
 }
 
@@ -66,12 +87,7 @@ export function DetailHeader({
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold">{title}</h1>
             {status && (
-              <Badge
-                className={cn(
-                  "border text-xs font-medium",
-                  getStatusBadgeClass(statusVariant ?? status)
-                )}
-              >
+              <Badge variant={toneToBadgeVariant[resolveStatusTone(statusVariant ?? status)]}>
                 {statusLabel ?? status}
               </Badge>
             )}
@@ -100,12 +116,7 @@ export function DetailHeader({
             </Button>
           )}
           {onDelete && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
-              onClick={onDelete}
-            >
+            <Button variant="destructive" size="sm" onClick={onDelete}>
               <Trash2 className="w-4 h-4 mr-1.5" />
               Eliminar
             </Button>

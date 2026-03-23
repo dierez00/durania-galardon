@@ -12,8 +12,8 @@ function createColorIcon(color: string) {
     className: "",
     html: `<div style="
       width:16px;height:16px;border-radius:50%;
-      background:${color};border:2px solid #fff;
-      box-shadow:0 0 4px rgba(0,0,0,.4);
+      background:${color};border:2px solid var(--brand-surface);
+      box-shadow:0 0 0 2px var(--border);
     "></div>`,
     iconSize: [16, 16],
     iconAnchor: [8, 8],
@@ -22,9 +22,9 @@ function createColorIcon(color: string) {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  active:    "#22c55e",   // verde
-  released:  "#6b7280",   // gris
-  suspended: "#f97316",   // naranja
+  active: "var(--success)",
+  released: "var(--neutral)",
+  suspended: "var(--warning)",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -65,7 +65,7 @@ export default function CuarentenasLeafletMap({ points, onMarkerClick }: Readonl
         <Marker
           key={p.id}
           position={[p.lat, p.lng]}
-          icon={createColorIcon(STATUS_COLORS[p.status] ?? "#6b7280")}
+          icon={createColorIcon(STATUS_COLORS[p.status] ?? "var(--neutral)")}
           eventHandlers={{ click: () => onMarkerClick(p.id) }}
         >
           <Tooltip direction="top" offset={[0, -10]} opacity={0.95}>

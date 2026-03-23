@@ -5,15 +5,16 @@ import { Badge } from "@/shared/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/shared/ui/table";
+import { toneToBadgeVariant, type SemanticTone } from "@/shared/ui/theme";
 import type { AuditoriaLog } from "@/modules/admin/auditoria/domain/entities/AuditoriaLogEntity";
 
-const ACTION_COLORS: Record<string, string> = {
-  create:       "bg-emerald-100 text-emerald-700",
-  update:       "bg-blue-100 text-blue-700",
-  delete:       "bg-red-100 text-red-700",
-  export:       "bg-purple-100 text-purple-700",
-  status_change:"bg-amber-100 text-amber-700",
-  fraud_attempt:"bg-red-200 text-red-800",
+const ACTION_TONES: Record<string, SemanticTone> = {
+  create: "success",
+  update: "info",
+  delete: "error",
+  export: "accent",
+  status_change: "warning",
+  fraud_attempt: "error",
 };
 
 interface Props {
@@ -48,7 +49,7 @@ export function AuditoriaList({ logs }: Readonly<Props>) {
                   <TableCell className="font-mono text-xs">{log.actor_user_id ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground text-xs">{log.role_key ?? "—"}</TableCell>
                   <TableCell>
-                    <Badge className={`border-0 ${ACTION_COLORS[log.action] ?? "bg-gray-100 text-gray-500"}`}>
+                    <Badge variant={toneToBadgeVariant[ACTION_TONES[log.action] ?? "neutral"]}>
                       {log.action}
                     </Badge>
                   </TableCell>

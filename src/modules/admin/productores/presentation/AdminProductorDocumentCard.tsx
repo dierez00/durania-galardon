@@ -3,6 +3,7 @@
 import { FileText, CheckCircle, Clock, XCircle, AlertTriangle } from "lucide-react";
 import { Badge } from "@/shared/ui/badge";
 import { cn } from "@/shared/lib/utils";
+import { toneToBadgeVariant, type SemanticTone } from "@/shared/ui/theme";
 import type { AdminProductorDocument } from "@/modules/admin/productores/domain/entities/AdminProductorDetailEntity";
 
 interface AdminProductorDocumentCardProps {
@@ -16,31 +17,31 @@ function getDocStatusConfig(status: string) {
       return {
         label: "Aprobado",
         icon: CheckCircle,
-        badgeClass: "bg-emerald-100 text-emerald-700",
+        tone: "success" as const,
       };
     case "pending":
       return {
         label: "Pendiente",
         icon: Clock,
-        badgeClass: "bg-amber-100 text-amber-700",
+        tone: "warning" as const,
       };
     case "rejected":
       return {
         label: "Rechazado",
         icon: XCircle,
-        badgeClass: "bg-red-100 text-red-700",
+        tone: "error" as const,
       };
     case "expired":
       return {
         label: "Vencido",
         icon: AlertTriangle,
-        badgeClass: "bg-orange-100 text-orange-700",
+        tone: "warning" as const,
       };
     default:
       return {
         label: status,
         icon: FileText,
-        badgeClass: "bg-gray-100 text-gray-500",
+        tone: "neutral" as SemanticTone,
       };
   }
 }
@@ -66,7 +67,7 @@ export function AdminProductorDocumentCard({
     <div
       className={cn(
         "flex items-start gap-4 p-4 bg-muted/40 rounded-lg border border-border/50 hover:border-border transition-colors",
-        isExpiredOrRejected && "border-destructive/20 bg-destructive/5",
+        isExpiredOrRejected && "border-error-border bg-error-bg/50",
         className
       )}
     >
@@ -76,7 +77,7 @@ export function AdminProductorDocumentCard({
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
           <h4 className="text-sm font-medium truncate">{doc.documentType}</h4>
-          <Badge className={cn("border-0 text-xs shrink-0", config.badgeClass)}>
+          <Badge variant={toneToBadgeVariant[config.tone]} className="text-xs shrink-0">
             <StatusIcon className="w-3 h-3 mr-1" />
             {config.label}
           </Badge>

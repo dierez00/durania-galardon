@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Alert, AlertDescription } from "@/shared/ui/alert";
 import { AdminExportacionesList } from "@/modules/exportaciones/admin/presentation/AdminExportacionesList";
 import { AdminExportacionesFilters } from "@/modules/exportaciones/admin/presentation/AdminExportacionesFilters";
 import { AdminRegla60Config } from "@/modules/exportaciones/admin/presentation/AdminRegla60Config";
@@ -46,16 +47,16 @@ export default function AdminExportsPage() {
               <span className="ml-2 text-sm font-normal text-muted-foreground">
                 ({total} en total)
               </span>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {error ? (
-            <div className="flex items-center gap-2 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              {error}
-            </div>
-          ) : null}
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {error ? (
+          <Alert variant="error">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
 
           {loading ? (
             <p className="py-8 text-center text-sm text-muted-foreground">Cargando...</p>

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/lib/utils";
 import type { AdminMvzAvailableUpp } from "@/modules/admin/mvz/domain/entities/AdminMvzDetailEntity";
+import { toneClass } from "@/shared/ui/theme";
 
 interface AdminMvzAvailableUppCardProps {
   upp: AdminMvzAvailableUpp;
@@ -27,8 +28,8 @@ export function AdminMvzAvailableUppCard({
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="p-1.5 bg-blue-50 rounded-md shrink-0">
-              <Home className="w-4 h-4 text-blue-600" />
+            <div className={cn("shrink-0 rounded-md p-1.5", toneClass("info", "surfaceStrong"))}>
+              <Home className="w-4 h-4 text-info" />
             </div>
             <div className="min-w-0">
               <h3 className="font-semibold text-sm truncate">{upp.name}</h3>
@@ -42,7 +43,7 @@ export function AdminMvzAvailableUppCard({
           <Button
             size="icon"
             variant="ghost"
-            className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"
+            className="h-7 w-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:bg-success-bg hover:text-success"
             onClick={onAssign}
             title="Asignar rancho"
           >

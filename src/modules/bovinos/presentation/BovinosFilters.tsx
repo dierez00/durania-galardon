@@ -61,23 +61,23 @@ const getSanitarioIcon = (value: string): LucideIcon => {
 };
 
 const getSanitarioColor = (value: string): string => {
-  if (value === "ok") return "text-emerald-600";
-  if (value === "positivo" || value === "prueba_vencida") return "text-red-600";
-  if (value === "por_vencer") return "text-amber-600";
+  if (value === "ok") return "text-success";
+  if (value === "positivo" || value === "prueba_vencida") return "text-error";
+  if (value === "por_vencer") return "text-warning";
   return "text-muted-foreground";
 };
 
 const getSexoColor = (value: string): string => {
-  if (value === "M") return "text-blue-600";
-  if (value === "F") return "text-pink-600";
+  if (value === "M") return "text-info";
+  if (value === "F") return "text-highlight";
   return "text-muted-foreground";
 };
 
-const getSanitarioBadgeColor = (value: string): string => {
-  if (value === "ok") return "bg-emerald-100 text-emerald-700";
-  if (value === "positivo" || value === "prueba_vencida") return "bg-red-100 text-red-700";
-  if (value === "por_vencer") return "bg-amber-100 text-amber-700";
-  return "bg-gray-100 text-gray-700";
+const getSanitarioBadgeTone = (value: string) => {
+  if (value === "ok") return "success";
+  if (value === "positivo" || value === "prueba_vencida") return "error";
+  if (value === "por_vencer") return "warning";
+  return "neutral";
 };
 
 const CLEAR_STATE: BovinosFiltersState = {
@@ -153,7 +153,7 @@ export const BovinosFilters: React.FC<BovinosFiltersProps> = ({
             icon={filters.exportable === "no_apto" ? XCircle : CheckCircle2}
             placeholder="Exportabilidad"
             getOptionColor={(v) =>
-              v === "apto" ? "text-emerald-600" : "text-red-600"
+              v === "apto" ? "text-success" : "text-error"
             }
           />
           <DateRangeFilter
@@ -172,7 +172,7 @@ export const BovinosFilters: React.FC<BovinosFiltersProps> = ({
         <ActiveFiltersIndicator onClearAll={clearAll}>
           {filters.search && (
             <FilterBadge icon={Search} label="Búsqueda" value={filters.search}
-              onRemove={() => set("search", "")} colorClass="bg-blue-100 text-blue-700" />
+              onRemove={() => set("search", "")} tone="info" />
           )}
           {filters.sexo && (
             <FilterBadge
@@ -180,7 +180,7 @@ export const BovinosFilters: React.FC<BovinosFiltersProps> = ({
               label="Sexo"
               value={filters.sexo === "M" ? "Macho" : "Hembra"}
               onRemove={() => set("sexo", "")}
-              colorClass={filters.sexo === "M" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"}
+              tone={filters.sexo === "M" ? "info" : "accent"}
             />
           )}
           {filters.sanitario && (
@@ -189,7 +189,7 @@ export const BovinosFilters: React.FC<BovinosFiltersProps> = ({
               label="Sanitario"
               value={sanitarioOptions.find((o) => o.value === filters.sanitario)?.label ?? filters.sanitario}
               onRemove={() => set("sanitario", "")}
-              colorClass={getSanitarioBadgeColor(filters.sanitario)}
+              tone={getSanitarioBadgeTone(filters.sanitario)}
             />
           )}
           {filters.exportable && (
@@ -198,16 +198,16 @@ export const BovinosFilters: React.FC<BovinosFiltersProps> = ({
               label="Exportable"
               value={exportableOptions.find((o) => o.value === filters.exportable)?.label ?? filters.exportable}
               onRemove={() => set("exportable", "")}
-              colorClass={filters.exportable === "apto" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}
+              tone={filters.exportable === "apto" ? "success" : "error"}
             />
           )}
           {filters.fechaDesde && (
             <FilterBadge label="Nacimiento desde" value={filters.fechaDesde}
-              onRemove={() => set("fechaDesde", "")} colorClass="bg-sky-100 text-sky-700" />
+              onRemove={() => set("fechaDesde", "")} tone="secondary" />
           )}
           {filters.fechaHasta && (
             <FilterBadge label="Nacimiento hasta" value={filters.fechaHasta}
-              onRemove={() => set("fechaHasta", "")} colorClass="bg-sky-100 text-sky-700" />
+              onRemove={() => set("fechaHasta", "")} tone="secondary" />
           )}
         </ActiveFiltersIndicator>
       )}

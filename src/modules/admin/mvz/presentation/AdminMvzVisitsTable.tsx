@@ -15,6 +15,7 @@ import { DetailEmptyState } from "@/shared/ui/detail";
 import { PaginationControls } from "@/shared/ui/pagination-controls";
 import { cn } from "@/shared/lib/utils";
 import type { AdminMvzVisit } from "@/modules/admin/mvz/domain/entities/AdminMvzDetailEntity";
+import { toneToBadgeVariant, type SemanticTone } from "@/shared/ui/theme";
 
 interface AdminMvzVisitsTableProps {
   visits: AdminMvzVisit[];
@@ -28,15 +29,15 @@ interface AdminMvzVisitsTableProps {
 function getVisitStatusConfig(status: string) {
   switch (status) {
     case "completed":
-      return { label: "Completada", icon: CheckCircle, cls: "bg-emerald-100 text-emerald-700" };
+      return { label: "Completada", icon: CheckCircle, tone: "success" as SemanticTone };
     case "scheduled":
-      return { label: "Programada", icon: Clock, cls: "bg-blue-100 text-blue-700" };
+      return { label: "Programada", icon: Clock, tone: "info" as SemanticTone };
     case "cancelled":
-      return { label: "Cancelada", icon: XCircle, cls: "bg-red-100 text-red-700" };
+      return { label: "Cancelada", icon: XCircle, tone: "error" as SemanticTone };
     case "in_progress":
-      return { label: "En progreso", icon: RefreshCcw, cls: "bg-amber-100 text-amber-700" };
+      return { label: "En progreso", icon: RefreshCcw, tone: "warning" as SemanticTone };
     default:
-      return { label: status, icon: CalendarCheck, cls: "bg-gray-100 text-gray-500" };
+      return { label: status, icon: CalendarCheck, tone: "neutral" as SemanticTone };
   }
 }
 
@@ -115,7 +116,7 @@ export function AdminMvzVisitsTable({
                       {getVisitTypeLabel(v.visitType)}
                     </TableCell>
                     <TableCell>
-                      <Badge className={cn("border-0 text-xs", config.cls)}>
+                      <Badge className={cn("text-xs")} variant={toneToBadgeVariant[config.tone]}>
                         <StatusIcon className="w-3 h-3 mr-1" />
                         {config.label}
                       </Badge>

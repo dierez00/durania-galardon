@@ -31,10 +31,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function statusColor(value: string): string {
-  if (value === "final_approved") return "text-emerald-600";
-  if (value === "blocked")        return "text-orange-500";
-  if (value === "rejected")       return "text-red-500";
-  if (value === "mvz_validated")  return "text-amber-500";
+  if (value === "final_approved") return "text-success";
+  if (value === "blocked")        return "text-warning";
+  if (value === "rejected")       return "text-error";
+  if (value === "mvz_validated")  return "text-secondary";
   return "";
 }
 

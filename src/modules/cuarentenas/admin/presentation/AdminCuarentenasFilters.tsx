@@ -37,9 +37,9 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 function statusColor(value: string): string {
-  if (value === "active")    return "text-red-600";
-  if (value === "released")  return "text-emerald-600";
-  if (value === "suspended") return "text-orange-500";
+  if (value === "active")    return "text-warning";
+  if (value === "released")  return "text-tone-neutral";
+  if (value === "suspended") return "text-error";
   return "";
 }
 

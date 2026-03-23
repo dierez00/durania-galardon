@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Alert, AlertDescription } from "@/shared/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { getAccessToken } from "@/shared/lib/auth-session";
 import { useMvzRealtime } from "@/modules/ranchos/presentation/mvz";
@@ -76,9 +77,11 @@ export function MvzDashboardPageContent({
       </div>
 
       {showSelectionHint ? (
-        <p className="text-sm text-amber-700">
-          Abre un rancho desde Inicio para continuar con el panel contextual.
-        </p>
+        <Alert variant="warning">
+          <AlertDescription>
+            Abre un rancho desde Inicio para continuar con el panel contextual.
+          </AlertDescription>
+        </Alert>
       ) : null}
 
       {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}

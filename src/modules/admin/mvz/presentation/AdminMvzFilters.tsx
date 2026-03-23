@@ -25,8 +25,8 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function statusColor(value: string): string {
-  if (value === "active")   return "text-emerald-600";
-  if (value === "inactive") return "text-gray-400";
+  if (value === "active")   return "text-success";
+  if (value === "inactive") return "text-tone-neutral";
   return "";
 }
 

@@ -4,6 +4,7 @@ import React from "react";
 import { X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
+import { toneClass, type SemanticTone } from "@/shared/ui/theme";
 
 // ─── FilterBadge ──────────────────────────────────────────────────────────────
 interface FilterBadgeProps {
@@ -11,7 +12,7 @@ interface FilterBadgeProps {
   label: string;
   value: string;
   onRemove: () => void;
-  colorClass?: string;
+  tone?: SemanticTone;
 }
 
 /**
@@ -22,12 +23,12 @@ export const FilterBadge: React.FC<FilterBadgeProps> = ({
   label,
   value,
   onRemove,
-  colorClass = "bg-primary/10 text-primary",
+  tone = "brand",
 }) => (
   <span
     className={cn(
-      "inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium",
-      colorClass
+      "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium",
+      toneClass(tone, "chip")
     )}
   >
     {Icon && <Icon className="w-3 h-3 shrink-0" />}
@@ -37,7 +38,7 @@ export const FilterBadge: React.FC<FilterBadgeProps> = ({
     <button
       type="button"
       onClick={onRemove}
-      className="ml-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 p-0.5 transition-colors"
+      className="ml-1 rounded-full p-0.5 transition-colors hover:bg-foreground/10"
       aria-label={`Remover filtro ${label}`}
     >
       <X className="w-3 h-3" />
@@ -74,7 +75,7 @@ export const ActiveFiltersIndicator: React.FC<ActiveFiltersIndicatorProps> = ({
     <button
       type="button"
       onClick={onClearAll}
-      className="ml-auto text-xs text-destructive hover:underline font-medium whitespace-nowrap"
+      className="ml-auto whitespace-nowrap text-xs font-medium text-error hover:underline"
     >
       Limpiar todos
     </button>

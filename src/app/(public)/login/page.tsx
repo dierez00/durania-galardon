@@ -91,23 +91,23 @@ export default function PublicLoginPage() {
   }, [searchParams]);
 
   return (
-    <div className="min-h-screen flex">
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#1a5632] to-[#0d3320] relative overflow-hidden items-center justify-center">
+    <div className="flex min-h-screen bg-background">
+      <div className="relative hidden items-center justify-center overflow-hidden bg-linear-to-br from-primary to-primary-hover lg:flex lg:w-1/2">
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 left-20 w-64 h-64 border border-white/20 rounded-full" />
-          <div className="absolute bottom-32 right-16 w-96 h-96 border border-white/10 rounded-full" />
-          <div className="absolute top-1/2 left-1/3 w-48 h-48 border border-white/15 rounded-full" />
+          <div className="absolute top-20 left-20 h-64 w-64 rounded-full border border-primary-foreground/20" />
+          <div className="absolute right-16 bottom-32 h-96 w-96 rounded-full border border-primary-foreground/10" />
+          <div className="absolute top-1/2 left-1/3 h-48 w-48 rounded-full border border-primary-foreground/15" />
         </div>
-        <div className="relative z-10 text-center text-white px-12 max-w-lg">
-          <div className="w-24 h-24 bg-white/10 backdrop-blur rounded-2xl flex items-center justify-center mx-auto mb-8 border border-white/20">
-            <Shield className="w-12 h-12 text-white" />
+        <div className="relative z-10 max-w-lg px-12 text-center text-primary-foreground">
+          <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-2xl border border-primary-foreground/20 bg-primary-foreground/10 backdrop-blur">
+            <Shield className="h-12 w-12 text-primary-foreground" />
           </div>
-          <h1 className="text-4xl font-bold mb-4 tracking-tight">SIINIGA</h1>
-          <p className="text-lg text-white/80 mb-2">
+          <h1 className="mb-4 text-4xl font-bold tracking-tight">SIINIGA</h1>
+          <p className="mb-2 text-lg text-primary-foreground/85">
             Sistema de Identificacion Individual del Ganado
           </p>
-          <div className="w-16 h-0.5 bg-white/30 mx-auto my-6" />
-          <p className="text-sm text-white/60 leading-relaxed">
+          <div className="mx-auto my-6 h-0.5 w-16 bg-primary-foreground/30" />
+          <p className="text-sm leading-relaxed text-primary-foreground/70">
             Control ganadero, trazabilidad sanitaria y gestion de exportacion bovina.
             Sistema oficial del estado.
           </p>
@@ -117,8 +117,8 @@ export default function PublicLoginPage() {
       <div className="flex-1 flex items-center justify-center bg-background p-8">
         <div className="w-full max-w-md">
           <div className="lg:hidden text-center mb-8">
-            <div className="w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <Shield className="w-8 h-8 text-primary" />
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-xl bg-primary/10">
+              <Shield className="h-8 w-8 text-primary" />
             </div>
             <h1 className="text-2xl font-bold text-foreground">SIINIGA</h1>
             <p className="text-sm text-muted-foreground mt-1">
@@ -126,7 +126,7 @@ export default function PublicLoginPage() {
             </p>
           </div>
 
-          <Card className="border-0 shadow-lg">
+          <Card className="border-border/70 shadow-lg">
             <CardContent className="pt-8 pb-8 px-8">
               <div className="mb-8">
                 <h2 className="text-2xl font-semibold text-foreground">Iniciar Sesion</h2>

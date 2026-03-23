@@ -48,19 +48,13 @@ const getEstadoIcon = (value: string): LucideIcon => {
 };
 
 const getEstadoColor = (value: string): string => {
-  if (value === "Completada") return "text-emerald-600";
-  if (value === "En proceso") return "text-blue-600";
-  if (value === "Pendiente")  return "text-amber-600";
+  if (value === "Completada") return "text-success";
+  if (value === "En proceso") return "text-info";
+  if (value === "Pendiente")  return "text-warning";
   return "text-muted-foreground";
 };
 
-const getEstadoBadgeColor = (value: string): string => {
-  if (value === "Completada") return "bg-emerald-100 text-emerald-700";
-  if (value === "En proceso") return "bg-blue-100 text-blue-700";
-  return "bg-amber-100 text-amber-700";
-};
-
-const getMotivoColor = (): string => "text-blue-600";
+const getMotivoColor = (): string => "text-info";
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 export const PruebasFilters: React.FC<PruebasFiltersProps> = ({
@@ -132,24 +126,30 @@ export const PruebasFilters: React.FC<PruebasFiltersProps> = ({
         <ActiveFiltersIndicator onClearAll={clearAll}>
           {filters.search && (
             <FilterBadge icon={Search} label="Búsqueda" value={filters.search}
-              onRemove={() => set("search", "")} colorClass="bg-blue-100 text-blue-700" />
+              onRemove={() => set("search", "")} tone="info" />
           )}
           {filters.motivo && (
             <FilterBadge icon={TestTube} label="Motivo" value={filters.motivo}
-              onRemove={() => set("motivo", "")} colorClass="bg-blue-100 text-blue-700" />
+              onRemove={() => set("motivo", "")} tone="info" />
           )}
           {filters.estado && (
             <FilterBadge icon={getEstadoIcon(filters.estado)} label="Estado" value={filters.estado}
               onRemove={() => set("estado", "")}
-              colorClass={getEstadoBadgeColor(filters.estado)} />
+              tone={
+                filters.estado === "Completada"
+                  ? "success"
+                  : filters.estado === "En proceso"
+                    ? "info"
+                    : "warning"
+              } />
           )}
           {filters.fechaDesde && (
             <FilterBadge label="Fecha desde" value={filters.fechaDesde}
-              onRemove={() => set("fechaDesde", "")} colorClass="bg-sky-100 text-sky-700" />
+              onRemove={() => set("fechaDesde", "")} tone="secondary" />
           )}
           {filters.fechaHasta && (
             <FilterBadge label="Fecha hasta" value={filters.fechaHasta}
-              onRemove={() => set("fechaHasta", "")} colorClass="bg-sky-100 text-sky-700" />
+              onRemove={() => set("fechaHasta", "")} tone="secondary" />
           )}
         </ActiveFiltersIndicator>
       )}

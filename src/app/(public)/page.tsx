@@ -3,10 +3,15 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CalendarCheck, CheckCircle2, Clock4, Stethoscope } from "lucide-react";
+import { cn } from "@/shared/lib/utils";
+import { Alert, AlertDescription } from "@/shared/ui/alert";
+import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
-import { Badge } from "@/shared/ui/badge";
+import { Input } from "@/shared/ui/input";
 import { Separator } from "@/shared/ui/separator";
+import { Textarea } from "@/shared/ui/textarea";
+import { toneClass } from "@/shared/ui/theme";
 
 const services = [
   { id: "tb", name: "Prueba Tuberculosis", duration: "35 min" },
@@ -112,18 +117,16 @@ export default function LandingPage() {
   const canDownload = Boolean(selectedService && selectedDate && timeValue && requestStatus === "saved");
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-lime-50">
+    <div className="min-h-screen bg-linear-to-br from-background via-brand-surface to-secondary/40">
       <div className="mx-auto max-w-6xl px-6 py-8 md:py-12">
-        <header className="rounded-2xl border border-emerald-200 bg-white/80 p-6 shadow-sm backdrop-blur">
+        <header className="rounded-3xl border border-border/80 bg-card/90 p-6 shadow-sm backdrop-blur">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-            <div className="space-y-2">
-              <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                DURANIA 2026
-              </Badge>
-              <h1 className="text-3xl font-bold tracking-tight text-emerald-900 md:text-4xl">
+            <div className="space-y-3">
+              <Badge variant="accent">DURANIA 2026</Badge>
+              <h1 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
                 Agenda tu cita sanitaria en linea
               </h1>
-              <p className="max-w-2xl text-sm text-emerald-800/80 md:text-base">
+              <p className="max-w-2xl text-sm text-muted-foreground md:text-base">
                 Flujo demostrativo de agendacion publica para productores y MVZ.
                 Este MVP usa disponibilidad hardcodeada y registra la solicitud en CRM de citas.
               </p>
@@ -137,7 +140,7 @@ export default function LandingPage() {
         </header>
 
         <section className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <Card className="border-emerald-200 bg-white/90">
+          <Card className="bg-card/95 backdrop-blur">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Agendacion de citas</CardTitle>
@@ -170,17 +173,18 @@ export default function LandingPage() {
                   {services.map((service) => (
                     <button
                       key={service.id}
-                      className={`w-full rounded-xl border p-4 text-left transition ${
+                      className={cn(
+                        "w-full rounded-2xl border p-4 text-left transition-[border-color,background-color,box-shadow]",
                         serviceId === service.id
-                          ? "border-emerald-500 bg-emerald-50"
-                          : "border-border bg-background hover:border-emerald-300"
-                      }`}
+                          ? "border-primary bg-primary/6 shadow-xs"
+                          : "border-border bg-card hover:border-brand-secondary/45 hover:bg-secondary/40"
+                      )}
                       onClick={() => setServiceId(service.id)}
                       type="button"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Stethoscope className="h-4 w-4 text-emerald-700" />
+                          <Stethoscope className="h-4 w-4 text-primary" />
                           <span className="font-medium">{service.name}</span>
                         </div>
                         <span className="text-xs text-muted-foreground">{service.duration}</span>
@@ -204,11 +208,12 @@ export default function LandingPage() {
                           <button
                             key={value}
                             type="button"
-                            className={`rounded-lg border px-3 py-2 text-sm ${
+                            className={cn(
+                              "rounded-xl border px-3 py-2 text-sm transition-[border-color,background-color,color]",
                               dateValue === value
-                                ? "border-emerald-500 bg-emerald-50 text-emerald-800"
-                                : "border-border hover:border-emerald-300"
-                            }`}
+                                ? "border-primary bg-primary/6 text-primary"
+                                : "border-border bg-card hover:border-brand-secondary/45 hover:bg-secondary/35"
+                            )}
                             onClick={() => setDateValue(value)}
                           >
                             {formatDate(date)}
@@ -225,11 +230,12 @@ export default function LandingPage() {
                         <button
                           key={slot}
                           type="button"
-                          className={`rounded-lg border px-3 py-2 text-sm ${
+                          className={cn(
+                            "rounded-xl border px-3 py-2 text-sm transition-[border-color,background-color,color]",
                             timeValue === slot
-                              ? "border-emerald-500 bg-emerald-50 text-emerald-800"
-                              : "border-border hover:border-emerald-300"
-                          }`}
+                              ? "border-primary bg-primary/6 text-primary"
+                              : "border-border bg-card hover:border-brand-secondary/45 hover:bg-secondary/35"
+                          )}
                           onClick={() => setTimeValue(slot)}
                         >
                           {slot}
@@ -251,56 +257,52 @@ export default function LandingPage() {
 
               {step === 3 && (
                 <div className="space-y-4">
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                    <div className="flex items-center gap-2 text-emerald-800">
+                  <div className={cn("rounded-2xl border p-4", toneClass("success", "surface"))}>
+                    <div className="flex items-center gap-2 text-success">
                       <CheckCircle2 className="h-5 w-5" />
                       <p className="font-medium">Cita lista para confirmar</p>
                     </div>
-                    <p className="mt-1 text-sm text-emerald-700">
-                      Folio de referencia: <span className="font-semibold">{folio}</span>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Folio de referencia: <span className="font-semibold text-foreground">{folio}</span>
                     </p>
                   </div>
 
-                  <div className="space-y-2 rounded-xl border p-4 text-sm">
+                  <div className="space-y-2 rounded-2xl border border-border/80 bg-card p-4 text-sm">
                     <p><strong>Servicio:</strong> {selectedService?.name ?? "-"}</p>
                     <p><strong>Fecha:</strong> {selectedDate ? formatDate(selectedDate) : "-"}</p>
                     <p><strong>Hora:</strong> {timeValue || "-"}</p>
                   </div>
 
-                  <div className="grid gap-3 rounded-xl border p-4 text-sm md:grid-cols-2">
+                  <div className="grid gap-3 rounded-2xl border border-border/80 bg-card p-4 text-sm md:grid-cols-2">
                     <div className="space-y-1">
                       <label className="text-xs font-medium text-muted-foreground">Nombre completo</label>
-                      <input
+                      <Input
                         value={fullName}
                         onChange={(event) => setFullName(event.target.value)}
-                        className="w-full rounded-md border px-3 py-2"
                         placeholder="Nombre del solicitante"
                       />
                     </div>
                     <div className="space-y-1">
                       <label className="text-xs font-medium text-muted-foreground">Telefono</label>
-                      <input
+                      <Input
                         value={phone}
                         onChange={(event) => setPhone(event.target.value)}
-                        className="w-full rounded-md border px-3 py-2"
                         placeholder="10 digitos"
                       />
                     </div>
                     <div className="space-y-1 md:col-span-2">
                       <label className="text-xs font-medium text-muted-foreground">Correo</label>
-                      <input
+                      <Input
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
-                        className="w-full rounded-md border px-3 py-2"
                         placeholder="usuario@correo.com"
                       />
                     </div>
                     <div className="space-y-1 md:col-span-2">
                       <label className="text-xs font-medium text-muted-foreground">Notas</label>
-                      <textarea
+                      <Textarea
                         value={notes}
                         onChange={(event) => setNotes(event.target.value)}
-                        className="w-full rounded-md border px-3 py-2"
                         rows={3}
                         placeholder="Detalle adicional para la solicitud"
                       />
@@ -308,15 +310,9 @@ export default function LandingPage() {
                   </div>
 
                   {requestMessage ? (
-                    <p
-                      className={`rounded-md p-2 text-sm ${
-                        requestStatus === "saved"
-                          ? "bg-emerald-100 text-emerald-800"
-                          : "bg-red-100 text-red-700"
-                      }`}
-                    >
-                      {requestMessage}
-                    </p>
+                    <Alert variant={requestStatus === "saved" ? "success" : "error"}>
+                      <AlertDescription>{requestMessage}</AlertDescription>
+                    </Alert>
                   ) : null}
 
                   <div className="flex flex-wrap gap-2">
@@ -380,6 +376,7 @@ export default function LandingPage() {
                       {submitting ? "Registrando..." : "Confirmar cita"}
                     </Button>
                     <Button
+                      variant="secondary"
                       onClick={() => {
                         if (!selectedService || !selectedDate || !timeValue) {
                           return;
@@ -409,21 +406,21 @@ export default function LandingPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-emerald-200 bg-white/90">
+          <Card className="bg-card/95 backdrop-blur">
             <CardHeader>
               <CardTitle className="text-lg">Resumen del flujo</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
               <div className="flex items-center gap-2">
-                <CalendarCheck className="h-4 w-4 text-emerald-700" />
+                <CalendarCheck className="h-4 w-4 text-primary" />
                 <span>Seleccion de servicio sanitario</span>
               </div>
               <div className="flex items-center gap-2">
-                <Clock4 className="h-4 w-4 text-emerald-700" />
+                <Clock4 className="h-4 w-4 text-primary" />
                 <span>Eleccion de fecha y hora</span>
               </div>
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-700" />
+                <CheckCircle2 className="h-4 w-4 text-primary" />
                 <span>Confirmacion y descarga de cita (.ics)</span>
               </div>
 

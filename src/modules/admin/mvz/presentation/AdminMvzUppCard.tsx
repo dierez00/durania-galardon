@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/lib/utils";
 import type { AdminMvzUpp } from "@/modules/admin/mvz/domain/entities/AdminMvzDetailEntity";
+import { toneClass } from "@/shared/ui/theme";
 
 interface AdminMvzUppCardProps {
   upp: AdminMvzUpp;
@@ -28,8 +29,8 @@ export function AdminMvzUppCard({ upp, className, onUnassign }: Readonly<AdminMv
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="p-1.5 bg-amber-100 rounded-md shrink-0">
-              <Home className="w-4 h-4 text-amber-700" />
+            <div className={cn("shrink-0 rounded-md p-1.5", toneClass("accent", "surfaceStrong"))}>
+              <Home className="w-4 h-4 text-highlight" />
             </div>
             <div className="min-w-0">
               <h3 className="font-semibold text-sm truncate">{upp.name}</h3>
@@ -41,14 +42,7 @@ export function AdminMvzUppCard({ upp, className, onUnassign }: Readonly<AdminMv
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <Badge
-              className={cn(
-                "border-0 text-xs",
-                isActive
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-gray-100 text-gray-500"
-              )}
-            >
+            <Badge className="text-xs" variant={isActive ? "success" : "neutral"}>
               {isActive ? "Activa" : "Inactiva"}
             </Badge>
             {onUnassign && (

@@ -5,6 +5,7 @@ import { Badge } from "@/shared/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/shared/ui/table";
+import { toneToBadgeVariant } from "@/shared/ui/theme";
 import type { NormativaSetting } from "@/modules/admin/normativa/domain/entities/NormativaSettingEntity";
 
 interface Props {
@@ -40,13 +41,7 @@ export function NormativaList({ settings }: Readonly<Props>) {
                     {JSON.stringify(s.value_json)}
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      className={`border-0 ${
-                        s.status === "active"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-gray-100 text-gray-500"
-                      }`}
-                    >
+                    <Badge variant={toneToBadgeVariant[s.status === "active" ? "success" : "neutral"]}>
                       {s.status === "active" ? "Activa" : "Vencida"}
                     </Badge>
                   </TableCell>

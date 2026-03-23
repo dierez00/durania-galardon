@@ -13,6 +13,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/shared/ui/button";
+import { Alert, AlertDescription } from "@/shared/ui/alert";
 import {
   Card, CardContent, CardHeader, CardTitle,
 } from "@/shared/ui/card";
@@ -26,6 +27,7 @@ import { DetailInfoGrid } from "@/shared/ui/detail/DetailInfoGrid";
 import { DetailEmptyState } from "@/shared/ui/detail/DetailEmptyState";
 import { AdminExportacionEstadoBadge } from "./AdminExportacionEstadoBadge";
 import { AdminExportacionProcesoTimeline } from "./AdminExportacionProcesoTimeline";
+import { toneToBadgeVariant, type SemanticTone } from "@/shared/ui/theme";
 import type { AdminExportacionDetallada } from "@/modules/exportaciones/admin/domain/entities/AdminExportacionDetailEntity";
 import type { AdminExportacionAnimal } from "@/modules/exportaciones/admin/domain/entities/AdminExportacionAnimalEntity";
 import type { UpdateAdminExportacionStatusDTO } from "@/modules/exportaciones/admin/application/dto/UpdateAdminExportacionStatusDTO";
@@ -38,13 +40,13 @@ const TABS = [
   { key: "proceso", label: "Proceso", icon: GitBranch },
 ];
 
-const ALERT_BADGE: Record<string, { label: string; className: string }> = {
-  ok: { label: "OK", className: "bg-emerald-100 text-emerald-700" },
-  por_vencer: { label: "Por vencer", className: "bg-amber-100 text-amber-700" },
-  prueba_vencida: { label: "Prueba vencida", className: "bg-red-100 text-red-700" },
-  sin_pruebas: { label: "Sin pruebas", className: "bg-gray-100 text-gray-500" },
-  positivo: { label: "Positivo", className: "bg-red-100 text-red-700" },
-  inactivo: { label: "Inactivo", className: "bg-gray-100 text-gray-500" },
+const ALERT_BADGE: Record<string, { label: string; tone: SemanticTone }> = {
+  ok: { label: "OK", tone: "success" },
+  por_vencer: { label: "Por vencer", tone: "warning" },
+  prueba_vencida: { label: "Prueba vencida", tone: "error" },
+  sin_pruebas: { label: "Sin pruebas", tone: "neutral" },
+  positivo: { label: "Positivo", tone: "error" },
+  inactivo: { label: "Inactivo", tone: "neutral" },
 };
 
 interface Props {
@@ -66,8 +68,8 @@ function sexLabel(sex: string): string {
 }
 
 function Check({ value }: Readonly<{ value: boolean | null | undefined }>) {
-  if (value === true) return <span className="text-emerald-600 font-medium">SÃ­</span>;
-  if (value === false) return <span className="text-red-500 font-medium">No</span>;
+  if (value === true) return <span className="text-success font-medium">SÃ­</span>;
+  if (value === false) return <span className="text-error font-medium">No</span>;
   return <span className="text-muted-foreground">â€”</span>;
 }
 
@@ -209,12 +211,12 @@ function AnimalesTabContent({
               <TableCell className="font-mono text-xs">{a.siniigaTag}</TableCell>
               <TableCell>{sexLabel(a.sex)}</TableCell>
               <TableCell>
-                <Badge className={`border-0 text-xs ${a.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
+                <Badge variant={toneToBadgeVariant[a.status === "active" ? "success" : "neutral"]} className="text-xs">
                   {a.status === "active" ? "Activo" : "Inactivo"}
                 </Badge>
               </TableCell>
               <TableCell>
-                <Badge className={`border-0 text-xs ${alertConfig.className}`}>
+                <Badge variant={toneToBadgeVariant[alertConfig.tone]} className="text-xs">
                   {alertConfig.label}
                 </Badge>
               </TableCell>
@@ -278,10 +280,10 @@ export function AdminExportacionDetailContent({
 
       <div className="px-6 pb-8 space-y-4">
         {updateError && (
-          <div className="p-3 rounded-lg bg-red-50 border border-red-200 flex items-center gap-2 text-sm text-red-700">
+          <Alert variant="error">
             <AlertTriangle className="w-4 h-4 shrink-0" />
-            {updateError}
-          </div>
+            <AlertDescription>{updateError}</AlertDescription>
+          </Alert>
         )}
 
         {activeTab === "info" && (

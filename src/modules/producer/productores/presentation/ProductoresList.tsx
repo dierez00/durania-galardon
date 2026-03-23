@@ -47,13 +47,7 @@ export function ProductoresList({ productores, onView, onEdit }: ProductoresList
                   <TableCell className="text-center">{p.ranchos}</TableCell>
                   <TableCell className="text-center">{p.bovinos}</TableCell>
                   <TableCell>
-                    <Badge
-                      className={`border-0 ${
-                        p.estado === "Activo"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-gray-100 text-gray-500"
-                      }`}
-                    >
+                    <Badge variant={p.estado === "Activo" ? "success" : "neutral"}>
                       {p.estado}
                     </Badge>
                   </TableCell>

@@ -30,6 +30,7 @@ import {
   AlertDialogTitle,
 } from "@/shared/ui/alert-dialog";
 import { getAccessToken } from "@/shared/lib/auth-session";
+import { cn } from "@/shared/lib/utils";
 
 interface Props {
   producerDocuments: ProducerDocument[];
@@ -55,10 +56,11 @@ const UPP_DOC_TYPE_NAME: Record<string, string> = Object.fromEntries(
 
 function statusVariant(
   status: string
-): "default" | "secondary" | "destructive" | "outline" {
-  if (status === "validated") return "default";
-  if (status === "expired" || status === "rejected") return "destructive";
-  return "secondary";
+): "success" | "warning" | "error" | "neutral" {
+  if (status === "validated") return "success";
+  if (status === "expired" || status === "rejected") return "error";
+  if (status === "pending") return "warning";
+  return "neutral";
 }
 
 function getTimeAgo(date: Date): string {
@@ -256,7 +258,7 @@ export function DocumentList({
           </Button>
           {isUpdating && (
             <div className="flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+              <Loader2 className="w-4 h-4 animate-spin text-info" />
               <span className="text-xs text-muted-foreground">Actualizando...</span>
             </div>
           )}
@@ -302,11 +304,10 @@ export function DocumentList({
                 return (
                   <TableRow
                     key={doc.id}
-                    className={`transition-colors ${
-                      hasRecentChange
-                        ? 'bg-blue-50 border-l-4 border-l-blue-500'
-                        : ''
-                    }`}
+                    className={cn(
+                      "transition-colors",
+                      hasRecentChange && "bg-info-bg border-l-4 border-l-info"
+                    )}
                   >
                     <TableCell className="font-medium">
                       {doc.documentTypeName || doc.documentTypeKey}

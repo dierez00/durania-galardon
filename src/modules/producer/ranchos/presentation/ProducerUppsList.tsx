@@ -4,6 +4,7 @@ import Link from "next/link";
 import { MapPin, MapPinOff } from "lucide-react";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
+import { toneToBadgeVariant } from "@/shared/ui/theme";
 import {
   Table,
   TableBody,
@@ -13,7 +14,7 @@ import {
   TableRow,
 } from "@/shared/ui/table";
 import type { ProducerUpp } from "@/modules/producer/ranchos/domain/entities/ProducerUppEntity";
-import { buildMapHref, statusBadgeClass, statusLabel } from "./utils/cardHelpers";
+import { buildMapHref, statusBadgeTone, statusLabel } from "./utils/cardHelpers";
 
 interface ProducerUppsListProps {
   readonly upps: ProducerUpp[];
@@ -74,7 +75,7 @@ export function ProducerUppsList({ upps }: ProducerUppsListProps) {
                       {upp.herd_limit != null ? upp.herd_limit : "—"}
                     </TableCell>
                     <TableCell>
-                      <Badge className={`border ${statusBadgeClass(upp.status)}`}>
+                      <Badge variant={toneToBadgeVariant[statusBadgeTone(upp.status)]}>
                         {statusLabel(upp.status)}
                       </Badge>
                     </TableCell>
@@ -91,7 +92,7 @@ export function ProducerUppsList({ upps }: ProducerUppsListProps) {
                           }
                         >
                           <a href={mapHref} target="_blank" rel="noopener noreferrer">
-                            <MapPin className="w-4 h-4 text-emerald-600" />
+                            <MapPin className="w-4 h-4 text-primary" />
                           </a>
                         </Button>
                       ) : (

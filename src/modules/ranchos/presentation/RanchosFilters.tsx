@@ -48,12 +48,12 @@ const getEstadoIcon = (value: string): LucideIcon => {
 };
 
 const getEstadoColor = (value: string): string => {
-  if (value === "Activo")   return "text-emerald-600";
-  if (value === "Inactivo") return "text-red-500";
+  if (value === "Activo")   return "text-success";
+  if (value === "Inactivo") return "text-error";
   return "text-muted-foreground";
 };
 
-const getMunicipioColor = (): string => "text-blue-600";
+const getMunicipioColor = (): string => "text-info";
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 export const RanchosFilters: React.FC<RanchosFiltersProps> = ({
@@ -125,24 +125,24 @@ export const RanchosFilters: React.FC<RanchosFiltersProps> = ({
         <ActiveFiltersIndicator onClearAll={clearAll}>
           {filters.search && (
             <FilterBadge icon={Search} label="Búsqueda" value={filters.search}
-              onRemove={() => set("search", "")} colorClass="bg-blue-100 text-blue-700" />
+              onRemove={() => set("search", "")} tone="info" />
           )}
           {filters.municipio && (
             <FilterBadge icon={MapPin} label="Municipio" value={filters.municipio}
-              onRemove={() => set("municipio", "")} colorClass="bg-blue-100 text-blue-700" />
+              onRemove={() => set("municipio", "")} tone="info" />
           )}
           {filters.estado && (
             <FilterBadge icon={getEstadoIcon(filters.estado)} label="Estado" value={filters.estado}
               onRemove={() => set("estado", "")}
-              colorClass={filters.estado === "Activo" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"} />
+              tone={filters.estado === "Activo" ? "success" : "error"} />
           )}
           {filters.fechaDesde && (
             <FilterBadge label="Registro desde" value={filters.fechaDesde}
-              onRemove={() => set("fechaDesde", "")} colorClass="bg-sky-100 text-sky-700" />
+              onRemove={() => set("fechaDesde", "")} tone="secondary" />
           )}
           {filters.fechaHasta && (
             <FilterBadge label="Registro hasta" value={filters.fechaHasta}
-              onRemove={() => set("fechaHasta", "")} colorClass="bg-sky-100 text-sky-700" />
+              onRemove={() => set("fechaHasta", "")} tone="secondary" />
           )}
         </ActiveFiltersIndicator>
       )}
