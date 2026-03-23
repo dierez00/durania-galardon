@@ -20,6 +20,21 @@ export const UPP_DOCUMENT_TYPES = [
   { key: "constancia_upp", name: "Constancia de la UPP", requiresExpiry: true },
 ] as const;
 
+export const UPP_EXPORTACION_DOCUMENT_TYPES = [
+  {
+    key: "certificado_zoosanitario_exportacion",
+    name: "Certificado Zoosanitario de Exportación (CZE)",
+    requiresExpiry: true,
+  },
+  { key: "identificacion_siniiga_arete_azul", name: "Identificación SINIIGA (Arete Azul)", requiresExpiry: false },
+  { key: "pruebas_laboratorio_tb_br", name: "Pruebas de laboratorio (TB/BR)", requiresExpiry: true },
+  { key: "factura_comercial", name: "Factura comercial", requiresExpiry: false },
+  { key: "encargo_conferido", name: "Encargo conferido", requiresExpiry: false },
+  { key: "pedimento_exportacion", name: "Pedimento de exportación", requiresExpiry: false },
+  { key: "certificado_origen", name: "Certificado de origen", requiresExpiry: true },
+  { key: "imagen_fierro_herrar", name: "Imagen del Fierro de Herrar", requiresExpiry: false },
+] as const;
+
 export const UPP_MOVILIZACION_BOVINO_DOCUMENT_TYPES = [
   { key: "tb_resultado", name: "Resultado TB vigente", requiresExpiry: true },
   { key: "br_resultado", name: "Resultado BR vigente", requiresExpiry: true },
@@ -39,3 +54,4 @@ export const UPP_MOVILIZACION_BOVINO_DOCUMENT_TYPES = [
 ] as const;
 
 export type UppDocumentType = typeof UPP_DOCUMENT_TYPES[number];
+export type UppExportacionDocumentType = typeof UPP_EXPORTACION_DOCUMENT_TYPES[number];
