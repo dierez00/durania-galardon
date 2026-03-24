@@ -1235,8 +1235,8 @@ model telemetry {
   gyro_x      Float?
   gyro_y      Float?
   gyro_z      Float?
-  rssi        Int?
-  snr         Float?
+  rssi      Float?
+  snr       Float?
   timestamp   DateTime @default(now()) @db.Timestamptz(6)
   animals     animals? @relation(fields: [animal_id], references: [id], onUpdate: NoAction, map: "telemetry_animal_fkey")
   collars     collars  @relation(fields: [collar_uuid], references: [id], onUpdate: NoAction, map: "telemetry_collar_fkey")
