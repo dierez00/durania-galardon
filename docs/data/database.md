@@ -1,7 +1,7 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-22
-Source of Truth: Canonical database reference for schema, IAM tables, views, RLS helpers, and MVZ hierarchy additions.
+Last Updated: 2026-03-23
+Source of Truth: Canonical database reference for schema, IAM tables, views, RLS helpers, MVZ hierarchy additions, and IoT telemetry tables.
 # DURANIA MVP PRO — Documentación de Base de Datos
 
 > **Stack:** Supabase / PostgreSQL · **Versión:** v6  
@@ -22,12 +22,14 @@ Source of Truth: Canonical database reference for schema, IAM tables, views, RLS
    - [2.7 Pruebas Sanitarias](#27-pruebas-sanitarias)
    - [2.8 Módulos Operativos](#28-módulos-operativos)
    - [2.9 CRM y Notificaciones](#29-crm-y-notificaciones)
+  - [2.10 IoT y Telemetría](#210-iot-y-telemetria)
 3. [Índices](#3-índices)
 4. [Vistas](#4-vistas)
 5. [Funciones Helper RLS](#5-funciones-helper-rls)
 6. [Operaciones Frecuentes](#6-operaciones-frecuentes)
 7. [Resumen de Accesos RLS](#7-resumen-de-accesos-rls)
 8. [Actualizacion v6 (MVZ Jerarquico)](#8-actualizacion-v6-mvz-jerarquico)
+9. [Actualizacion v7 (IoT Telemetria)](#9-actualizacion-v7-iot-telemetria)
 
 ---
 
@@ -619,6 +621,81 @@ Bitácora de acciones del sistema. Solo el gobierno puede leerla. Las insercione
 
 ---
 
+### 2.10 IoT y Telemetría
+
+Estas tablas soportan el flujo operativo de collares de campo y su telemetría. Se modela con tres piezas:
+
+1. `collars`: inventario y estado actual del collar.
+2. `collar_animal_history`: auditoría de vinculaciones/desvinculaciones.
+3. `telemetry`: stream de lecturas en el tiempo.
+
+#### `collars`
+
+Inventario de collares IoT. Un collar puede existir sin `tenant_id` y sin `animal_id` mientras está sin vender o sin vincular.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `tenant_id` | `UUID` | FK → `tenants(id)` · Nullable mientras no esté asignado a productor |
+| `animal_id` | `UUID` | FK → `animals(id)` · Nullable mientras no esté vinculado |
+| `collar_id` | `TEXT` | ID físico único del firmware (ej. `C34`) |
+| `status` | `TEXT` | `'inactive'` \| `'active'` \| `'linked'` \| `'unlinked'` \| `'suspended'` \| `'retired'` |
+| `firmware_version` | `TEXT` | Versión de firmware cargada en el dispositivo |
+| `purchased_at` | `TIMESTAMPTZ` | Fecha de compra/activación por productor · Nullable |
+| `linked_at` | `TIMESTAMPTZ` | Fecha del último vínculo a animal · Nullable |
+| `unlinked_at` | `TIMESTAMPTZ` | Fecha de última desvinculación · Nullable |
+| `created_at` | `TIMESTAMPTZ` | — |
+| `updated_at` | `TIMESTAMPTZ` | — |
+
+---
+
+#### `collar_animal_history`
+
+Bitácora histórica de vínculo collar ↔ animal para trazabilidad y auditoría.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `UUID` | PK |
+| `collar_id_fk` | `UUID` | FK → `collars(id)` |
+| `animal_id` | `UUID` | FK → `animals(id)` |
+| `tenant_id` | `UUID` | FK → `tenants(id)` |
+| `linked_by` | `UUID` | FK → `profiles(id)` · Usuario que vinculó · Nullable |
+| `unlinked_by` | `UUID` | FK → `profiles(id)` · Usuario que desvinculó · Nullable |
+| `linked_at` | `TIMESTAMPTZ` | Fecha/hora de vínculo |
+| `unlinked_at` | `TIMESTAMPTZ` | Fecha/hora de desvinculación · `NULL` si sigue activo |
+| `notes` | `TEXT` | Comentarios de operación · Nullable |
+
+---
+
+#### `telemetry`
+
+Serie temporal de lecturas de sensores. Guarda `collar_uuid` como FK canónica y una copia de `collar_id` para consultas rápidas.
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | `BIGSERIAL` | PK |
+| `collar_uuid` | `UUID` | FK → `collars(id)` |
+| `collar_id` | `TEXT` | Copia denormalizada del identificador físico |
+| `tenant_id` | `UUID` | FK → `tenants(id)` · denormalizado para RLS · Nullable |
+| `animal_id` | `UUID` | FK → `animals(id)` · denormalizado según vínculo activo · Nullable |
+| `latitude` / `longitude` / `altitude` | `DOUBLE PRECISION` | Geoposición · Nullable |
+| `speed` | `DOUBLE PRECISION` | Velocidad estimada · Nullable |
+| `temperature` | `DOUBLE PRECISION` | Temperatura del collar/entorno · Nullable |
+| `activity` | `INTEGER` | Nivel de actividad resumido · Nullable |
+| `bat_voltage` / `bat_percent` | `DOUBLE PRECISION` / `INTEGER` | Estado de batería |
+| `accel_x` / `accel_y` / `accel_z` | `DOUBLE PRECISION` | Acelerómetro |
+| `gyro_x` / `gyro_y` / `gyro_z` | `DOUBLE PRECISION` | Giroscopio |
+| `rssi` | `INTEGER` | Señal LoRa recibida |
+| `snr` | `DOUBLE PRECISION` | Relación señal/ruido |
+| `timestamp` | `TIMESTAMPTZ` | Momento del evento (device/server ingest) |
+
+Notas operativas:
+
+- Otorgar `USAGE, SELECT` en `telemetry_id_seq` al rol `authenticated` para inserts por `BIGSERIAL`.
+- Para consultas históricas, usar `idx_telemetry_timestamp` (orden DESC por tiempo).
+
+---
+
 ## 3. Índices
 
 > No agregar índices adicionales hasta tener datos reales. Identificar queries lentos con `EXPLAIN ANALYZE` en Supabase.
@@ -662,6 +739,18 @@ Bitácora de acciones del sistema. Solo el gobierno puede leerla. Las insercione
 | `idx_notification_events_target_ten` | `notification_events` | `target_tenant_id, created_at DESC` | Notificaciones broadcast |
 | `idx_audit_logs_tenant_at` | `audit_logs` | `tenant_id, created_at DESC` | Bitácora por tenant |
 | `idx_audit_logs_actor` | `audit_logs` | `actor_user_id, created_at DESC` | Acciones de un usuario |
+| `idx_collars_collar_id` | `collars` | `collar_id` | Lookup por identificador físico |
+| `idx_collars_tenant_id` | `collars` | `tenant_id` | Collares por productor/tenant |
+| `idx_collars_animal_id` | `collars` | `animal_id` | Collar activo/histórico por animal |
+| `idx_collars_status` | `collars` | `status` | Filtro por estado operativo |
+| `idx_cah_collar` | `collar_animal_history` | `collar_id_fk` | Historial de un collar |
+| `idx_cah_animal` | `collar_animal_history` | `animal_id` | Historial de un animal |
+| `idx_cah_linked` | `collar_animal_history` | `linked_at DESC` | Eventos recientes de vínculo |
+| `idx_telemetry_collar_uuid` | `telemetry` | `collar_uuid` | Lecturas por collar |
+| `idx_telemetry_collar_id` | `telemetry` | `collar_id` | Lookup rápido por ID físico |
+| `idx_telemetry_animal_id` | `telemetry` | `animal_id` | Telemetría de un animal |
+| `idx_telemetry_tenant_id` | `telemetry` | `tenant_id` | Telemetría por tenant |
+| `idx_telemetry_timestamp` | `telemetry` | `timestamp DESC` | Series temporales recientes |
 
 ---
 
@@ -976,6 +1065,43 @@ RETURNING id;
 
 ---
 
+### Vincular un Collar a un Animal
+
+```sql
+-- 1) Actualizar estado actual del collar
+UPDATE public.collars
+SET
+  tenant_id = $tenant_id,
+  animal_id = $animal_id,
+  status = 'linked',
+  linked_at = now(),
+  updated_at = now()
+WHERE id = $collar_uuid;
+
+-- 2) Insertar evento historico
+INSERT INTO public.collar_animal_history
+  (collar_id_fk, animal_id, tenant_id, linked_by, linked_at, notes)
+VALUES
+  ($collar_uuid, $animal_id, $tenant_id, auth.uid(), now(), $notes);
+```
+
+---
+
+### Registrar Telemetría IoT
+
+```sql
+INSERT INTO public.telemetry
+  (collar_uuid, collar_id, tenant_id, animal_id,
+   latitude, longitude, speed, temperature,
+   bat_voltage, bat_percent, rssi, snr, timestamp)
+VALUES
+  ($collar_uuid, $collar_id, $tenant_id, $animal_id,
+   $lat, $lng, $speed, $temp,
+   $bat_v, $bat_pct, $rssi, $snr, now());
+```
+
+---
+
 ## 7. Resumen de Accesos RLS
 
 | Tabla / Vista | `tenant_admin` (gov) | `tenant_admin` (producer) | `producer` | `employee` | `mvz_government` | `mvz_internal` |
@@ -993,6 +1119,9 @@ RETURNING id;
 | `notification_events` | R/W todos | R propias | R propias | R propias | R propias | R propias |
 | `appointment_requests` | R/W todos | — | — | — | — | — |
 | `audit_logs` | R todos | — | — | — | — | — |
+| `collars` | R/W propio | R/W propio | R/W propio | R/W propio | R/W propio | R/W propio |
+| `collar_animal_history` | R/W propio | R/W propio | R/W propio | R/W propio | R/W propio | R/W propio |
+| `telemetry` | R/W propio | R/W propio | R/W propio | R/W propio | R/W propio | R/W propio |
 | `v_producer_dashboard` | R todos | R propio | R propio | R propio | — | — |
 | `v_mvz_assignments` | R todos | R propio | R propio | — | R propio | R propio |
 | `v_animals_sanitary` | R todos | R propio | R propio | R propio | R asignadas | R asignadas |
@@ -1108,3 +1237,30 @@ Documentos asociados al rancho (`UPP`) en lugar de solo productor.
 - `GET /api/mvz/ranchos/:uppId/reportes`
 - `GET|POST /api/mvz/ranchos/:uppId/documentacion`
 - `GET|POST|PATCH /api/mvz/ranchos/:uppId/visitas`
+
+---
+
+## 9. Actualizacion v7 (IoT Telemetria)
+
+Esta version agrega soporte de telemetria IoT en campo para collares de bovinos.
+
+### 9.1 Tablas nuevas
+
+- `collars`: inventario, asignacion y estado operativo del dispositivo.
+- `collar_animal_history`: auditoria de vinculos/desvinculos collar ↔ animal.
+- `telemetry`: lecturas historicas del collar (GPS, actividad, bateria e IMU).
+
+### 9.2 Politicas y permisos
+
+- RLS habilitado en las tres tablas.
+- Politica base por `tenant_id` para usuarios con membresia activa en `tenant_memberships`.
+- Grants:
+  - `authenticated`: `SELECT, INSERT, UPDATE, DELETE` en las tres tablas.
+  - `anon`: `SELECT` en `collars` y `telemetry` (si se requiere lectura publica).
+  - Secuencia `public.telemetry_id_seq`: `USAGE, SELECT` para `authenticated`.
+
+### 9.3 Integridad y cardinalidad
+
+- `collars.collar_id` es `UNIQUE` y representa el ID fisico del firmware.
+- `telemetry.collar_uuid` referencia `collars(id)` con `ON DELETE RESTRICT` para evitar huérfanos.
+- `collar_animal_history` guarda trazabilidad historica aun cuando un collar cambie de animal.

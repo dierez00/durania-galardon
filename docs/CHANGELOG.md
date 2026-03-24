@@ -9,6 +9,7 @@ Source of Truth: Historical log of documentation-only changes. Current operation
 
 ### Added
 
+- `docs/data/database.md`: seccion IoT y telemetria (`collars`, `collar_animal_history`, `telemetry`) con catalogo de columnas, indices, grants/RLS y operaciones frecuentes.
 - `docs/architecture/ui-color-system.md`: documenta la paleta canonica, tokens globales, tonos semanticos, reglas de consumo y el guard `npm run check:ui-colors`.
 - `src/app/api/README.md`: agrega ownership y contratos para `auth/password/recovery` y `auth/invite-context`.
 - `docs/architecture/tenant-iam.md`: documenta roles base protegidos, roles custom `custom_<slug>`, permisos `producer.roles.*` y `mvz.roles.*`, y nuevos endpoints de roles por tenant.
@@ -23,6 +24,7 @@ Source of Truth: Historical log of documentation-only changes. Current operation
 
 ### Changed
 
+- `docs/data/prisma-from-sql.md` y `docs/guides/setup.md`: incluyen la migracion `sql/20260323_add_iot_telemetry_tables.sql` en referencia SQL-first y orden recomendado de ejecucion.
 - `docs/README.md`: indexa el sistema de color UI como documentacion canonica de arquitectura.
 - `docs/architecture/overview.md`: registra `src/shared/ui/theme` y el guard `scripts/check-ui-colors.mjs` como parte de la arquitectura frontend compartida.
 - `docs/architecture/auth-admin.md`: documenta el flujo de invitacion/recovery, las rutas publicas `/forgot-password` y `/auth/set-password`, y el endpoint `GET /api/auth/invite-context`.

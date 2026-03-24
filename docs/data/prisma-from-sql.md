@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-19
+Last Updated: 2026-03-23
 Source of Truth: Canonical guidance for how Prisma relates to the SQL-first Supabase schema in this repository.
 
 # Prisma y SQL
@@ -14,6 +14,7 @@ Migraciones activas:
 - `sql/migration_001_duraniaMVP.sql`
 - `sql/migration_002_mvz_hierarchy.sql`
 - `sql/migration_003_fix_rls_politicies.sql`
+- `sql/20260323_add_iot_telemetry_tables.sql`
 - `sql/views.sql`
 - `sql/seeds.sql`
 
@@ -46,3 +47,27 @@ npx prisma generate
 La implementacion jerarquica MVZ usa cliente Supabase (RLS) para tablas nuevas (`mvz_visits`, `animal_vaccinations`, `sanitary_incidents`, `upp_documents`).
 
 Si quieres reflejarlas en Prisma, regenera `prisma/schema.prisma` desde la BD actualizada.
+
+## Nota sobre IoT y telemetría
+
+La migración `sql/20260323_add_iot_telemetry_tables.sql` agrega:
+
+- `public.collars`
+- `public.collar_animal_history`
+- `public.telemetry`
+
+En `prisma/schema.prisma` ya están reflejadas como modelos `collars`, `collar_animal_history` y `telemetry`.
+
+Recordatorio SQL-first:
+
+- Políticas RLS (`CREATE POLICY`) se mantienen en SQL.
+- Grants a roles (`authenticated`, `anon`) se mantienen en SQL.
+- Permisos de secuencia (`telemetry_id_seq`) se mantienen en SQL.
+
+Si se cambia estructura o políticas de estas tablas en SQL, ejecutar:
+
+```bash
+npx prisma db pull
+npx prisma format
+npx prisma validate
+```

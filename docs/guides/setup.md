@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-22
+Last Updated: 2026-03-23
 Source of Truth: Canonical local setup, environment, and SQL execution order for the repository.
 
 # Setup y comandos
@@ -35,8 +35,9 @@ Orden recomendado de ejecucion SQL:
 1. `sql/migration_001_duraniaMVP.sql`
 2. `sql/migration_002_mvz_hierarchy.sql`
 3. `sql/migration_003_fix_rls_politicies.sql`
-4. `sql/views.sql`
-5. `sql/seeds.sql`
+4. `sql/20260323_add_iot_telemetry_tables.sql`
+5. `sql/views.sql`
+6. `sql/seeds.sql`
 
 Nota:
 
