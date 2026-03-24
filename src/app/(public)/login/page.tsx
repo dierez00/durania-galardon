@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -37,7 +37,7 @@ interface LoginApiResponse {
   };
 }
 
-export default function PublicLoginPage() {
+function PublicLoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -242,5 +242,21 @@ export default function PublicLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function LoginPageLoading() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background p-8">
+      <p className="text-sm text-muted-foreground">Cargando acceso...</p>
+    </div>
+  );
+}
+
+export default function PublicLoginPage() {
+  return (
+    <Suspense fallback={<LoginPageLoading />}>
+      <PublicLoginPageContent />
+    </Suspense>
   );
 }
