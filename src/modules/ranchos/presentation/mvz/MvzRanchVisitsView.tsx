@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Eye, Pencil, Trash2 } from "lucide-react";
+import { SanitarioBadge } from "@/modules/bovinos/presentation";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import {
@@ -33,7 +34,6 @@ import {
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Textarea } from "@/shared/ui/textarea";
-import { SanitarioBadge } from "@/modules/bovinos/presentation";
 import {
   createMvzRanchVisit,
   deleteMvzRanchVisit,
@@ -49,6 +49,7 @@ import {
   PrimaryActionButton,
   SectionHeading,
 } from "./shared";
+import { useAutoOpenCreateAction } from "./useAutoOpenCreateAction";
 import type { MvzRanchTabProps, MvzRanchVisitRecord } from "./types";
 
 interface VisitFormState {
@@ -86,6 +87,14 @@ export function MvzRanchVisitsView({
   const [form, setForm] = useState<VisitFormState>(getInitialForm());
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const openCreateDialog = useCallback(() => {
+    setForm(getInitialForm());
+    setFormError("");
+    setDialogOpen(true);
+  }, []);
+
+  useAutoOpenCreateAction(openCreateDialog);
 
   const loadData = async () => {
     const data = await fetchMvzRanchVisits(uppId);
@@ -176,17 +185,8 @@ export function MvzRanchVisitsView({
     <div className="space-y-6">
       <SectionHeading
         title="Visitas"
-        description="Agenda de visitas MVZ, ejecución en campo y cierre operativo."
-        actions={
-          <PrimaryActionButton
-            label="Añadir visita"
-            onClick={() => {
-              setForm(getInitialForm());
-              setFormError("");
-              setDialogOpen(true);
-            }}
-          />
-        }
+        description="Agenda de visitas MVZ, ejecución en campo y cierre de cada seguimiento."
+        actions={<PrimaryActionButton label="Añadir visita" onClick={openCreateDialog} />}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

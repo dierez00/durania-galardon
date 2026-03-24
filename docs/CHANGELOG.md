@@ -1,6 +1,6 @@
 Status: History
 Owner: Engineering
-Last Updated: 2026-03-23
+Last Updated: 2026-03-24
 Source of Truth: Historical log of documentation-only changes. Current operational guidance lives in `docs/README.md` and the linked canonical docs.
 
 # Docs Changelog
@@ -9,6 +9,8 @@ Source of Truth: Historical log of documentation-only changes. Current operation
 
 ### Added
 
+- `docs/data/database.md`: flujo SQL de alta de `mvz_internal` desde productor y sincronización a `mvz_profiles` + `mvz_upp_assignments`.
+- `docs/architecture/mvz-hierarchy.md`: reglas UX del panel MVZ por rancho, con KPIs solo en `Resumen`, acciones rápidas y mapeo visual de estados en `Incidencias`.
 - `docs/data/database.md`: seccion IoT y telemetria (`collars`, `collar_animal_history`, `telemetry`) con catalogo de columnas, indices, grants/RLS y operaciones frecuentes.
 - `docs/architecture/ui-color-system.md`: documenta la paleta canonica, tokens globales, tonos semanticos, reglas de consumo y el guard `npm run check:ui-colors`.
 - `src/app/api/README.md`: agrega ownership y contratos para `auth/password/recovery` y `auth/invite-context`.
@@ -24,6 +26,12 @@ Source of Truth: Historical log of documentation-only changes. Current operation
 
 ### Changed
 
+- `docs/architecture/auth-admin.md`: documenta que `mvz_government` ya no administra personal/roles desde el panel MVZ, que `mvz_internal` puede vivir en un tenant `producer` y que `producer/employees` crea ficha profesional MVZ.
+- `docs/architecture/tenant-iam.md`: actualiza los roles base de productor para incluir `mvz_internal`, aclara el alta externa del personal MVZ y registra `migration_008_allow_multiple_mvz_profiles_per_tenant.sql`.
+- `docs/architecture/routing.md`: refleja que `mvz_internal` dentro de productor entra por `/mvz`, que `/mvz/settings` queda limitado a `Perfil` y `Ranchos`, y que el selector inline se conserva en detalle de animales.
+- `docs/architecture/multitenancy.md`: registra el `panelType = mvz` para `mvz_internal` dentro de tenants `producer`.
+- `docs/data/prisma-from-sql.md` y `docs/guides/setup.md`: incorporan `sql/migration_008_allow_multiple_mvz_profiles_per_tenant.sql` y actualizan el orden real de migraciones SQL.
+- `src/app/api/README.md`: documenta el contrato ampliado de `producer/employees` para `mvz_internal` y deja explícito que `mvz/members` y `mvz/roles` permanecen solo por compatibilidad, devolviendo `403`.
 - `docs/data/prisma-from-sql.md` y `docs/guides/setup.md`: incluyen la migracion `sql/20260323_add_iot_telemetry_tables.sql` en referencia SQL-first y orden recomendado de ejecucion.
 - `docs/README.md`: indexa el sistema de color UI como documentacion canonica de arquitectura.
 - `docs/architecture/overview.md`: registra `src/shared/ui/theme` y el guard `scripts/check-ui-colors.mjs` como parte de la arquitectura frontend compartida.

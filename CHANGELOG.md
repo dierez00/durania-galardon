@@ -6,6 +6,7 @@ Todas las fechas usan formato YYYY-MM-DD.
 
 ### Added
 
+- Migracion `sql/migration_008_allow_multiple_mvz_profiles_per_tenant.sql` para permitir varios `mvz_internal` dentro del mismo tenant productor.
 - Flujo publico de recovery e invitacion con:
   - `POST /api/auth/password/recovery`
   - `GET /api/auth/invite-context`
@@ -51,18 +52,24 @@ Todas las fechas usan formato YYYY-MM-DD.
 
 ### Changed
 
+- `GET|POST|PATCH /api/producer/employees` ahora soporta altas y ediciones de `mvz_internal` con `fullName`, `licenseNumber`, creacion de `mvz_profiles` y sincronizacion de ranchos a `mvz_upp_assignments`.
+- `mvz_internal` dentro de un tenant productor ahora entra al panel MVZ (`/mvz`) y reutiliza el shell MVZ con sus ranchos asignados.
+- `producer/settings -> Equipo` agrega edicion de rol, ranchos asignados y estado en tabla, y pide nombre profesional + cédula/licencia cuando el rol es `mvz_internal`.
+- `mvz/settings` deja de administrar equipo y roles; las altas de `mvz_government` quedan a cargo de gobierno y las de `mvz_internal` a cargo del productor.
+- `GET|POST|PATCH /api/mvz/members` y `GET|POST|PATCH|DELETE /api/mvz/roles` se conservan por compatibilidad, pero ahora responden `403 FORBIDDEN`.
+- El panel MVZ por rancho concentra sus KPI contextuales solo en `Resumen`, agrega acciones rápidas (`Registrar incidencia`, `Registrar vacunación`, `Programar visita`) y corrige el color de estados en `Incidencias`.
+- Se normaliza copy visible en admin, productor y MVZ hacia español claro y no técnico.
 - Altas nuevas de productores, MVZ, empleados y miembros MVZ ya no retornan contrasenas temporales; ahora invitan cuentas nuevas por email y reasignan cuentas existentes al tenant.
-- `producer/settings` y `mvz/settings` ahora se renderizan por tabs (`Perfil`, `Ranchos`, `Empleados/Equipo`, `Roles`) y dejan de depender de una sola carga monolitica.
+- `producer/settings` ahora se renderiza por tabs (`Perfil`, `Ranchos`, `Equipo`, `Roles`) y `mvz/settings` queda acotado a (`Perfil`, `Ranchos`), dejando de depender de una sola carga monolitica.
 - La resolucion de panel tenant ya no depende de un `AppRole` fijo; ahora usa `tenant.type`, permisos y metadata del rol principal.
 - `GET /api/auth/me` y el shell tenant ahora exponen/consumen `roleKey`, `roleName`, `isSystemRole` e `isMvzInternal`.
 - `GET|POST|PATCH /api/producer/employees` ahora usa `roleId` y `uppAccess[]` como contrato principal para rol y alcance por rancho.
-- `producer/settings -> Empleados` simplifica el alta a `rol dentro del panel` + `ranchos asignados`, fija el acceso inicial operativo por rancho y muestra un estado derivado de onboarding (`Invitacion enviada`, `Pendiente`, `Activo`, `Dado de baja`).
-- `GET|POST|PATCH /api/mvz/members` ahora usa `roleId` tenant-based en lugar de depender de `roleKey` fijo.
-- `producer/settings -> Roles` y `mvz/settings -> Roles` ahora permiten editar y eliminar roles base visibles y roles custom; la eliminacion se bloquea si el rol sigue asignado a miembros.
+- `producer/settings -> Equipo` simplifica el alta a `rol dentro del panel` + `ranchos asignados`, fija el acceso inicial operativo por rancho y muestra un estado derivado de onboarding (`Invitacion enviada`, `Pendiente`, `Activo`, `Dado de baja`).
+- `producer/settings -> Roles` permite editar y eliminar roles base visibles y roles custom; la eliminacion se bloquea si el rol sigue asignado a miembros.
 - `mvz_internal` ya no accede a settings ni metricas globales; `/mvz` redirige directo al rancho si solo tiene una asignacion activa y muestra lista minima si tiene varias.
 - `ProfileMenu` separa `Mi perfil` de `Configuracion del panel` y oculta esta ultima opcion cuando el usuario no tiene permisos de tenant settings.
 - `GET|PATCH /api/producer/settings` ahora administra solo configuracion del tenant productor, resumen operativo y bloques documentales/equipo.
-- `GET|PATCH /api/mvz/settings` ahora administra solo configuracion del tenant MVZ, resumen operativo y equipo MVZ.
+- `GET|PATCH /api/mvz/settings` ahora administra solo configuracion del tenant MVZ y ranchos asignados.
 - Las fichas personales de productor y MVZ se movieron a endpoints/paginas de perfil; `email`, `CURP` y `license_number` quedan en solo lectura para self-service.
 - `src/shared/lib/auth.ts` incorpora `producer_viewer`, permisos `producer.tenant.*`, `mvz.tenant.*`, `mvz.profile.*` y `mvz.members.*`.
 - Los guards tenant dejaron de depender de permisos legacy para abrir settings y ahora distinguen perfil self-service vs configuracion del panel.

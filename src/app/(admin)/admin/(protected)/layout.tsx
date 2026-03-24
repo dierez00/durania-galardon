@@ -47,7 +47,7 @@ export default function AdminProtectedLayout({
   if (!ready) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
-        Validando sesion...
+        Validando sesión...
       </div>
     );
   }

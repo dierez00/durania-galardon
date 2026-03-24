@@ -13,8 +13,8 @@ interface Step {
 
 const STEPS: Step[] = [
   { key: "requested", label: "Solicitada", description: "Solicitud creada por el productor" },
-  { key: "mvz_validated", label: "Validada MVZ", description: "Revisada y validada por el mÃ©dico veterinario" },
-  { key: "final_approved", label: "Aprobada", description: "AprobaciÃ³n final por administraciÃ³n" },
+  { key: "mvz_validated", label: "Validada MVZ", description: "Revisada y validada por el médico veterinario" },
+  { key: "final_approved", label: "Aprobada", description: "Aprobación final por administración" },
 ];
 
 const TERMINAL_NEGATIVE = new Set<AdminExportacionStatus>(["blocked", "rejected"]);
@@ -54,7 +54,7 @@ export function AdminExportacionProcesoTimeline({ status, blockedReason }: Reado
           <XCircle className="w-5 h-5 shrink-0 mt-0.5" />
           <div>
             <AlertTitle>
-              {status === "blocked" ? "ExportaciÃ³n bloqueada" : "ExportaciÃ³n rechazada"}
+              {status === "blocked" ? "Exportación bloqueada" : "Exportación rechazada"}
             </AlertTitle>
             {blockedReason && (
               <AlertDescription className="mt-0.5">{blockedReason}</AlertDescription>

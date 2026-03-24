@@ -289,7 +289,7 @@ export default function TenantRolesManager({
                   </div>
                   <div className="flex flex-wrap justify-end gap-2">
                     <Badge variant={role.isSystem ? "secondary" : "outline"}>
-                      {role.isSystem ? "Base" : "Custom"}
+                      {role.isSystem ? "Base" : "Personalizado"}
                     </Badge>
                     <Badge variant="outline">{role.memberCount} miembros</Badge>
                   </div>
@@ -347,7 +347,7 @@ export default function TenantRolesManager({
                   : "Crear rol"}
             </DialogTitle>
             <DialogDescription>
-              Configura nombre y permisos del rol.
+              Define el nombre y los permisos de este rol.
             </DialogDescription>
           </DialogHeader>
 

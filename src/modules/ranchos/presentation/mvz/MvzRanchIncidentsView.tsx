@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
@@ -25,7 +25,6 @@ import {
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Textarea } from "@/shared/ui/textarea";
-import { SanitarioBadge } from "@/modules/bovinos/presentation";
 import {
   Table,
   TableBody,
@@ -51,6 +50,8 @@ import {
   SectionHeading,
   ViewModeToggle,
 } from "./shared";
+import { IncidentSeverityBadge, IncidentStatusBadge } from "./incidentBadges";
+import { useAutoOpenCreateAction } from "./useAutoOpenCreateAction";
 import { useSessionViewMode } from "./useSessionViewMode";
 import type { MvzRanchAnimalRecord, MvzRanchIncidentRecord, MvzRanchTabProps } from "./types";
 
@@ -95,6 +96,14 @@ export function MvzRanchIncidentsView({
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
   const { viewMode, setViewMode } = useSessionViewMode(`mvz:ranch:${uppId}:incidencias:view`);
+
+  const openCreateDialog = useCallback(() => {
+    setForm(getInitialForm());
+    setFormError("");
+    setDialogOpen(true);
+  }, []);
+
+  useAutoOpenCreateAction(openCreateDialog);
 
   const loadData = async () => {
     const [incidentData, animalData] = await Promise.all([
@@ -226,14 +235,7 @@ export function MvzRanchIncidentsView({
         actions={
           <>
             <ViewModeToggle mode={viewMode} onChange={setViewMode} />
-            <PrimaryActionButton
-              label="Añadir incidencia"
-              onClick={() => {
-                setForm(getInitialForm());
-                setFormError("");
-                setDialogOpen(true);
-              }}
-            />
+            <PrimaryActionButton label="Añadir incidencia" onClick={openCreateDialog} />
           </>
         }
       />
@@ -272,8 +274,8 @@ export function MvzRanchIncidentsView({
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex flex-wrap gap-2">
-                  <SanitarioBadge estado={incident.severity} />
-                  <SanitarioBadge estado={incident.status} />
+                  <IncidentSeverityBadge severity={incident.severity} />
+                  <IncidentStatusBadge status={incident.status} />
                 </div>
                 <div className="grid gap-3 text-sm sm:grid-cols-2">
                   <div>
@@ -318,10 +320,10 @@ export function MvzRanchIncidentsView({
                     <TableCell className="font-medium">{incident.incident_type}</TableCell>
                     <TableCell>{animalNameMap.get(incident.animal_id) ?? incident.animal_id}</TableCell>
                     <TableCell>
-                      <SanitarioBadge estado={incident.severity} />
+                      <IncidentSeverityBadge severity={incident.severity} />
                     </TableCell>
                     <TableCell>
-                      <SanitarioBadge estado={incident.status} />
+                      <IncidentStatusBadge status={incident.status} />
                     </TableCell>
                     <TableCell>{formatDateTime(incident.detected_at)}</TableCell>
                     <TableCell>{formatDateTime(incident.resolved_at)}</TableCell>
@@ -468,8 +470,8 @@ export function MvzRanchIncidentsView({
           {detailRecord ? (
             <div className="space-y-4 text-sm">
               <div className="flex flex-wrap gap-2">
-                <SanitarioBadge estado={detailRecord.severity} />
-                <SanitarioBadge estado={detailRecord.status} />
+                <IncidentSeverityBadge severity={detailRecord.severity} />
+                <IncidentStatusBadge status={detailRecord.status} />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>

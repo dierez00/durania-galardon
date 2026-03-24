@@ -77,6 +77,11 @@ Si el modulo aun no expone alias desde `index.ts`, el reexport puede apuntar tem
 - `GET|POST|PATCH /api/producer/employees`
 - `POST /api/producer/employees/resend-invite`
 
+Contrato operativo de `producer/employees`:
+- soporta altas y ediciones de `employee`, `producer_viewer` y `mvz_internal`
+- cuando el rol es `mvz_internal`, tambien espera `fullName`, `licenseNumber` y sincroniza ranchos a `mvz_upp_assignments`
+- el usuario creado con rol `mvz_internal` entra por el panel `/mvz`, no por `/producer`
+
 ### Scope de proyecto productor
 
 Cuando la UI esta en `/producer/projects/[uppId]/*`, estas APIs aceptan `?uppId=` y deben responder filtradas al proyecto activo:
@@ -113,7 +118,12 @@ Politica de comentarios en documentos:
 - `GET|POST /api/mvz/ranchos/:uppId/documentacion`
 - `GET|POST|PATCH /api/mvz/ranchos/:uppId/visitas`
 
-`/api/mvz/settings` queda reservado para configuracion del tenant y resumen operativo; `/api/mvz/roles` administra roles tenant-based del panel. La ficha profesional del usuario vive en `/api/mvz/profile`.
+`/api/mvz/settings` queda reservado para configuracion del tenant y resumen operativo. La ficha profesional del usuario vive en `/api/mvz/profile`.
+
+Politica operativa actual MVZ:
+- `GET|POST|PATCH /api/mvz/members` y `GET|POST|PATCH|DELETE /api/mvz/roles` se conservan por compatibilidad de routing y ownership, pero responden `403 FORBIDDEN`
+- gobierno da de alta a `mvz_government`
+- productor da de alta a `mvz_internal`
 
 ### Shell tenant
 

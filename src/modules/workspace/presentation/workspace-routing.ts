@@ -2,13 +2,13 @@ import type { WorkspaceMode, WorkspacePanel } from "@/modules/workspace/domain/t
 
 const PRODUCER_ORGANIZATION_LABELS = {
   projects: "Ranchos / UPPs",
-  metrics: "Metricas",
-  settings: "Configuracion",
+  metrics: "Indicadores",
+  settings: "Configuraci\u00f3n",
   profile: "Mi perfil",
 } as const;
 
 const PRODUCER_PROJECT_LABELS = {
-  overview: "Overview",
+  overview: "Resumen",
   animales: "Animales",
   documentos: "Documentos",
   movilizacion: "Movilizaciones",
@@ -18,19 +18,19 @@ const PRODUCER_PROJECT_LABELS = {
 
 const MVZ_ORGANIZATION_LABELS = {
   projects: "Ranchos asignados",
-  metrics: "Metricas",
-  settings: "Configuracion",
+  metrics: "Indicadores",
+  settings: "Configuraci\u00f3n",
   profile: "Mi perfil",
 } as const;
 
 const MVZ_PROJECT_LABELS = {
-  overview: "Overview",
+  overview: "Resumen",
   animales: "Animales",
-  "historial-clinico": "Historial clinico",
-  vacunacion: "Vacunacion",
+  "historial-clinico": "Historial cl\u00ednico",
+  vacunacion: "Vacunaci\u00f3n",
   incidencias: "Incidencias",
   reportes: "Reportes",
-  documentacion: "Documentacion",
+  documentacion: "Documentaci\u00f3n",
   visitas: "Visitas",
 } as const;
 
@@ -118,8 +118,7 @@ export function resolveWorkspaceLocation(pathname: string): WorkspaceLocation | 
     };
   }
 
-  const sectionKey =
-    (segments[1] as keyof typeof MVZ_ORGANIZATION_LABELS | undefined) ?? "projects";
+  const sectionKey = (segments[1] as keyof typeof MVZ_ORGANIZATION_LABELS | undefined) ?? "projects";
   return {
     panel,
     mode: "organization",

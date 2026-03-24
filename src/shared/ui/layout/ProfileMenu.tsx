@@ -32,7 +32,7 @@ interface ProfileMenuProps {
 const THEME_LABELS: Record<AppTheme, string> = {
   light: "Claro",
   dark: "Oscuro",
-  "classic-dark": "Clasico oscuro",
+  "classic-dark": "Clásico oscuro",
   system: "Sistema",
 };
 
@@ -87,7 +87,7 @@ export function ProfileMenu({
         {canAccessPanelSettings ? (
           <DropdownMenuItem onClick={() => router.push(settingsHref)}>
             <Settings className="h-4 w-4" />
-            Configuracion del panel
+            Configuración del panel
           </DropdownMenuItem>
         ) : null}
         <DropdownMenuSub>
@@ -122,7 +122,7 @@ export function ProfileMenu({
           variant="destructive"
         >
           <LogOut className="h-4 w-4" />
-          Cerrar sesion
+          Cerrar sesión
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

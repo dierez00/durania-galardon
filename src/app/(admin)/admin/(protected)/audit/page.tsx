@@ -33,7 +33,7 @@ export default function AdminAuditPage() {
 
     const accessToken = await getAccessToken();
     if (!accessToken) {
-      setErrorMessage("No existe sesion activa.");
+      setErrorMessage("No existe sesión activa.");
       setLoading(false);
       return;
     }
@@ -46,7 +46,7 @@ export default function AdminAuditPage() {
 
     const body = await response.json();
     if (!response.ok || !body.ok) {
-      setErrorMessage(body.error?.message ?? "No fue posible cargar bitacora.");
+      setErrorMessage(body.error?.message ?? "No fue posible cargar la bitácora.");
       setLoading(false);
       return;
     }
@@ -62,8 +62,10 @@ export default function AdminAuditPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Auditoria y Bitacora</h1>
-        <p className="text-sm text-muted-foreground">Registro de acciones criticas e intentos de fraude.</p>
+        <h1 className="text-2xl font-bold">Auditoría y bitácora</h1>
+        <p className="text-sm text-muted-foreground">
+          Registro de acciones críticas y eventos relevantes del panel.
+        </p>
       </div>
 
       <Card>
@@ -79,7 +81,7 @@ export default function AdminAuditPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Fecha</TableHead>
-                  <TableHead>Accion</TableHead>
+                  <TableHead>Acción</TableHead>
                   <TableHead>Recurso</TableHead>
                   <TableHead>Rol</TableHead>
                   <TableHead>Actor</TableHead>

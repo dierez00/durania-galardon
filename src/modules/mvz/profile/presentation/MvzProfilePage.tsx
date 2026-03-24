@@ -72,7 +72,7 @@ export default function MvzProfilePage() {
     try {
       const accessToken = await getAccessToken();
       if (!accessToken) {
-        setErrorMessage("No existe sesion activa.");
+        setErrorMessage("No existe sesión activa.");
         return;
       }
 
@@ -108,7 +108,7 @@ export default function MvzProfilePage() {
     try {
       const accessToken = await getAccessToken();
       if (!accessToken) {
-        setErrorMessage("No existe sesion activa.");
+        setErrorMessage("No existe sesión activa.");
         return;
       }
 
@@ -144,7 +144,7 @@ export default function MvzProfilePage() {
     try {
       const accessToken = await getAccessToken();
       if (!accessToken) {
-        setErrorMessage("No existe sesion activa.");
+        setErrorMessage("No existe sesión activa.");
         return;
       }
 
@@ -182,7 +182,7 @@ export default function MvzProfilePage() {
       <div>
         <h1 className="text-2xl font-bold">Mi perfil</h1>
         <p className="text-sm text-muted-foreground">
-          Cuenta personal, ficha profesional MVZ y alcance actual dentro del tenant.
+          Consulta tu cuenta, tu ficha profesional y los ranchos que tienes asignados hoy.
         </p>
       </div>
 
@@ -201,7 +201,7 @@ export default function MvzProfilePage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Estado de membresia</CardTitle>
+            <CardTitle className="text-base">Estado de acceso</CardTitle>
           </CardHeader>
           <CardContent>
             <Badge variant="secondary">{loading ? "-" : payload?.membership?.status ?? "unknown"}</Badge>
@@ -209,7 +209,7 @@ export default function MvzProfilePage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Alta en tenant</CardTitle>
+            <CardTitle className="text-base">Alta en la organización</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm font-medium">
@@ -246,7 +246,7 @@ export default function MvzProfilePage() {
             <Input id="roleLabel" value={payload?.account?.roleLabel ?? ""} readOnly />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="tenantName">Tenant</Label>
+            <Label htmlFor="tenantName">Organización</Label>
             <Input
               id="tenantName"
               value={
@@ -305,7 +305,9 @@ export default function MvzProfilePage() {
           {loading ? (
             <p className="text-sm text-muted-foreground">Cargando...</p>
           ) : assignedProjects.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No hay ranchos asignados para este tenant MVZ.</p>
+            <p className="text-sm text-muted-foreground">
+              No hay ranchos asignados para esta organización MVZ.
+            </p>
           ) : (
             <Table>
               <TableHeader>

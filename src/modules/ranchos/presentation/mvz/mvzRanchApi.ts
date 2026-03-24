@@ -20,13 +20,10 @@ interface ApiEnvelope<T> {
   };
 }
 
-async function authFetch<T>(
-  path: string,
-  init?: RequestInit
-): Promise<T> {
+async function authFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await getAccessToken();
   if (!token) {
-    throw new Error("No existe sesion activa.");
+    throw new Error("No existe sesión activa.");
   }
 
   const response = await fetch(path, {
@@ -65,32 +62,20 @@ export function fetchMvzRanchVaccinations(uppId: string) {
   );
 }
 
-export function createMvzRanchVaccination(
-  uppId: string,
-  payload: Record<string, unknown>
-) {
-  return authFetch<{ vaccination: MvzRanchVaccinationRecord }>(
-    `/api/mvz/ranchos/${uppId}/vacunacion`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }
-  );
+export function createMvzRanchVaccination(uppId: string, payload: Record<string, unknown>) {
+  return authFetch<{ vaccination: MvzRanchVaccinationRecord }>(`/api/mvz/ranchos/${uppId}/vacunacion`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 }
 
-export function updateMvzRanchVaccination(
-  uppId: string,
-  payload: Record<string, unknown>
-) {
-  return authFetch<{ vaccination: MvzRanchVaccinationRecord }>(
-    `/api/mvz/ranchos/${uppId}/vacunacion`,
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }
-  );
+export function updateMvzRanchVaccination(uppId: string, payload: Record<string, unknown>) {
+  return authFetch<{ vaccination: MvzRanchVaccinationRecord }>(`/api/mvz/ranchos/${uppId}/vacunacion`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 }
 
 export function deleteMvzRanchVaccination(uppId: string, vaccinationId: string) {
@@ -103,31 +88,23 @@ export function deleteMvzRanchVaccination(uppId: string, vaccinationId: string) 
 }
 
 export function fetchMvzRanchIncidents(uppId: string) {
-  return authFetch<{ incidents: MvzRanchIncidentRecord[] }>(
-    `/api/mvz/ranchos/${uppId}/incidencias`
-  );
+  return authFetch<{ incidents: MvzRanchIncidentRecord[] }>(`/api/mvz/ranchos/${uppId}/incidencias`);
 }
 
 export function createMvzRanchIncident(uppId: string, payload: Record<string, unknown>) {
-  return authFetch<{ incident: MvzRanchIncidentRecord }>(
-    `/api/mvz/ranchos/${uppId}/incidencias`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }
-  );
+  return authFetch<{ incident: MvzRanchIncidentRecord }>(`/api/mvz/ranchos/${uppId}/incidencias`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 }
 
 export function updateMvzRanchIncident(uppId: string, payload: Record<string, unknown>) {
-  return authFetch<{ incident: MvzRanchIncidentRecord }>(
-    `/api/mvz/ranchos/${uppId}/incidencias`,
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }
-  );
+  return authFetch<{ incident: MvzRanchIncidentRecord }>(`/api/mvz/ranchos/${uppId}/incidencias`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 }
 
 export function deleteMvzRanchIncident(uppId: string, incidentId: string) {
@@ -150,14 +127,11 @@ export function fetchMvzRanchDocuments(uppId: string) {
 }
 
 export function createMvzRanchDocument(uppId: string, payload: Record<string, unknown>) {
-  return authFetch<{ document: MvzRanchDocumentRecord }>(
-    `/api/mvz/ranchos/${uppId}/documentacion`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }
-  );
+  return authFetch<{ document: MvzRanchDocumentRecord }>(`/api/mvz/ranchos/${uppId}/documentacion`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 }
 
 export function updateMvzRanchDocument(

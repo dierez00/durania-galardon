@@ -52,8 +52,8 @@ export default function MvzProjectsPage() {
         </h1>
         <p className="text-sm text-muted-foreground">
           {isMvzInternal
-            ? "Accede directamente al rancho que tienes asignado en este tenant MVZ."
-            : "Espacio organizacional para revisar y abrir los ranchos bajo tu cobertura MVZ."}
+            ? "Accede directamente al rancho que tienes asignado en tu organización MVZ."
+            : "Revisa y abre los ranchos que están bajo cobertura del equipo MVZ."}
         </p>
       </div>
 
@@ -62,7 +62,7 @@ export default function MvzProjectsPage() {
         <Input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Buscar rancho, productor o codigo UPP..."
+          placeholder="Buscar rancho, productor o código UPP..."
           className="pl-9"
         />
       </div>
@@ -107,14 +107,14 @@ export default function MvzProjectsPage() {
                   <p>Alerta sanitaria: {project.sanitaryAlert || "Sin alertas"}</p>
                   <p>Animales activos: {project.activeAnimals ?? 0}</p>
                   <p>
-                    Ultima asignacion:{" "}
+                    Última asignación:{" "}
                     {project.assignedAt
                       ? new Date(project.assignedAt).toLocaleDateString("es-MX")
                       : "Sin registro"}
                   </p>
                 </div>
                 <Button onClick={() => workspace.navigateToProject(project.id)}>
-                  Abrir proyecto
+                  Abrir rancho
                 </Button>
               </CardContent>
             </Card>

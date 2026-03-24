@@ -23,7 +23,7 @@ export class UppDocumentsApiRepository implements IUppDocumentsRepository {
 
   async list(uppId?: string): Promise<UppDocument[]> {
     const token = await getAccessToken();
-    if (!token) throw new Error("No existe sesiÃ³n activa.");
+    if (!token) throw new Error("No existe sesión activa.");
 
     const url = uppId ? `${this.BASE_URL}?uppId=${encodeURIComponent(uppId)}` : this.BASE_URL;
     const response = await fetch(url, {
@@ -46,7 +46,7 @@ export class UppDocumentsApiRepository implements IUppDocumentsRepository {
     bovinoId?: string
   ): Promise<UppDocument> {
     const token = await getAccessToken();
-    if (!token) throw new Error("No existe sesiÃ³n activa.");
+    if (!token) throw new Error("No existe sesión activa.");
 
     const formData = new FormData();
     formData.append("file", file);
@@ -72,7 +72,7 @@ export class UppDocumentsApiRepository implements IUppDocumentsRepository {
 
   async updateStatus(documentId: string, status: string, comments?: string | null): Promise<void> {
     const token = await getAccessToken();
-    if (!token) throw new Error("No existe sesiÃ³n activa.");
+    if (!token) throw new Error("No existe sesión activa.");
 
     const response = await fetch(`${this.BASE_URL}/${documentId}`, {
       method: "PATCH",
@@ -91,7 +91,7 @@ export class UppDocumentsApiRepository implements IUppDocumentsRepository {
 
   async delete(documentId: string): Promise<void> {
     const token = await getAccessToken();
-    if (!token) throw new Error("No existe sesiÃ³n activa.");
+    if (!token) throw new Error("No existe sesión activa.");
 
     const response = await fetch(`${this.BASE_URL}/${documentId}`, {
       method: "DELETE",

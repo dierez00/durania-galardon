@@ -35,7 +35,7 @@ import type { AdminExportacionStatus } from "@/modules/exportaciones/admin/domai
 import type { ExportacionDetailTab } from "./hooks/useAdminExportacionDetail";
 
 const TABS = [
-  { key: "info", label: "InformaciÃ³n", icon: FileText },
+  { key: "info", label: "Información", icon: FileText },
   { key: "animales", label: "Animales", icon: Beef },
   { key: "proceso", label: "Proceso", icon: GitBranch },
 ];
@@ -68,9 +68,9 @@ function sexLabel(sex: string): string {
 }
 
 function Check({ value }: Readonly<{ value: boolean | null | undefined }>) {
-  if (value === true) return <span className="text-success font-medium">SÃ­</span>;
+  if (value === true) return <span className="text-success font-medium">Sí</span>;
   if (value === false) return <span className="text-error font-medium">No</span>;
-  return <span className="text-muted-foreground">â€”</span>;
+  return <span className="text-muted-foreground">—</span>;
 }
 
 function StatusActions({
@@ -105,7 +105,7 @@ function StatusActions({
             disabled={isUpdating}
             onClick={() => onUpdate({ status: "final_approved" })}
           >
-            Aprobar exportaciÃ³n
+            Aprobar exportación
           </Button>
         )}
         {currentStatus === "requested" && (
@@ -127,7 +127,7 @@ function StatusActions({
             disabled={isUpdating}
             onClick={() => setShowBlockInput(true)}
           >
-            Bloquear exportaciÃ³n
+            Bloquear exportación
           </Button>
         )}
         {showBlockInput && (
@@ -183,11 +183,11 @@ function AnimalesTabContent({
   }
   if (animals.length === 0) {
     return (
-      <DetailEmptyState
-        icon={Beef}
-        message="Sin animales registrados"
-        description="No hay animales asociados a esta exportaciÃ³n."
-      />
+        <DetailEmptyState
+          icon={Beef}
+          message="Sin animales registrados"
+          description="No hay animales asociados a esta exportación."
+        />
     );
   }
   return (
@@ -198,8 +198,8 @@ function AnimalesTabContent({
           <TableHead>Sexo</TableHead>
           <TableHead>Estado</TableHead>
           <TableHead>Alerta sanitaria</TableHead>
-          <TableHead>Ãšlt. TB</TableHead>
-          <TableHead>Ãšlt. BR</TableHead>
+          <TableHead>Últ. TB</TableHead>
+          <TableHead>Últ. BR</TableHead>
           <TableHead></TableHead>
         </TableRow>
       </TableHeader>
@@ -223,12 +223,12 @@ function AnimalesTabContent({
               <TableCell className="text-xs text-muted-foreground">
                 {a.tbLastDate
                   ? new Date(a.tbLastDate).toLocaleDateString("es-MX")
-                  : "â€”"}
+                  : "—"}
               </TableCell>
               <TableCell className="text-xs text-muted-foreground">
                 {a.brLastDate
                   ? new Date(a.brLastDate).toLocaleDateString("es-MX")
-                  : "â€”"}
+                  : "—"}
               </TableCell>
               <TableCell>
                 <Button
@@ -264,7 +264,7 @@ export function AdminExportacionDetailContent({
   return (
     <div className="flex flex-col gap-0">
       <DetailHeader
-        title={`ExportaciÃ³n â€” ${detail.uppCode ?? detail.uppId ?? exportId.slice(0, 8)}`}
+        title={`Exportación — ${detail.uppCode ?? detail.uppId ?? exportId.slice(0, 8)}`}
         subtitle={detail.producerName ?? undefined}
         backHref="/admin/exports"
         backLabel="Exportaciones"
@@ -313,7 +313,7 @@ export function AdminExportacionDetailContent({
                     value: <Check value={detail.blueTagAssigned} />,
                   },
                   {
-                    label: "Mes de exportaciÃ³n",
+                    label: "Mes de exportación",
                     icon: Calendar,
                     value: detail.monthlyBucket
                       ? new Date(detail.monthlyBucket).toLocaleDateString("es-MX", { year: "numeric", month: "long" })
@@ -327,12 +327,12 @@ export function AdminExportacionDetailContent({
                   {
                     label: "UPP",
                     icon: FileText,
-                    value: detail.uppName ?? detail.uppId ?? "â€”",
+                    value: detail.uppName ?? detail.uppId ?? "—",
                   },
                   {
                     label: "Productor",
                     icon: FileText,
-                    value: detail.producerName ?? "â€”",
+                    value: detail.producerName ?? "—",
                   },
                   {
                     label: "Creada",
@@ -358,8 +358,8 @@ export function AdminExportacionDetailContent({
         {activeTab === "animales" && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-medium">
-                Animales en exportaciÃ³n ({detail.totalAnimals})
+                <CardTitle className="text-sm font-medium">
+                Animales en exportación ({detail.totalAnimals})
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
@@ -375,7 +375,7 @@ export function AdminExportacionDetailContent({
         {activeTab === "proceso" && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-medium">Proceso de exportaciÃ³n</CardTitle>
+              <CardTitle className="text-sm font-medium">Proceso de exportación</CardTitle>
             </CardHeader>
             <CardContent>
               <AdminExportacionProcesoTimeline

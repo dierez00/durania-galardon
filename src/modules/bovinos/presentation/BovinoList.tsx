@@ -21,6 +21,7 @@ import type { Bovino } from "@/modules/bovinos/domain/entities/Bovino";
 interface Props {
   readonly bovinos: Bovino[];
   readonly detailHrefBase?: string;
+  readonly getDetailHref?: (bovino: Bovino) => string;
 }
 
 function formatDate(d: string | null): string {
@@ -32,7 +33,11 @@ function formatDate(d: string | null): string {
   });
 }
 
-export function BovinoList({ bovinos, detailHrefBase = "/producer/bovinos" }: Props) {
+export function BovinoList({
+  bovinos,
+  detailHrefBase = "/producer/bovinos",
+  getDetailHref,
+}: Props) {
   const router = useRouter();
 
   return (
@@ -109,7 +114,9 @@ export function BovinoList({ bovinos, detailHrefBase = "/producer/bovinos" }: Pr
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => router.push(`${detailHrefBase}/${b.id}`)}
+                      onClick={() =>
+                        router.push(getDetailHref ? getDetailHref(b) : `${detailHrefBase}/${b.id}`)
+                      }
                       title="Ver detalle del bovino"
                     >
                       <Eye className="w-4 h-4" />

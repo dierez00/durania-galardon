@@ -54,7 +54,7 @@ export default function ProducerSettingsProfileTab() {
       try {
         const accessToken = await getAccessToken();
         if (!accessToken) {
-          setErrorMessage("No existe sesion activa.");
+          setErrorMessage("No existe sesión activa.");
           return;
         }
 
@@ -67,7 +67,7 @@ export default function ProducerSettingsProfileTab() {
 
         const body = (await response.json()) as ProducerSettingsPayload;
         if (!response.ok || !body.ok) {
-          setErrorMessage(body.error?.message ?? "No fue posible cargar configuracion.");
+          setErrorMessage(body.error?.message ?? "No fue posible cargar la configuración.");
           return;
         }
 
@@ -95,7 +95,7 @@ export default function ProducerSettingsProfileTab() {
     try {
       const accessToken = await getAccessToken();
       if (!accessToken) {
-        setErrorMessage("No existe sesion activa.");
+        setErrorMessage("No existe sesión activa.");
         return;
       }
 
@@ -112,7 +112,7 @@ export default function ProducerSettingsProfileTab() {
 
       const body = (await response.json()) as ProducerSettingsPayload;
       if (!response.ok || !body.ok) {
-        setErrorMessage(body.error?.message ?? "No fue posible guardar configuracion.");
+        setErrorMessage(body.error?.message ?? "No fue posible guardar la configuración.");
         return;
       }
 
@@ -173,12 +173,12 @@ export default function ProducerSettingsProfileTab() {
         <CardHeader>
           <CardTitle>Perfil del panel</CardTitle>
           <CardDescription>
-            Configuracion organizacional del tenant productor y resumen operativo del panel.
+            Datos de la organización productora y resumen general de este panel.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="organizationName">Nombre de la organizacion</Label>
+            <Label htmlFor="organizationName">Nombre de la organización</Label>
             <Input
               id="organizationName"
               value={organizationName}
@@ -191,7 +191,7 @@ export default function ProducerSettingsProfileTab() {
             <Input id="organizationSlug" value={organizationSlug} readOnly />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="organizationType">Tipo de tenant</Label>
+            <Label htmlFor="organizationType">Tipo de organización</Label>
             <Input id="organizationType" value={organizationType || "producer"} readOnly />
           </div>
           <div className="space-y-2">

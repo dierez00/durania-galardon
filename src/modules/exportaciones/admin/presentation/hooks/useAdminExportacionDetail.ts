@@ -33,10 +33,10 @@ export function useAdminExportacionDetail(id: string) {
       if (data) {
         setDetail(data);
       } else {
-        setErrorDetail("No se encontrÃ³ la solicitud de exportaciÃ³n.");
+        setErrorDetail("No se encontró la solicitud de exportación.");
       }
     } catch {
-      setErrorDetail("Error al cargar los datos de la exportaciÃ³n.");
+      setErrorDetail("Error al cargar los datos de la exportación.");
     } finally {
       setLoadingDetail(false);
     }
@@ -49,7 +49,7 @@ export function useAdminExportacionDetail(id: string) {
       const data = await getExportacionAnimalesUseCase.execute(id);
       setAnimals(data);
     } catch {
-      // silently fail â€” UI shows empty state
+      // Silent fail; the UI already shows an empty state.
     } finally {
       setLoadingAnimals(false);
     }

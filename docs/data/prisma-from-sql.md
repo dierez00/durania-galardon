@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-23
+Last Updated: 2026-03-24
 Source of Truth: Canonical guidance for how Prisma relates to the SQL-first Supabase schema in this repository.
 
 # Prisma y SQL
@@ -18,6 +18,7 @@ Migraciones activas:
 - `sql/migration_005_mvz_settings_permissions_backfill.sql`
 - `sql/migration_006_tenant_custom_roles.sql`
 - `sql/migration_007_add_iot_telemetry_tables.sql`
+- `sql/migration_008_allow_multiple_mvz_profiles_per_tenant.sql`
 - `sql/views.sql`
 - `sql/seeds.sql`
 
@@ -48,6 +49,8 @@ npx prisma generate
 ## Nota sobre MVZ jerarquico
 
 La implementacion jerarquica MVZ usa cliente Supabase (RLS) para tablas nuevas (`mvz_visits`, `animal_vaccinations`, `sanitary_incidents`, `upp_documents`).
+
+La migracion `sql/migration_008_allow_multiple_mvz_profiles_per_tenant.sql` elimina la restriccion de un solo `mvz_profile` por tenant para permitir varios `mvz_internal` dentro de un mismo productor.
 
 Si quieres reflejarlas en Prisma, regenera `prisma/schema.prisma` desde la BD actualizada.
 

@@ -95,7 +95,7 @@ export default function ProducerMovilizacionPage() {
     setErrorMessage("");
     const accessToken = await getAccessToken();
     if (!accessToken) {
-      setErrorMessage("No existe sesion activa.");
+      setErrorMessage("No existe sesión activa.");
       setLoading(false);
       return;
     }
@@ -126,7 +126,7 @@ export default function ProducerMovilizacionPage() {
     setErrorMessage("");
     const accessToken = await getAccessToken();
     if (!accessToken) {
-      setErrorMessage("No existe sesion activa.");
+      setErrorMessage("No existe sesión activa.");
       setSubmitting(false);
       return;
     }
@@ -149,7 +149,7 @@ export default function ProducerMovilizacionPage() {
 
     const body = await response.json();
     if (!response.ok || !body.ok) {
-      setErrorMessage(body.error?.message ?? "No fue posible crear solicitud de movilizacion.");
+      setErrorMessage(body.error?.message ?? "No fue posible crear la solicitud de movilización.");
       setSubmitting(false);
       return;
     }
@@ -217,7 +217,7 @@ export default function ProducerMovilizacionPage() {
 
     const accessToken = await getAccessToken();
     if (!accessToken) {
-      setErrorMessage("No existe sesion activa.");
+      setErrorMessage("No existe sesión activa.");
       setConfirming(false);
       return;
     }
@@ -260,15 +260,15 @@ export default function ProducerMovilizacionPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Movilizacion (REEMO)</h1>
+        <h1 className="text-2xl font-bold">Movilización (REEMO)</h1>
         <p className="text-sm text-muted-foreground">
-          {selectedUpp ? `Rancho: ${selectedUpp.name}` : "Solicitud y seguimiento de movilizacion ganadera."}
+          {selectedUpp ? `Rancho: ${selectedUpp.name}` : "Solicitud y seguimiento de movilización ganadera."}
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Nueva solicitud de movilizacion</CardTitle>
+          <CardTitle>Nueva solicitud de movilización</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
           <div className="space-y-2">
@@ -333,7 +333,7 @@ export default function ProducerMovilizacionPage() {
           </div>
           <div className="md:col-span-3">
             <Button onClick={createMovement} disabled={!formUppId || submitting || !authorizedTags.trim()}>
-              {submitting ? "Enviando..." : "Solicitar movilizacion"}
+              {submitting ? "Enviando..." : "Solicitar movilización"}
             </Button>
           </div>
         </CardContent>
@@ -536,7 +536,7 @@ export default function ProducerMovilizacionPage() {
           {loading ? (
             <p className="text-sm text-muted-foreground">Cargando...</p>
           ) : rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No hay solicitudes de movilizacion.</p>
+            <p className="text-sm text-muted-foreground">No hay solicitudes de movilización.</p>
           ) : (
             <Table>
               <TableHeader>

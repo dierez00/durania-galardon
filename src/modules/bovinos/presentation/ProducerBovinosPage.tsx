@@ -191,6 +191,7 @@ export default function ProducerBovinosPage({
           ) : (
             <BovinoList
               bovinos={bovinos}
+              getDetailHref={(bovino) => `/producer/projects/${bovino.upp_id}/animales/${bovino.id}`}
               detailHrefBase={
                 selectedUppId
                   ? `/producer/projects/${selectedUppId}/animales`

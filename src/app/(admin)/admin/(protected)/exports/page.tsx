@@ -27,9 +27,9 @@ export default function AdminExportsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Solicitudes de ExportaciÃ³n</h1>
+          <h1 className="text-2xl font-bold">Solicitudes de exportación</h1>
           <p className="text-sm text-muted-foreground">
-            ValidaciÃ³n y aprobaciÃ³n final de exportaciones ganaderas.
+            Validación y aprobación final de exportaciones ganaderas.
           </p>
         </div>
         <div className="w-full max-w-xs">

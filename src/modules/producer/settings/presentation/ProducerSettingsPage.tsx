@@ -41,12 +41,12 @@ export default function ProducerSettingsPage() {
         },
         {
           key: "employees" as const,
-          label: "Empleados",
+          label: "Equipo",
           visible: hasAnyPermission(permissions, ["producer.employees.read", "producer.employees.write"]),
           content: (
             <ProducerEmpleadosPage
-              title="Empleados"
-              description="Altas, cambios de rol, suspensiones y acceso inicial del personal."
+              title="Equipo"
+              description="Altas, cambios de rol, suspensiones y acceso inicial para personal operativo y MVZ interno. El MVZ interno entra por el panel MVZ."
               canManage={permissions.includes("producer.employees.write")}
             />
           ),
@@ -58,9 +58,9 @@ export default function ProducerSettingsPage() {
           content: (
             <TenantRolesManager
               endpoint="/api/producer/roles"
-              title="Roles del tenant"
-              description="Combina roles base protegidos con roles custom y permisos por modulo."
-              emptyLabel="No hay roles visibles para este tenant."
+              title="Roles del equipo"
+              description="Combina roles base con permisos personalizados para este panel."
+              emptyLabel="Todavía no hay roles visibles para este equipo."
               canManage={permissions.includes("producer.roles.write")}
             />
           ),
@@ -82,16 +82,16 @@ export default function ProducerSettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Configuracion</h1>
+        <h1 className="text-2xl font-bold">Configuración</h1>
         <p className="text-sm text-muted-foreground">
-          Perfil del tenant productor, ranchos, empleados y roles personalizados por panel.
+          Datos de la organización productora, ranchos, equipo y roles disponibles en este panel.
         </p>
       </div>
 
       {tabs.length === 0 || !activeTab ? (
         <Card>
           <CardContent className="py-8 text-sm text-muted-foreground">
-            No cuentas con permisos para visualizar tabs de configuracion en este panel.
+            No cuentas con permisos para ver esta sección de configuración.
           </CardContent>
         </Card>
       ) : (

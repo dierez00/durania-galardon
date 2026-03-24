@@ -2,12 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { SanitarioBadge } from "@/modules/bovinos/presentation";
 import { useMvzRanchContext, useMvzRealtime } from "@/modules/ranchos/presentation/mvz";
 import { MVZ_RANCH_TABS } from "./constants";
 import { fetchMvzRanchOverview } from "./mvzRanchApi";
-import { formatDate } from "./formatters";
 import { MvzRanchAnimalsView } from "./MvzRanchAnimalsView";
 import { MvzRanchClinicalView } from "./MvzRanchClinicalView";
 import { MvzRanchDocumentsView } from "./MvzRanchDocumentsView";
@@ -73,14 +71,12 @@ export default function RanchPanel({ tab }: { tab: string }) {
       <div className="space-y-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-1">
-            <p className="text-sm font-medium text-muted-foreground">Panel MVZ del rancho</p>
-            <h1 className="text-3xl font-semibold">
-              {overview?.upp_name ?? "Cargando rancho..."}
-            </h1>
+            <p className="text-sm font-medium text-muted-foreground">Seguimiento del rancho</p>
+            <h1 className="text-3xl font-semibold">{overview?.upp_name ?? "Cargando rancho..."}</h1>
             <p className="text-sm text-muted-foreground">
               {overview?.producer_name
                 ? `${overview.producer_name}${overview.upp_code ? ` · ${overview.upp_code}` : ""}`
-                : "Seguimiento clínico, documental y operativo del rancho seleccionado."}
+                : "Consulta el estado sanitario, la documentación y las actividades más recientes de este rancho."}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -88,51 +84,6 @@ export default function RanchPanel({ tab }: { tab: string }) {
             {overview?.sanitary_alert ? <SanitarioBadge estado={overview.sanitary_alert} /> : null}
           </div>
         </div>
-
-        {overview ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Animales activos</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-semibold">{overview.active_animals}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">En tratamiento</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-semibold">{overview.animals_in_treatment}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Vacunaciones pendientes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-semibold">{overview.pending_vaccinations}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Incidencias activas</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-semibold">{overview.active_incidents}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Última inspección</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="font-medium">{formatDate(overview.last_inspection_at)}</p>
-              </CardContent>
-            </Card>
-          </div>
-        ) : null}
       </div>
 
       {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}

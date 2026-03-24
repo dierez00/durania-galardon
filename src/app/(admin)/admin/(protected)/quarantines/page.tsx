@@ -40,7 +40,7 @@ export default function AdminQuarantinesPage() {
         <div>
           <h1 className="text-2xl font-bold">Cuarentenas Estatales</h1>
           <p className="text-sm text-muted-foreground">
-            Mapa global de geocercas, liberaciÃ³n e historial epidemiolÃ³gico.
+            Mapa general de geocercas, liberación e historial epidemiológico.
           </p>
         </div>
         <Button onClick={() => { setActivarOpen(true); }}>
@@ -48,7 +48,7 @@ export default function AdminQuarantinesPage() {
         </Button>
       </div>
 
-      {/* ActivaciÃ³n contextual (controlada desde el header) */}
+      {/* Activación contextual (controlada desde el encabezado) */}
       <AdminCuarentenaActivacionForm
         open={activarOpen}
         onOpenChange={setActivarOpen}
@@ -80,7 +80,7 @@ export default function AdminQuarantinesPage() {
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
           {loading ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">Cargandoâ€¦</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">Cargando...</p>
           ) : (
             <AdminCuarentenasList
               cuarentenas={cuarentenas}

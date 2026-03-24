@@ -39,7 +39,7 @@ interface ProducerDashboardPageProps {
 }
 
 export function ProducerDashboardPageContent({
-  title = "Dashboard Productor",
+  title = "Inicio del productor",
   description,
   lockedUppId,
   showProjectCards = true,
@@ -61,7 +61,7 @@ export function ProducerDashboardPageContent({
     setErrorMessage("");
     const accessToken = await getAccessToken();
     if (!accessToken) {
-      setErrorMessage("No existe sesion activa.");
+      setErrorMessage("No existe sesión activa.");
       setLoading(false);
       return;
     }
@@ -73,7 +73,7 @@ export function ProducerDashboardPageContent({
 
     const body = await response.json();
     if (!response.ok || !body.ok) {
-      setErrorMessage(body.error?.message ?? "No fue posible cargar dashboard.");
+      setErrorMessage(body.error?.message ?? "No fue posible cargar el panel.");
       setLoading(false);
       return;
     }
@@ -105,8 +105,8 @@ export function ProducerDashboardPageContent({
         <p className="text-sm text-muted-foreground">
           {description ??
             (effectiveSelectedUpp
-              ? `Metricas de: ${effectiveSelectedUpp.name}`
-              : "Vision global de toda la operacion del productor.")}
+              ? `Indicadores de ${effectiveSelectedUpp.name}`
+              : "Vista general de toda la operación del productor.")}
         </p>
       </div>
 
@@ -191,7 +191,7 @@ export function ProducerDashboardPageContent({
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          {effectiveSelectedUpp ? `Metricas - ${effectiveSelectedUpp.name}` : "Metricas globales"}
+          {effectiveSelectedUpp ? `Indicadores · ${effectiveSelectedUpp.name}` : "Indicadores generales"}
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {kpiCards.map(({ label, value, icon: Icon, tone }) => (

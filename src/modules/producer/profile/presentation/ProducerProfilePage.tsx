@@ -71,7 +71,7 @@ export default function ProducerProfilePage() {
     try {
       const accessToken = await getAccessToken();
       if (!accessToken) {
-        setErrorMessage("No existe sesion activa.");
+        setErrorMessage("No existe sesión activa.");
         return;
       }
 
@@ -107,7 +107,7 @@ export default function ProducerProfilePage() {
     try {
       const accessToken = await getAccessToken();
       if (!accessToken) {
-        setErrorMessage("No existe sesion activa.");
+        setErrorMessage("No existe sesión activa.");
         return;
       }
 
@@ -143,7 +143,7 @@ export default function ProducerProfilePage() {
     try {
       const accessToken = await getAccessToken();
       if (!accessToken) {
-        setErrorMessage("No existe sesion activa.");
+        setErrorMessage("No existe sesión activa.");
         return;
       }
 
@@ -181,7 +181,7 @@ export default function ProducerProfilePage() {
       <div>
         <h1 className="text-2xl font-bold">Mi perfil</h1>
         <p className="text-sm text-muted-foreground">
-          Cuenta personal, ficha del productor y alcance actual dentro del tenant.
+          Cuenta personal, ficha del productor y acceso actual dentro de la organización.
         </p>
       </div>
 
@@ -200,7 +200,7 @@ export default function ProducerProfilePage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Estado de membresia</CardTitle>
+            <CardTitle className="text-base">Estado de membresía</CardTitle>
           </CardHeader>
           <CardContent>
             <Badge variant="secondary">{loading ? "-" : payload?.membership?.status ?? "unknown"}</Badge>
@@ -208,7 +208,7 @@ export default function ProducerProfilePage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Alta en tenant</CardTitle>
+            <CardTitle className="text-base">Alta en la organización</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm font-medium">
@@ -245,7 +245,7 @@ export default function ProducerProfilePage() {
             <Input id="roleLabel" value={payload?.account?.roleLabel ?? ""} readOnly />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="tenantName">Tenant</Label>
+            <Label htmlFor="tenantName">Organización</Label>
             <Input
               id="tenantName"
               value={

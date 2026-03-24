@@ -88,7 +88,7 @@ interface ProducerEmployeesPayload {
 const ACCESS_LEVEL_LABEL: Record<ProducerAccessLevel, string> = {
   none: "Sin acceso",
   viewer: "Lectura",
-  editor: "Edicion",
+  editor: "Edición",
   owner: "Propietario",
 };
 
@@ -147,7 +147,7 @@ export default function ProducerSettingsRanchosTab() {
     try {
       const accessToken = await getAccessToken();
       if (!accessToken) {
-        setErrorMessage("No existe sesion activa.");
+        setErrorMessage("No existe sesión activa.");
         return;
       }
 
@@ -225,7 +225,7 @@ export default function ProducerSettingsRanchosTab() {
     try {
       const accessToken = await getAccessToken();
       if (!accessToken) {
-        setErrorMessage("No existe sesion activa.");
+        setErrorMessage("No existe sesión activa.");
         return;
       }
 
@@ -270,7 +270,7 @@ export default function ProducerSettingsRanchosTab() {
       <div>
         <h2 className="text-2xl font-bold">Ranchos y asignaciones</h2>
         <p className="text-sm text-muted-foreground">
-          Consulta la cobertura por UPP y administra que empleados pueden entrar a cada rancho.
+          Consulta la cobertura por UPP y administra qué personas pueden entrar a cada rancho.
         </p>
       </div>
 
@@ -281,7 +281,7 @@ export default function ProducerSettingsRanchosTab() {
       ) : upps.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-sm text-muted-foreground">
-            No hay ranchos accesibles para este tenant productor.
+            No hay ranchos accesibles para esta organización productora.
           </CardContent>
         </Card>
       ) : (
@@ -299,8 +299,8 @@ export default function ProducerSettingsRanchosTab() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-                    <p>Hato maximo: {upp.herdLimit ?? "Sin dato"}</p>
-                    <p>Hectareas: {upp.hectaresTotal ?? "Sin dato"}</p>
+                    <p>Hato máximo: {upp.herdLimit ?? "Sin dato"}</p>
+                    <p>Hectáreas: {upp.hectaresTotal ?? "Sin dato"}</p>
                   </div>
 
                   {canViewMemberAccess ? (
@@ -332,7 +332,7 @@ export default function ProducerSettingsRanchosTab() {
           {canViewMemberAccess ? (
             <Card>
               <CardHeader>
-                <CardTitle>Asignacion por empleado</CardTitle>
+                <CardTitle>Asignación por persona</CardTitle>
               </CardHeader>
               <CardContent>
                 {visibleEmployees.length === 0 ? (
@@ -404,7 +404,7 @@ export default function ProducerSettingsRanchosTab() {
           <DialogHeader>
             <DialogTitle>Asignar ranchos</DialogTitle>
             <DialogDescription>
-              Define en que ranchos puede operar {selectedEmployeeLabel} y con que nivel de acceso.
+              Define en qué ranchos puede operar {selectedEmployeeLabel} y con qué nivel de acceso.
             </DialogDescription>
           </DialogHeader>
 

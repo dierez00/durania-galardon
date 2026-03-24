@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Eye, Pencil, Trash2 } from "lucide-react";
+import { SanitarioBadge } from "@/modules/bovinos/presentation";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import {
@@ -33,7 +34,6 @@ import {
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Textarea } from "@/shared/ui/textarea";
-import { SanitarioBadge } from "@/modules/bovinos/presentation";
 import {
   createMvzRanchVaccination,
   deleteMvzRanchVaccination,
@@ -50,6 +50,7 @@ import {
   PrimaryActionButton,
   SectionHeading,
 } from "./shared";
+import { useAutoOpenCreateAction } from "./useAutoOpenCreateAction";
 import type { MvzRanchAnimalRecord, MvzRanchTabProps, MvzRanchVaccinationRecord } from "./types";
 
 interface VaccinationFormState {
@@ -90,6 +91,14 @@ export function MvzRanchVaccinationView({
   const [form, setForm] = useState<VaccinationFormState>(getInitialForm());
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const openCreateDialog = useCallback(() => {
+    setForm(getInitialForm());
+    setFormError("");
+    setDialogOpen(true);
+  }, []);
+
+  useAutoOpenCreateAction(openCreateDialog);
 
   const loadData = async () => {
     const [vaccinationData, animalData] = await Promise.all([
@@ -195,16 +204,7 @@ export function MvzRanchVaccinationView({
       <SectionHeading
         title="Vacunación"
         description="Agenda y seguimiento del esquema vacunal de los animales del rancho."
-        actions={
-          <PrimaryActionButton
-            label="Añadir vacunación"
-            onClick={() => {
-              setForm(getInitialForm());
-              setFormError("");
-              setDialogOpen(true);
-            }}
-          />
-        }
+        actions={<PrimaryActionButton label="Añadir vacunación" onClick={openCreateDialog} />}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -220,7 +220,7 @@ export function MvzRanchVaccinationView({
       {!loading && !error && vaccinations.length === 0 ? (
         <EmptyState
           title="Sin vacunaciones registradas"
-          description="Captura dosis nuevas o edita el calendario vacunal desde esta vista."
+          description="Captura dosis nuevas o actualiza el calendario vacunal desde esta vista."
         />
       ) : null}
 

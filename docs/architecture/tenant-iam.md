@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-22
+Last Updated: 2026-03-24
 Source of Truth: Canonical tenant IAM entities, permissions, and MVZ ranch-scope rules.
 
 # Tenant IAM
@@ -38,20 +38,21 @@ Este documento describe la capa IAM por tenant y su extension para el flujo MVZ 
 - `mvz.tenant.write`
 - `mvz.profile.read`
 - `mvz.profile.write`
-- `mvz.members.read`
-- `mvz.members.write`
-- `mvz.roles.read`
-- `mvz.roles.write`
+
+Nota operativa:
+
+- Las claves `mvz.members.*` y `mvz.roles.*` siguen existiendo por compatibilidad, pero la gestion de personas y roles ya no se realiza dentro del panel MVZ.
 
 ## Roles base y roles custom
 
 - Roles base reservados:
   - `government` -> `tenant_admin`
-  - `producer` -> `producer`, `employee`, `producer_viewer`
+  - `producer` -> `producer`, `employee`, `mvz_internal`, `producer_viewer`
   - `mvz` -> `mvz_government`, `mvz_internal`
 - Los roles base son visibles, asignables y clonables, pero sus permisos no se editan desde UI.
 - Los roles custom usan `is_system = false` y una `key` interna `custom_<slug>`.
 - La UI opera con un rol principal por membresia, aunque `tenant_user_roles` soporte multiples filas.
+- `mvz_internal` puede existir dentro de un tenant `producer`; en ese caso el alta ocurre desde productor, pero el panel operativo sigue siendo MVZ.
 
 ## Permisos MVZ por rancho (nuevos)
 
@@ -77,11 +78,12 @@ Este documento describe la capa IAM por tenant y su extension para el flujo MVZ 
 - Panel settings:
   - `GET|PATCH /api/producer/settings`
   - `GET /api/producer/settings/ranchos`
+  - `GET|POST|PATCH /api/producer/employees`
   - `GET|POST|PATCH /api/producer/roles`
   - `GET|PATCH /api/mvz/settings`
-  - `GET|POST|PATCH /api/mvz/roles`
+  - `GET|POST|PATCH|DELETE /api/mvz/roles` (compatibilidad; administracion deshabilitada)
 - Equipo MVZ:
-  - `GET|POST|PATCH /api/mvz/members`
+  - `GET|POST|PATCH /api/mvz/members` (compatibilidad; administracion deshabilitada)
 - MVZ rancho (`/api/mvz/ranchos/:uppId/*`): requiere permisos + scope UPP.
 - IAM tenant: continua administrando membresias/roles/permisos por tenant.
 
@@ -95,6 +97,9 @@ Este documento describe la capa IAM por tenant y su extension para el flujo MVZ 
   - `Configuracion del panel` usa datos operativos del tenant.
 - `employee`, `producer_viewer` y `mvz_internal` mantienen acceso a `Mi perfil`, pero no a settings del panel salvo permiso explicito.
 - `mvz_internal` conserva semantica especial de entrada por rancho: nunca recibe vista global de settings o metricas.
+- `mvz_government` tampoco administra altas ni roles desde su panel; gobierno da de alta a `mvz_government` y cada productor da de alta a `mvz_internal`.
+- Cuando un productor asigna el rol `mvz_internal`, debe existir una ficha profesional en `mvz_profiles` y una sincronizacion activa de ranchos en `mvz_upp_assignments`.
+- Un tenant productor puede tener varios `mvz_internal`; la restriccion de un solo `mvz_profile` por `owner_tenant_id` fue eliminada en `sql/migration_008_allow_multiple_mvz_profiles_per_tenant.sql`.
 - En flujo MVZ, pertenecer al tenant MVZ no basta:
   - tambien se exige asignacion activa en `mvz_upp_assignments` para el `uppId`.
   - `auth_mvz_assigned_to_upp()` resuelve esa asignacion por membresia activa al tenant MVZ, no solo por `user_id` del perfil profesional.

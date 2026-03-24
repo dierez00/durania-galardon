@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getAccessToken } from "@/shared/lib/auth-session";
+import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
@@ -47,6 +48,10 @@ interface MvzMembersPayload {
   data?: {
     members?: MvzMemberRow[];
     availableRoles?: AvailableRole[];
+    membershipId?: string;
+    userId?: string;
+    email?: string;
+    invitationSent?: boolean;
   };
   error?: {
     message?: string;
@@ -59,21 +64,25 @@ interface MvzMembersPageProps {
   canManage?: boolean;
 }
 
-const MEMBERSHIP_VARIANT: Record<string, "default" | "secondary" | "destructive"> = {
-  active: "default",
-  inactive: "secondary",
-  suspended: "destructive",
+const MEMBERSHIP_META: Record<
+  string,
+  { label: string; variant: "default" | "secondary" | "destructive" }
+> = {
+  active: { label: "Activo", variant: "default" },
+  inactive: { label: "Inactivo", variant: "secondary" },
+  suspended: { label: "Suspendido", variant: "destructive" },
 };
 
 export default function MvzMembersPage({
   title = "Equipo MVZ",
-  description = "Gestion de miembros y roles operativos del tenant MVZ.",
+  description = "Invita personas, asigna roles y administra el acceso del equipo MVZ.",
   canManage = true,
 }: MvzMembersPageProps) {
   const [rows, setRows] = useState<MvzMemberRow[]>([]);
   const [availableRoles, setAvailableRoles] = useState<AvailableRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [email, setEmail] = useState("");
   const [roleId, setRoleId] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -85,7 +94,7 @@ export default function MvzMembersPage({
 
     const accessToken = await getAccessToken();
     if (!accessToken) {
-      setErrorMessage("No existe sesion activa.");
+      setErrorMessage("No existe sesión activa.");
       setLoading(false);
       return;
     }
@@ -127,11 +136,12 @@ export default function MvzMembersPage({
 
     setSubmitting(true);
     setErrorMessage("");
+    setSuccessMessage("");
 
     try {
       const accessToken = await getAccessToken();
       if (!accessToken) {
-        setErrorMessage("No existe sesion activa.");
+        setErrorMessage("No existe sesión activa.");
         return;
       }
 
@@ -143,12 +153,18 @@ export default function MvzMembersPage({
 
       const body = (await response.json()) as MvzMembersPayload;
       if (!response.ok || !body.ok) {
-        setErrorMessage(body.error?.message ?? "No fue posible registrar el miembro MVZ.");
+        setErrorMessage(body.error?.message ?? "No fue posible registrar a la persona.");
         return;
       }
 
+      const resolvedEmail = body.data?.email ?? email.trim();
       setEmail("");
       setRoleId(availableRoles.find((role) => role.key === "mvz_internal")?.id ?? roleId);
+      setSuccessMessage(
+        body.data?.invitationSent
+          ? `Se envió una invitación a ${resolvedEmail}. La persona podrá crear su contraseña desde el correo recibido.`
+          : `${resolvedEmail} ya tenía cuenta y quedó agregado al equipo correctamente.`
+      );
       await loadRows();
     } finally {
       setSubmitting(false);
@@ -165,11 +181,12 @@ export default function MvzMembersPage({
 
     setUpdatingMembershipId(membershipId);
     setErrorMessage("");
+    setSuccessMessage("");
 
     try {
       const accessToken = await getAccessToken();
       if (!accessToken) {
-        setErrorMessage("No existe sesion activa.");
+        setErrorMessage("No existe sesión activa.");
         return;
       }
 
@@ -181,8 +198,14 @@ export default function MvzMembersPage({
 
       const body = (await response.json()) as MvzMembersPayload;
       if (!response.ok || !body.ok) {
-        setErrorMessage(body.error?.message ?? "No fue posible actualizar el miembro MVZ.");
+        setErrorMessage(body.error?.message ?? "No fue posible actualizar a la persona.");
         return;
+      }
+
+      if (payload.roleId) {
+        setSuccessMessage("El rol se actualizó correctamente.");
+      } else if (payload.status) {
+        setSuccessMessage("El estado del acceso se actualizó correctamente.");
       }
 
       await loadRows();
@@ -198,15 +221,22 @@ export default function MvzMembersPage({
         <p className="text-sm text-muted-foreground">{description}</p>
       </div>
 
+      {successMessage ? (
+        <Alert variant="success">
+          <AlertTitle>Acción completada</AlertTitle>
+          <AlertDescription>{successMessage}</AlertDescription>
+        </Alert>
+      ) : null}
+
       {canManage ? (
         <Card>
           <CardHeader>
-            <CardTitle>Agregar o invitar miembro</CardTitle>
+            <CardTitle>Invitar persona al equipo</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="email">Correo del miembro</Label>
+                <Label htmlFor="email">Correo de la persona</Label>
                 <Input
                   id="email"
                   type="email"
@@ -215,11 +245,11 @@ export default function MvzMembersPage({
                   onChange={(event) => setEmail(event.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Si el correo ya existe, se asignara al tenant. Si no existe, enviaremos una invitacion.
+                  Si el correo ya existe, se agregará al equipo. Si todavía no existe, enviaremos una invitación.
                 </p>
               </div>
               <div className="space-y-2">
-                <Label>Rol</Label>
+                <Label>Rol dentro del panel</Label>
                 <Select value={roleId || undefined} onValueChange={setRoleId}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Selecciona un rol" />
@@ -232,11 +262,14 @@ export default function MvzMembersPage({
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  El rol define qué puede consultar o modificar la persona dentro del panel MVZ.
+                </p>
               </div>
             </div>
 
             <Button onClick={createMember} disabled={!email.trim() || !roleId || submitting}>
-              {submitting ? "Procesando..." : "Agregar o invitar"}
+              {submitting ? "Procesando..." : "Invitar o agregar"}
             </Button>
           </CardContent>
         </Card>
@@ -244,14 +277,14 @@ export default function MvzMembersPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Equipo actual</CardTitle>
+          <CardTitle>Personas del equipo</CardTitle>
         </CardHeader>
         <CardContent>
           {errorMessage ? <p className="mb-3 text-sm text-destructive">{errorMessage}</p> : null}
           {loading ? (
             <p className="text-sm text-muted-foreground">Cargando...</p>
           ) : rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No hay miembros adicionales registrados.</p>
+            <p className="text-sm text-muted-foreground">Todavía no hay personas adicionales en este equipo.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -267,6 +300,10 @@ export default function MvzMembersPage({
                 {rows.map((row) => {
                   const isBusy = updatingMembershipId === row.id;
                   const nextStatus = row.membershipStatus === "active" ? "suspended" : "active";
+                  const membershipMeta = MEMBERSHIP_META[row.membershipStatus] ?? {
+                    label: row.membershipStatus,
+                    variant: "secondary" as const,
+                  };
 
                   return (
                     <TableRow key={row.id}>
@@ -278,9 +315,7 @@ export default function MvzMembersPage({
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={MEMBERSHIP_VARIANT[row.membershipStatus] ?? "secondary"}>
-                          {row.membershipStatus}
-                        </Badge>
+                        <Badge variant={membershipMeta.variant}>{membershipMeta.label}</Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {new Date(row.joinedAt).toLocaleDateString("es-MX")}

@@ -48,14 +48,14 @@ const PRODUCER_ORGANIZATION_NAVIGATION: NavigationRule[] = [
   },
   {
     key: "metrics",
-    label: "Metricas",
+    label: "Indicadores",
     icon: Activity,
     exact: true,
     permissions: ["producer.dashboard.read"],
   },
   {
     key: "settings",
-    label: "Configuracion",
+    label: "Configuraci\u00f3n",
     icon: ShieldCheck,
     exact: true,
     anyPermissions: PRODUCER_SETTINGS_NAV_PERMISSIONS,
@@ -65,7 +65,7 @@ const PRODUCER_ORGANIZATION_NAVIGATION: NavigationRule[] = [
 const PRODUCER_PROJECT_NAVIGATION: NavigationRule[] = [
   {
     key: "overview",
-    label: "Overview",
+    label: "Resumen",
     icon: FolderKanban,
     exact: true,
     permissions: ["producer.upp.read"],
@@ -117,14 +117,14 @@ const MVZ_ORGANIZATION_NAVIGATION: NavigationRule[] = [
   },
   {
     key: "metrics",
-    label: "Metricas",
+    label: "Indicadores",
     icon: Activity,
     exact: true,
     permissions: ["mvz.dashboard.read"],
   },
   {
     key: "settings",
-    label: "Configuracion",
+    label: "Configuraci\u00f3n",
     icon: ShieldCheck,
     exact: true,
     anyPermissions: MVZ_SETTINGS_NAV_PERMISSIONS,
@@ -135,7 +135,7 @@ const MVZ_ORGANIZATION_NAVIGATION: NavigationRule[] = [
 const MVZ_PROJECT_NAVIGATION: NavigationRule[] = [
   {
     key: "overview",
-    label: "Overview",
+    label: "Resumen",
     icon: FolderKanban,
     exact: true,
     permissions: ["mvz.ranch.read"],
@@ -149,14 +149,14 @@ const MVZ_PROJECT_NAVIGATION: NavigationRule[] = [
   },
   {
     key: "historial-clinico",
-    label: "Historial clinico",
+    label: "Historial cl\u00ednico",
     icon: Stethoscope,
     exact: true,
     permissions: ["mvz.ranch.clinical.read"],
   },
   {
     key: "vacunacion",
-    label: "Vacunacion",
+    label: "Vacunaci\u00f3n",
     icon: Syringe,
     exact: true,
     permissions: ["mvz.ranch.vaccinations.read"],
@@ -177,7 +177,7 @@ const MVZ_PROJECT_NAVIGATION: NavigationRule[] = [
   },
   {
     key: "documentacion",
-    label: "Documentacion",
+    label: "Documentaci\u00f3n",
     icon: FileText,
     exact: true,
     permissions: ["mvz.ranch.documents.read"],

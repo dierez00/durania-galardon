@@ -26,8 +26,8 @@ interface MvzDashboardPageProps {
 }
 
 export function MvzDashboardPageContent({
-  title = "Dashboard MVZ",
-  description = "Resumen global de la operacion sanitaria MVZ.",
+  title = "Inicio MVZ",
+  description = "Resumen general de la actividad sanitaria del equipo MVZ.",
 }: MvzDashboardPageProps) {
   const searchParams = useSearchParams();
   const [kpis, setKpis] = useState<MvzGlobalKpis | null>(null);
@@ -37,7 +37,7 @@ export function MvzDashboardPageContent({
     setErrorMessage("");
     const accessToken = await getAccessToken();
     if (!accessToken) {
-      setErrorMessage("No existe sesion activa.");
+      setErrorMessage("No existe sesión activa.");
       return;
     }
 
@@ -50,7 +50,7 @@ export function MvzDashboardPageContent({
 
     const body = await response.json();
     if (!response.ok || !body.ok) {
-      setErrorMessage(body.error?.message ?? "No fue posible cargar dashboard MVZ.");
+      setErrorMessage(body.error?.message ?? "No fue posible cargar el panel MVZ.");
       return;
     }
 

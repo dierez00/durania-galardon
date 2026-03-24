@@ -29,9 +29,9 @@ export default function AdminProducersPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Gestion de Productores</h1>
+          <h1 className="text-2xl font-bold">Gestión de productores</h1>
           <p className="text-sm text-muted-foreground">
-            Alta, baja/suspension, estado documental e historial.
+            Altas, bajas, suspensiones, estado documental e historial.
           </p>
         </div>
         <Button asChild>

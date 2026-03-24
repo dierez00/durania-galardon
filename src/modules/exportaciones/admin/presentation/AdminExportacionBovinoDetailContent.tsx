@@ -39,7 +39,7 @@ function sexLabel(sex: string): string {
 }
 
 function ResultBadge({ result }: Readonly<{ result: string | null }>) {
-  if (!result) return <span className="text-muted-foreground">â€”</span>;
+  if (!result) return <span className="text-muted-foreground">—</span>;
   const cfg = TEST_RESULT_BADGE[result.toLowerCase()] ?? {
     label: result,
     tone: "neutral" as SemanticTone,
@@ -55,7 +55,7 @@ function ResultBadge({ result }: Readonly<{ result: string | null }>) {
 }
 
 function TestValidityChip({ validUntil }: Readonly<{ validUntil: string | null }>) {
-  if (!validUntil) return <span className="text-muted-foreground">â€”</span>;
+  if (!validUntil) return <span className="text-muted-foreground">—</span>;
   const today = new Date();
   const expiry = new Date(validUntil);
   const days = Math.floor((expiry.getTime() - today.getTime()) / 86400000);
@@ -93,7 +93,7 @@ export function AdminExportacionBovinoDetailContent({ exportId, animal }: Readon
         const months = Math.floor(
           (Date.now() - new Date(animal.birthDate).getTime()) / (30.44 * 86400000)
         );
-        return months >= 12 ? `${Math.floor(months / 12)} aÃ±o(s)` : `${months} mes(es)`;
+        return months >= 12 ? `${Math.floor(months / 12)} año(s)` : `${months} mes(es)`;
       })()
     : null;
 
@@ -103,12 +103,12 @@ export function AdminExportacionBovinoDetailContent({ exportId, animal }: Readon
         <Link href={`/admin/exports/${exportId}`}>
           <Button variant="ghost" size="sm" className="gap-1">
             <ArrowLeft className="w-4 h-4" />
-            ExportaciÃ³n
+            Exportación
           </Button>
         </Link>
         <div>
           <h1 className="text-lg font-semibold">
-            Bovino â€” {animal.siniigaTag}
+            Bovino — {animal.siniigaTag}
           </h1>
           {animal.uppName && (
             <p className="text-sm text-muted-foreground">{animal.uppName}</p>
@@ -132,7 +132,7 @@ export function AdminExportacionBovinoDetailContent({ exportId, animal }: Readon
               icon: Tag,
               value: sexLabel(animal.sex),
             },
-            { label: "Edad", icon: Calendar, value: ageText ?? "â€”" },
+            { label: "Edad", icon: Calendar, value: ageText ?? "—" },
             {
               label: "Fecha de nacimiento",
               icon: Calendar,
@@ -140,12 +140,12 @@ export function AdminExportacionBovinoDetailContent({ exportId, animal }: Readon
                 ? new Date(animal.birthDate).toLocaleDateString("es-MX")
                 : null,
             },
-            { label: "UPP", icon: Activity, value: animal.uppName ?? "â€”" },
+            { label: "UPP", icon: Activity, value: animal.uppName ?? "—" },
             {
               label: "Madre (ID)",
               icon: Tag,
               value: animal.motherAnimalId
-                ? <span className="font-mono text-xs">{animal.motherAnimalId.slice(0, 8)}â€¦</span>
+                ? <span className="font-mono text-xs">{animal.motherAnimalId.slice(0, 8)}...</span>
                 : null,
             },
           ]}
@@ -157,7 +157,7 @@ export function AdminExportacionBovinoDetailContent({ exportId, animal }: Readon
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Activity className={cn("w-4 h-4", toneClass("info", "icon"))} />
-                Tuberculosis (TB) â€” Ãºltima prueba
+                Tuberculosis (TB) — última prueba
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -197,7 +197,7 @@ export function AdminExportacionBovinoDetailContent({ exportId, animal }: Readon
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Activity className={cn("w-4 h-4", toneClass("accent", "icon"))} />
-                Brucelosis (BR) â€” Ãºltima prueba
+                Brucelosis (BR) — última prueba
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -273,7 +273,7 @@ export function AdminExportacionBovinoDetailContent({ exportId, animal }: Readon
                         <TestValidityChip validUntil={t.validUntil} />
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {t.mvzFullName ?? "â€”"}
+                        {t.mvzFullName ?? "—"}
                       </TableCell>
                     </TableRow>
                   ))}

@@ -4,8 +4,16 @@ import Link from "next/link";
 import { ArrowLeft, Download } from "lucide-react";
 import {
   Button,
-  Card, CardContent, CardHeader, CardTitle,
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   SpreadsheetBatchEditor,
   buildExcelBuffer,
   downloadExcel,
@@ -20,10 +28,10 @@ const CURP_REGEX = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/;
 const PRODUCTOR_COLUMNS: SpreadsheetColumn<AdminProductorBatchRowInput>[] = [
   {
     key: "email",
-    header: "Email",
+    header: "Correo",
     required: true,
     normalize: (value) => value.trim().toLowerCase(),
-    validate: (value) => (EMAIL_REGEX.test(value) ? null : "Email invalido."),
+    validate: (value) => (EMAIL_REGEX.test(value) ? null : "Correo inválido."),
   },
   {
     key: "fullName",
@@ -50,13 +58,13 @@ export default function AdminProducersBatchCreatePage() {
   const handleDownloadCredentials = () => {
     if (createdRows.length === 0) return;
     const buffer = buildExcelBuffer(
-      ["Fila", "ID entidad", "Tenant", "Email", "Invitacion enviada"],
+      ["Fila", "ID entidad", "Organización", "Correo", "Invitación enviada"],
       createdRows.map((row) => [
         String(row.rowIndex + 1),
         row.entityId,
         row.tenantId,
         row.email,
-        row.invitationSent ? "Si" : "No",
+        row.invitationSent ? "Sí" : "No",
       ])
     );
     downloadExcel("productores-invitaciones.xlsx", buffer);
@@ -66,10 +74,10 @@ export default function AdminProducersBatchCreatePage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Alta masiva de Productores</h1>
+          <h1 className="text-2xl font-bold">Alta masiva de productores</h1>
           <p className="text-sm text-muted-foreground">
-            Pega filas desde Excel, valida y crea hasta 100 registros por lote. Los usuarios nuevos
-            recibiran una invitacion por correo para definir su contrasena.
+            Pega filas desde Excel, valida y crea hasta 100 registros por lote. Las cuentas nuevas
+            recibirán una invitación por correo para definir su contraseña.
           </p>
         </div>
         <Button asChild variant="outline">
@@ -107,9 +115,9 @@ export default function AdminProducersBatchCreatePage() {
                 <TableRow>
                   <TableHead>Fila</TableHead>
                   <TableHead>ID entidad</TableHead>
-                  <TableHead>Tenant</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Invitacion enviada</TableHead>
+                  <TableHead>Organización</TableHead>
+                  <TableHead>Correo</TableHead>
+                  <TableHead>Invitación enviada</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -119,7 +127,9 @@ export default function AdminProducersBatchCreatePage() {
                     <TableCell className="font-mono text-xs">{row.entityId}</TableCell>
                     <TableCell className="font-mono text-xs">{row.tenantId}</TableCell>
                     <TableCell>{row.email}</TableCell>
-                    <TableCell>{row.invitationSent ? "Invitacion enviada" : "Asignado a cuenta existente"}</TableCell>
+                    <TableCell>
+                      {row.invitationSent ? "Invitación enviada" : "Asignado a cuenta existente"}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

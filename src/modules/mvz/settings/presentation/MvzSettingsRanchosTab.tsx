@@ -12,7 +12,7 @@ export default function MvzSettingsRanchosTab() {
     return (
       <Card>
         <CardContent className="py-8 text-sm text-muted-foreground">
-          No hay ranchos asignados para este tenant MVZ.
+          No hay ranchos asignados para esta organización MVZ.
         </CardContent>
       </Card>
     );
@@ -23,7 +23,7 @@ export default function MvzSettingsRanchosTab() {
       <div>
         <h2 className="text-2xl font-bold">Ranchos asignados</h2>
         <p className="text-sm text-muted-foreground">
-          Relacion de ranchos activos bajo cobertura del tenant MVZ actual.
+          Relación de ranchos activos bajo cobertura del equipo MVZ actual.
         </p>
       </div>
 
@@ -42,7 +42,7 @@ export default function MvzSettingsRanchosTab() {
                 <p>Alerta sanitaria: {project.sanitaryAlert || "Sin alertas"}</p>
                 <p>Animales activos: {project.activeAnimals ?? 0}</p>
                 <p>
-                  Ultima asignacion:{" "}
+                  Última asignación:{" "}
                   {project.assignedAt
                     ? new Date(project.assignedAt).toLocaleDateString("es-MX")
                     : "Sin registro"}

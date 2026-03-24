@@ -25,7 +25,7 @@ function getSingleRelation<T>(value: T | T[] | null | undefined): T | null {
 async function getMvzProfileSnapshot(context: AuthorizedContext) {
   const provisioning = getSupabaseProvisioningClient();
   const user = context.user;
-  const [tenantResult, profileResult, membershipResult, currentMvzProfileResult, tenantMvzProfileResult] =
+  const [tenantResult, profileResult, membershipResult, currentMvzProfileResult] =
     await Promise.all([
       provisioning.from("tenants").select("id,name,slug,type").eq("id", user.tenantId).maybeSingle(),
       provisioning.from("profiles").select("email").eq("id", user.id).maybeSingle(),
@@ -40,11 +40,6 @@ async function getMvzProfileSnapshot(context: AuthorizedContext) {
         .select("id,full_name,license_number,status,created_at")
         .eq("owner_tenant_id", user.tenantId)
         .eq("user_id", user.id)
-        .maybeSingle(),
-      provisioning
-        .from("mvz_profiles")
-        .select("id,full_name,license_number,status")
-        .eq("owner_tenant_id", user.tenantId)
         .maybeSingle(),
     ]);
 
@@ -64,15 +59,11 @@ async function getMvzProfileSnapshot(context: AuthorizedContext) {
     throw new Error(currentMvzProfileResult.error.message);
   }
 
-  if (tenantMvzProfileResult.error) {
-    throw new Error(tenantMvzProfileResult.error.message);
-  }
-
-  const assignmentsResult = tenantMvzProfileResult.data
+  const assignmentsResult = currentMvzProfileResult.data
     ? await provisioning
         .from("mvz_upp_assignments")
         .select("id,upp_id,status,assigned_at,upps(id,name,upp_code,status,producers(full_name))")
-        .eq("mvz_profile_id", tenantMvzProfileResult.data.id)
+        .eq("mvz_profile_id", currentMvzProfileResult.data.id)
         .eq("status", "active")
         .order("assigned_at", { ascending: false })
     : { data: [], error: null };

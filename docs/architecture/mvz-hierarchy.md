@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-19
+Last Updated: 2026-03-24
 Source of Truth: Canonical description of the active MVZ global-to-ranch workflow and its API surface.
 
 # MVZ Jerarquico (Gobierno -> Rancho)
@@ -12,7 +12,12 @@ Implementar una experiencia jerarquica para MVZ:
 1. Home organizacional (`/mvz`) con lista de ranchos asignados.
 2. Vista global de metricas (`/mvz/metrics`) con KPIs agregados.
 3. Cambio de rancho desde el shell contextual (`Inicio > rancho actual`) una vez dentro del panel por rancho.
-2. Panel contextual por rancho (`/mvz/ranchos/[uppId]/*`) con modulos internos.
+4. Panel contextual por rancho (`/mvz/ranchos/[uppId]/*`) con modulos internos.
+
+La experiencia aplica tanto para:
+
+- `mvz_government` dado de alta por gobierno.
+- `mvz_internal` dado de alta por un productor pero operando dentro del mismo shell MVZ.
 
 ## Flujo de usuario
 
@@ -24,6 +29,11 @@ Implementar una experiencia jerarquica para MVZ:
 6. Cambio de rancho desde el breadcrumb inline cuando ya existe contexto activo.
 7. Uso de tabs internas del rancho.
 
+Reglas activas:
+
+- `mvz_government` puede abrir `/mvz`, `/mvz/metrics`, `/mvz/profile` y `/mvz/settings`.
+- `mvz_internal` entra por `/mvz`, pero no usa dashboard global ni metricas globales.
+
 ## Persistencia de seleccion
 
 - Fuente de verdad: URL (`uppId` en la ruta).
@@ -32,7 +42,7 @@ Implementar una experiencia jerarquica para MVZ:
 
 ## Modulos por rancho
 
-- `resumen` (overview + KPIs)
+- `resumen` (overview + KPIs contextuales)
 - `animales`
 - `historial-clinico`
 - `vacunacion`
@@ -40,6 +50,21 @@ Implementar una experiencia jerarquica para MVZ:
 - `reportes`
 - `documentacion`
 - `visitas`
+
+## UX de rancho
+
+- Las tarjetas `Animales activos`, `En tratamiento`, `Vacunaciones pendientes`, `Incidencias activas` y `Ultima inspeccion` viven solo en `Resumen`.
+- `Resumen` incluye acciones rapidas para:
+  - `Registrar incidencia`
+  - `Registrar vacunacion`
+  - `Programar visita`
+- Las acciones rapidas navegan a su modulo y abren el formulario con `?action=nuevo`.
+- En `Incidencias`, el color del estado se separa de la severidad:
+  - `open` -> alerta/error
+  - `in_progress` -> atencion
+  - `resolved` -> exito
+  - `dismissed` -> neutro
+- Los labels visibles del panel MVZ usan copy en español claro y no tecnico.
 
 ## APIs
 

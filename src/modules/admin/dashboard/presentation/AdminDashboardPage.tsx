@@ -46,7 +46,7 @@ export default function AdminDashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Dashboard Estatal</h1>
-        <p className="text-sm text-muted-foreground">KPIs globales para operacion administrativa.</p>
+        <p className="text-sm text-muted-foreground">Indicadores generales para el seguimiento administrativo.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -79,23 +79,23 @@ export default function AdminDashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Acciones rapidas</CardTitle>
+          <CardTitle>Acciones rápidas</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
           <Button asChild variant="outline">
-            <Link href="/admin/producers">Gestion de productores</Link>
+            <Link href="/admin/producers">Gestión de productores</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/admin/mvz">Gestion de MVZ</Link>
+            <Link href="/admin/mvz">Gestión de MVZ</Link>
           </Button>
           <Button asChild variant="outline">
             <Link href="/admin/quarantines">Cuarentenas</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/admin/audit">Auditoria y bitacora</Link>
+            <Link href="/admin/audit">Auditoría y bitácora</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/admin/appointments">Citas publicas</Link>
+            <Link href="/admin/appointments">Citas públicas</Link>
           </Button>
         </CardContent>
       </Card>

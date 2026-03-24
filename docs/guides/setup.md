@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-23
+Last Updated: 2026-03-24
 Source of Truth: Canonical local setup, environment, and SQL execution order for the repository.
 
 # Setup y comandos
@@ -35,13 +35,18 @@ Orden recomendado de ejecucion SQL:
 1. `sql/migration_001_duraniaMVP.sql`
 2. `sql/migration_002_mvz_hierarchy.sql`
 3. `sql/migration_003_fix_rls_politicies.sql`
-4. `sql/20260323_add_iot_telemetry_tables.sql`
-5. `sql/views.sql`
-6. `sql/seeds.sql`
+4. `sql/migration_004_settings_profile_split.sql`
+5. `sql/migration_005_mvz_settings_permissions_backfill.sql`
+6. `sql/migration_006_tenant_custom_roles.sql`
+7. `sql/migration_007_add_iot_telemetry_tables.sql`
+8. `sql/migration_008_allow_multiple_mvz_profiles_per_tenant.sql`
+9. `sql/views.sql`
+10. `sql/seeds.sql`
 
 Nota:
 
 - `sql/migration_003_fix_rls_politicies.sql` corrige recursion infinita de RLS en politicas que referencian `public.tenants`, especialmente visible cuando paneles de productor/MVZ cargan vacios aunque la sesion y el tenant se resuelven correctamente.
+- `sql/migration_008_allow_multiple_mvz_profiles_per_tenant.sql` debe ejecutarse para permitir varios `mvz_internal` dentro del mismo tenant productor.
 
 Verificar despues de migrar:
 

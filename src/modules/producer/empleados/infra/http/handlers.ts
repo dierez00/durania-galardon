@@ -14,6 +14,8 @@ interface EmployeeBody {
   membershipId?: string;
   roleId?: string;
   email?: string;
+  fullName?: string;
+  licenseNumber?: string;
   status?: "active" | "inactive" | "suspended";
   uppIds?: string[];
   uppAccess?: Array<{
@@ -23,8 +25,14 @@ interface EmployeeBody {
   accessLevel?: "viewer" | "editor" | "owner";
 }
 
+interface MvzProfileSnapshot {
+  fullName: string;
+  licenseNumber: string;
+  status: string;
+}
+
 const EMPLOYEE_ROLE_KEY = "employee";
-const EMPLOYEE_ROLE_NAME = "Empleado";
+const MVZ_INTERNAL_ROLE_KEY = "mvz_internal";
 
 type EmployeeAccessLifecycleStatus =
   | "invitation_sent"
@@ -90,66 +98,176 @@ function normalizeUppAccessInput(body: EmployeeBody) {
   );
 }
 
-async function ensureEmployeeRole(tenantId: string): Promise<string> {
-  const supabaseAdmin = getSupabaseAdminClient();
-  const existingRole = await supabaseAdmin
-    .from("tenant_roles")
-    .select("id")
-    .eq("tenant_id", tenantId)
-    .eq("key", EMPLOYEE_ROLE_KEY)
-    .maybeSingle();
+function normalizeMvzProfileInput(body: EmployeeBody) {
+  return {
+    fullName: body.fullName?.trim() || null,
+    licenseNumber: body.licenseNumber?.trim().toUpperCase() || null,
+  };
+}
 
-  if (!existingRole.error && existingRole.data) {
-    return existingRole.data.id;
+async function listCurrentUppAccess(input: { tenantId: string; userId: string }) {
+  const supabaseAdmin = getSupabaseAdminClient();
+  const accessResult = await supabaseAdmin
+    .from("user_upp_access")
+    .select("upp_id,access_level,status")
+    .eq("tenant_id", input.tenantId)
+    .eq("user_id", input.userId);
+
+  if (accessResult.error) {
+    throw new Error(accessResult.error.message);
   }
 
-  const createRole = await supabaseAdmin
-    .from("tenant_roles")
+  return (accessResult.data ?? [])
+    .filter((row) => row.status === "active")
+    .map((row) => ({
+      uppId: row.upp_id,
+      accessLevel: row.access_level as "viewer" | "editor" | "owner",
+    }));
+}
+
+async function upsertInternalMvzProfile(input: {
+  tenantId: string;
+  userId: string;
+  fullName: string | null;
+  licenseNumber: string | null;
+}) {
+  const supabaseAdmin = getSupabaseAdminClient();
+  const existingProfileResult = await supabaseAdmin
+    .from("mvz_profiles")
+    .select("id,full_name,license_number,status")
+    .eq("owner_tenant_id", input.tenantId)
+    .eq("user_id", input.userId)
+    .maybeSingle();
+
+  if (existingProfileResult.error) {
+    throw new Error(existingProfileResult.error.message);
+  }
+
+  if (existingProfileResult.data) {
+    const nextFullName = input.fullName ?? existingProfileResult.data.full_name;
+    const nextLicenseNumber = input.licenseNumber ?? existingProfileResult.data.license_number;
+    const updatePayload: Record<string, unknown> = {};
+
+    if (existingProfileResult.data.full_name !== nextFullName) {
+      updatePayload.full_name = nextFullName;
+    }
+
+    if (existingProfileResult.data.license_number !== nextLicenseNumber) {
+      updatePayload.license_number = nextLicenseNumber;
+    }
+
+    if (existingProfileResult.data.status !== "active") {
+      updatePayload.status = "active";
+    }
+
+    if (Object.keys(updatePayload).length > 0) {
+      const updateResult = await supabaseAdmin.from("mvz_profiles").update(updatePayload).eq("id", existingProfileResult.data.id);
+
+      if (updateResult.error) {
+        throw new Error(updateResult.error.message);
+      }
+    }
+
+    return existingProfileResult.data.id;
+  }
+
+  if (!input.fullName || !input.licenseNumber) {
+    throw new Error("Debe capturar nombre profesional y cédula/licencia para MVZ Interno.");
+  }
+
+  const insertResult = await supabaseAdmin
+    .from("mvz_profiles")
     .insert({
-      tenant_id: tenantId,
-      key: EMPLOYEE_ROLE_KEY,
-      name: EMPLOYEE_ROLE_NAME,
-      is_system: true,
-      priority: 70,
+      owner_tenant_id: input.tenantId,
+      user_id: input.userId,
+      full_name: input.fullName,
+      license_number: input.licenseNumber,
+      status: "active",
     })
     .select("id")
     .single();
 
-  if (createRole.error || !createRole.data) {
-    throw new Error(createRole.error?.message ?? "EMPLOYEE_ROLE_CREATE_FAILED");
+  if (insertResult.error || !insertResult.data) {
+    throw new Error(insertResult.error?.message ?? "No fue posible crear la ficha MVZ.");
   }
 
-  const permissionsResult = await supabaseAdmin
-    .from("permissions")
-    .select("id")
-    .in("key", [
-      "producer.dashboard.read",
-      "producer.upp.read",
-      "producer.bovinos.read",
-      "producer.bovinos.write",
-      "producer.movements.read",
-      "producer.movements.write",
-      "producer.exports.read",
-      "producer.exports.write",
-      "producer.documents.read",
-      "producer.documents.write",
-      "producer.employees.read",
-    ]);
+  return insertResult.data.id;
+}
 
-  if (!permissionsResult.error && (permissionsResult.data ?? []).length > 0) {
-    const permissionInsert = await supabaseAdmin.from("tenant_role_permissions").insert(
-      (permissionsResult.data ?? []).map((permission) => ({
-        tenant_role_id: createRole.data.id,
-        permission_id: permission.id,
-      }))
-    );
+async function syncInternalMvzAssignments(input: {
+  mvzProfileId: string | null;
+  uppAccess: Array<{ uppId: string; accessLevel: "viewer" | "editor" | "owner" }>;
+  assignedByUserId: string;
+  enabled: boolean;
+}) {
+  if (!input.mvzProfileId) {
+    return;
+  }
 
-    if (permissionInsert.error) {
-      throw new Error(permissionInsert.error.message);
+  const supabaseAdmin = getSupabaseAdminClient();
+  const assignmentsResult = await supabaseAdmin
+    .from("mvz_upp_assignments")
+    .select("id,upp_id,status")
+    .eq("mvz_profile_id", input.mvzProfileId);
+
+  if (assignmentsResult.error) {
+    throw new Error(assignmentsResult.error.message);
+  }
+
+  const desiredUppIds = new Set(input.enabled ? input.uppAccess.map((item) => item.uppId) : []);
+  const currentAssignments = assignmentsResult.data ?? [];
+
+  for (const assignment of currentAssignments) {
+    if (desiredUppIds.has(assignment.upp_id)) {
+      desiredUppIds.delete(assignment.upp_id);
+
+      if (assignment.status !== "active") {
+        const reactivateResult = await supabaseAdmin
+          .from("mvz_upp_assignments")
+          .update({
+            status: "active",
+            assigned_by_user_id: input.assignedByUserId,
+            assigned_at: new Date().toISOString(),
+            unassigned_at: null,
+          })
+          .eq("id", assignment.id);
+
+        if (reactivateResult.error) {
+          throw new Error(reactivateResult.error.message);
+        }
+      }
+
+      continue;
+    }
+
+    if (assignment.status === "active") {
+      const deactivateResult = await supabaseAdmin
+        .from("mvz_upp_assignments")
+        .update({
+          status: "inactive",
+          unassigned_at: new Date().toISOString(),
+        })
+        .eq("id", assignment.id);
+
+      if (deactivateResult.error) {
+        throw new Error(deactivateResult.error.message);
+      }
     }
   }
 
-  return createRole.data.id;
+  for (const uppId of desiredUppIds) {
+    const insertResult = await supabaseAdmin.from("mvz_upp_assignments").insert({
+      mvz_profile_id: input.mvzProfileId,
+      upp_id: uppId,
+      status: "active",
+      assigned_by_user_id: input.assignedByUserId,
+      unassigned_at: null,
+    });
+
+    if (insertResult.error) {
+      throw new Error(insertResult.error.message);
+    }
+  }
 }
 
 export async function GET(request: Request) {
@@ -191,7 +309,7 @@ export async function GET(request: Request) {
   const membershipIds = memberships.map((row) => row.id);
   const userIds = memberships.map((row) => row.user_id);
 
-  const [profilesResult, rolesResult, accessResult, authLifecycleEntries] = await Promise.all([
+  const [profilesResult, rolesResult, accessResult, mvzProfilesResult, authLifecycleEntries] = await Promise.all([
     supabaseAdmin.from("profiles").select("id,email,status,created_at").in("id", userIds),
     supabaseAdmin
       .from("tenant_user_roles")
@@ -202,6 +320,11 @@ export async function GET(request: Request) {
       .select("user_id,upp_id,access_level,status")
       .eq("tenant_id", auth.context.user.tenantId)
       .in("user_id", userIds),
+    supabaseAdmin
+      .from("mvz_profiles")
+      .select("user_id,full_name,license_number,status")
+      .eq("owner_tenant_id", auth.context.user.tenantId)
+      .in("user_id", userIds),
     Promise.all(
       userIds.map(async (userId) => ({
         userId,
@@ -210,15 +333,26 @@ export async function GET(request: Request) {
     ),
   ]);
 
-  if (profilesResult.error || rolesResult.error || accessResult.error) {
+  if (profilesResult.error || rolesResult.error || accessResult.error || mvzProfilesResult.error) {
     return apiError("EMPLOYEES_JOIN_QUERY_FAILED", "No fue posible resolver empleados.", 500, {
       profiles: profilesResult.error?.message,
       roles: rolesResult.error?.message,
       access: accessResult.error?.message,
+      mvzProfiles: mvzProfilesResult.error?.message,
     });
   }
 
   const profileByUserId = new Map((profilesResult.data ?? []).map((profile) => [profile.id, profile]));
+  const mvzProfileByUserId = new Map<string, MvzProfileSnapshot>(
+    (mvzProfilesResult.data ?? []).map((profile) => [
+      profile.user_id,
+      {
+        fullName: profile.full_name,
+        licenseNumber: profile.license_number,
+        status: profile.status,
+      },
+    ])
+  );
   const authLifecycleByUserId = new Map(authLifecycleEntries.map((entry) => [entry.userId, entry.snapshot]));
   const roleByMembership = new Map<
     string,
@@ -278,6 +412,7 @@ export async function GET(request: Request) {
           roleKey: roleInfo.key,
           roleName: roleInfo.name,
           isSystemRole: roleInfo.isSystem,
+          mvzProfile: mvzProfileByUserId.get(membership.user_id) ?? null,
           uppAccess: accessByUserId.get(membership.user_id) ?? [],
           joinedAt: membership.joined_at,
         };
@@ -380,9 +515,11 @@ export async function POST(request: Request) {
     membershipId = membershipInsert.data.id;
   }
 
+  const mvzProfileInput = normalizeMvzProfileInput(body);
+  let selectedRole: Awaited<ReturnType<typeof resolveAssignableRoleForPanel>>;
   let employeeRoleId: string;
   try {
-    const selectedRole = await resolveAssignableRoleForPanel({
+    selectedRole = await resolveAssignableRoleForPanel({
       tenantId: auth.context.user.tenantId,
       panel: "producer",
       roleId: body.roleId?.trim(),
@@ -390,16 +527,12 @@ export async function POST(request: Request) {
     });
     employeeRoleId = selectedRole.id;
   } catch (error) {
-    try {
-      employeeRoleId = await ensureEmployeeRole(auth.context.user.tenantId);
-    } catch {
-      await rollbackInvitedUser();
-      return apiError(
-        "EMPLOYEE_ROLE_RESOLVE_FAILED",
-        error instanceof Error ? error.message : "No fue posible resolver el rol del empleado.",
-        400
-      );
-    }
+    await rollbackInvitedUser();
+    return apiError(
+      "EMPLOYEE_ROLE_RESOLVE_FAILED",
+      error instanceof Error ? error.message : "No fue posible resolver el rol de la persona invitada.",
+      400
+    );
   }
 
   const clearRoles = await supabaseAdmin.from("tenant_user_roles").delete().eq("membership_id", membershipId);
@@ -439,21 +572,49 @@ export async function POST(request: Request) {
       .eq("tenant_id", auth.context.user.tenantId)
       .eq("user_id", authUser.userId);
 
-    const accessInsert = await supabaseAdmin.from("user_upp_access").insert(
-      uppAccess.map((item) => ({
-        tenant_id: auth.context.user.tenantId,
-        user_id: authUser.userId,
-        upp_id: item.uppId,
-        access_level: item.accessLevel,
-        status: "active",
-        granted_by_user_id: auth.context.user.id,
-      }))
-    );
+    if (uppAccess.length > 0) {
+      const accessInsert = await supabaseAdmin.from("user_upp_access").insert(
+        uppAccess.map((item) => ({
+          tenant_id: auth.context.user.tenantId,
+          user_id: authUser.userId,
+          upp_id: item.uppId,
+          access_level: item.accessLevel,
+          status: "active",
+          granted_by_user_id: auth.context.user.id,
+        }))
+      );
 
-    if (accessInsert.error) {
-      await rollbackInvitedUser();
-      return apiError("EMPLOYEE_UPP_ACCESS_FAILED", accessInsert.error.message, 400);
+      if (accessInsert.error) {
+        await rollbackInvitedUser();
+        return apiError("EMPLOYEE_UPP_ACCESS_FAILED", accessInsert.error.message, 400);
+      }
     }
+  }
+
+  let mvzProfileId: string | null = null;
+  try {
+    if (selectedRole.key === MVZ_INTERNAL_ROLE_KEY) {
+      mvzProfileId = await upsertInternalMvzProfile({
+        tenantId: auth.context.user.tenantId,
+        userId: authUser.userId,
+        fullName: mvzProfileInput.fullName,
+        licenseNumber: mvzProfileInput.licenseNumber,
+      });
+    }
+
+    await syncInternalMvzAssignments({
+      mvzProfileId,
+      uppAccess,
+      assignedByUserId: auth.context.user.id,
+      enabled: selectedRole.key === MVZ_INTERNAL_ROLE_KEY,
+    });
+  } catch (error) {
+    await rollbackInvitedUser();
+    return apiError(
+      "EMPLOYEE_MVZ_PROFILE_SYNC_FAILED",
+      error instanceof Error ? error.message : "No fue posible preparar el acceso MVZ interno.",
+      400
+    );
   }
 
   await logAuditEvent({
@@ -465,6 +626,9 @@ export async function POST(request: Request) {
     payload: {
       email,
       roleId: body.roleId?.trim() ?? employeeRoleId,
+      roleKey: selectedRole.key,
+      fullName: mvzProfileInput.fullName,
+      licenseNumber: mvzProfileInput.licenseNumber,
       uppAccess,
       invitationSent: authUser.invitationSent,
     },
@@ -515,6 +679,19 @@ export async function PATCH(request: Request) {
     return apiError("EMPLOYEE_MEMBERSHIP_NOT_FOUND", "No existe membresia con ese id.", 404);
   }
   const membership = membershipResult.data;
+  const currentRoleResult = await supabaseAdmin
+    .from("tenant_user_roles")
+    .select("tenant_role_id,tenant_role:tenant_roles(key)")
+    .eq("membership_id", membershipId)
+    .maybeSingle();
+
+  if (currentRoleResult.error) {
+    return apiError("EMPLOYEE_ROLE_QUERY_FAILED", currentRoleResult.error.message, 400);
+  }
+
+  const currentRole = Array.isArray(currentRoleResult.data?.tenant_role)
+    ? currentRoleResult.data?.tenant_role[0]
+    : currentRoleResult.data?.tenant_role;
 
   const updatePayload: Record<string, unknown> = {};
   if (body.status) {
@@ -532,8 +709,9 @@ export async function PATCH(request: Request) {
     }
   }
 
+  let nextRoleId: string | null = currentRoleResult.data?.tenant_role_id ?? null;
+  let nextRoleKey = currentRole?.key ?? null;
   if (body.roleId?.trim()) {
-    let nextRoleId: string;
     try {
       const selectedRole = await resolveAssignableRoleForPanel({
         tenantId: auth.context.user.tenantId,
@@ -541,6 +719,7 @@ export async function PATCH(request: Request) {
         roleId: body.roleId.trim(),
       });
       nextRoleId = selectedRole.id;
+      nextRoleKey = selectedRole.key;
     } catch (error) {
       return apiError(
         "INVALID_ROLE_SCOPE",
@@ -569,9 +748,12 @@ export async function PATCH(request: Request) {
     }
   }
 
+  const uppAccess = Array.isArray(body.uppAccess) || Array.isArray(body.uppIds)
+    ? normalizeUppAccessInput(body)
+    : null;
+
   if (Array.isArray(body.uppAccess) || Array.isArray(body.uppIds)) {
-    const uppAccess = normalizeUppAccessInput(body);
-    const uppIds = uppAccess.map((item) => item.uppId);
+    const uppIds = (uppAccess ?? []).map((item) => item.uppId);
 
     if (uppIds.length > 0) {
       const uppsCheck = await supabaseAdmin
@@ -591,7 +773,7 @@ export async function PATCH(request: Request) {
       .eq("tenant_id", auth.context.user.tenantId)
       .eq("user_id", membership.user_id);
 
-    if (uppIds.length > 0) {
+    if (uppIds.length > 0 && uppAccess) {
       const accessInsert = await supabaseAdmin.from("user_upp_access").insert(
         uppAccess.map((item) => ({
           tenant_id: auth.context.user.tenantId,
@@ -609,6 +791,50 @@ export async function PATCH(request: Request) {
     }
   }
 
+  const mvzProfileInput = normalizeMvzProfileInput(body);
+  const effectiveMembershipStatus = (body.status ?? membership.status) as "active" | "inactive" | "suspended";
+
+  try {
+    const effectiveUppAccess =
+      uppAccess ?? (await listCurrentUppAccess({ tenantId: auth.context.user.tenantId, userId: membership.user_id }));
+    let mvzProfileId: string | null = null;
+
+    if (nextRoleKey === MVZ_INTERNAL_ROLE_KEY) {
+      mvzProfileId = await upsertInternalMvzProfile({
+        tenantId: auth.context.user.tenantId,
+        userId: membership.user_id,
+        fullName: mvzProfileInput.fullName,
+        licenseNumber: mvzProfileInput.licenseNumber,
+      });
+    } else {
+      const existingMvzProfileResult = await supabaseAdmin
+        .from("mvz_profiles")
+        .select("id")
+        .eq("owner_tenant_id", auth.context.user.tenantId)
+        .eq("user_id", membership.user_id)
+        .maybeSingle();
+
+      if (existingMvzProfileResult.error) {
+        throw new Error(existingMvzProfileResult.error.message);
+      }
+
+      mvzProfileId = existingMvzProfileResult.data?.id ?? null;
+    }
+
+    await syncInternalMvzAssignments({
+      mvzProfileId,
+      uppAccess: effectiveUppAccess,
+      assignedByUserId: auth.context.user.id,
+      enabled: nextRoleKey === MVZ_INTERNAL_ROLE_KEY && effectiveMembershipStatus === "active",
+    });
+  } catch (error) {
+    return apiError(
+      "EMPLOYEE_MVZ_PROFILE_SYNC_FAILED",
+      error instanceof Error ? error.message : "No fue posible actualizar el acceso MVZ interno.",
+      400
+    );
+  }
+
   await logAuditEvent({
     request,
     user: auth.context.user,
@@ -617,8 +843,11 @@ export async function PATCH(request: Request) {
     resourceId: membershipId,
     payload: {
       status: body.status ?? null,
-      roleId: body.roleId?.trim() ?? null,
-      uppAccess: body.uppAccess ?? null,
+      roleId: body.roleId?.trim() ?? nextRoleId,
+      roleKey: nextRoleKey,
+      fullName: mvzProfileInput.fullName,
+      licenseNumber: mvzProfileInput.licenseNumber,
+      uppAccess: uppAccess ?? null,
     },
   });
 

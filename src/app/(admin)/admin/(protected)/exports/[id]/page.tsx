@@ -26,7 +26,7 @@ export default function AdminExportacionDetailPage({
   if (loadingDetail) {
     return (
       <div className="flex items-center justify-center h-64 text-sm text-muted-foreground">
-        Cargando exportaciÃ³n...
+        Cargando exportación...
       </div>
     );
   }
@@ -34,7 +34,7 @@ export default function AdminExportacionDetailPage({
   if (errorDetail || !detail) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-2">
-        <p className="text-sm text-destructive">{errorDetail || "ExportaciÃ³n no encontrada."}</p>
+        <p className="text-sm text-destructive">{errorDetail || "Exportación no encontrada."}</p>
       </div>
     );
   }

@@ -50,4 +50,40 @@ describe("resolveWorkspaceNavigation", () => {
     expect(navigation.some((item) => item.key === "projects")).toBe(true);
     expect(navigation.some((item) => item.key === "settings")).toBe(false);
   });
+
+  it("uses normalized Spanish labels in producer and mvz navigation", () => {
+    const producerNavigation = resolveWorkspaceNavigation(
+      "producer",
+      "organization",
+      createUser({
+        permissions: ["producer.dashboard.read", "producer.tenant.read"],
+      }),
+      null
+    );
+    const mvzNavigation = resolveWorkspaceNavigation(
+      "mvz",
+      "project",
+      createUser({
+        role: "mvz_government",
+        roleKey: "mvz_government",
+        roleName: "MVZ Gobierno",
+        roleLabel: "MVZ Gobierno",
+        permissions: [
+          "mvz.ranch.read",
+          "mvz.ranch.clinical.read",
+          "mvz.ranch.vaccinations.read",
+          "mvz.ranch.documents.read",
+        ],
+      }),
+      "upp-1"
+    );
+
+    expect(producerNavigation.find((item) => item.key === "settings")?.label).toBe("Configuración");
+    expect(mvzNavigation.find((item) => item.key === "overview")?.label).toBe("Resumen");
+    expect(mvzNavigation.find((item) => item.key === "historial-clinico")?.label).toBe(
+      "Historial clínico"
+    );
+    expect(mvzNavigation.find((item) => item.key === "vacunacion")?.label).toBe("Vacunación");
+    expect(mvzNavigation.find((item) => item.key === "documentacion")?.label).toBe("Documentación");
+  });
 });

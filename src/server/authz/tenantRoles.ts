@@ -1,5 +1,13 @@
 import { getSupabaseAdminClient } from "@/server/auth/supabase";
-import { isPermissionKey, type PermissionKey } from "@/shared/lib/auth";
+import {
+  PRODUCER_MVZ_INTERNAL_PERMISSION_SET,
+  ROLE_DEFAULT_PERMISSIONS,
+  ROLE_LABELS,
+  isPermissionKey,
+  resolveDefaultPermissionsForTenantRole,
+  type AppRole,
+  type PermissionKey,
+} from "@/shared/lib/auth";
 
 export type TenantRolePanel = "producer" | "mvz";
 
@@ -34,9 +42,36 @@ interface TenantRoleRow {
 }
 
 const PANEL_SYSTEM_ROLE_KEYS: Record<TenantRolePanel, string[]> = {
-  producer: ["producer", "employee", "producer_viewer"],
+  producer: ["producer", "employee", "mvz_internal", "producer_viewer"],
   mvz: ["mvz_government", "mvz_internal"],
 };
+
+const PRODUCER_SYSTEM_ROLE_PRIORITY: Record<
+  "producer" | "employee" | "mvz_internal" | "producer_viewer",
+  number
+> = {
+  producer: 10,
+  employee: 20,
+  mvz_internal: 30,
+  producer_viewer: 40,
+};
+
+const MVZ_SYSTEM_ROLE_PRIORITY: Record<"mvz_government" | "mvz_internal", number> = {
+  mvz_government: 10,
+  mvz_internal: 20,
+};
+
+const PRODUCER_PERMISSION_CATALOG_KEYS = new Set<PermissionKey>([
+  ...ROLE_DEFAULT_PERMISSIONS.producer,
+  ...ROLE_DEFAULT_PERMISSIONS.employee,
+  ...ROLE_DEFAULT_PERMISSIONS.producer_viewer,
+  ...PRODUCER_MVZ_INTERNAL_PERMISSION_SET,
+]);
+
+const MVZ_PERMISSION_CATALOG_KEYS = new Set<PermissionKey>([
+  ...ROLE_DEFAULT_PERMISSIONS.mvz_government,
+  ...ROLE_DEFAULT_PERMISSIONS.mvz_internal,
+]);
 
 export function getVisibleSystemRoleKeys(panel: TenantRolePanel) {
   return PANEL_SYSTEM_ROLE_KEYS[panel];
@@ -55,6 +90,147 @@ export function isVisibleRoleForPanel(
   }
 
   return PANEL_SYSTEM_ROLE_KEYS[panel].includes(role.key);
+}
+
+async function ensureProducerSystemRole(
+  tenantId: string,
+  roleKey: "producer" | "employee" | "mvz_internal" | "producer_viewer"
+): Promise<string> {
+  const supabaseAdmin = getSupabaseAdminClient();
+  const existingRole = await supabaseAdmin
+    .from("tenant_roles")
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .eq("key", roleKey)
+    .maybeSingle();
+
+  if (existingRole.error) {
+    throw new Error(existingRole.error.message);
+  }
+
+  let roleId = existingRole.data?.id ?? null;
+
+  if (!roleId) {
+    const createdRole = await supabaseAdmin
+      .from("tenant_roles")
+      .insert({
+        tenant_id: tenantId,
+        key: roleKey,
+        name: ROLE_LABELS[roleKey as AppRole],
+        is_system: true,
+        priority: PRODUCER_SYSTEM_ROLE_PRIORITY[roleKey],
+      })
+      .select("id")
+      .single();
+
+    if (createdRole.error || !createdRole.data) {
+      throw new Error(createdRole.error?.message ?? "PRODUCER_ROLE_CREATE_FAILED");
+    }
+
+    roleId = createdRole.data.id;
+  }
+
+  await ensureRolePermissionSet(roleId, resolveDefaultPermissionsForTenantRole("producer", roleKey));
+
+  return roleId;
+}
+
+export async function ensureProducerSystemRoles(tenantId: string) {
+  await Promise.all([
+    ensureProducerSystemRole(tenantId, "producer"),
+    ensureProducerSystemRole(tenantId, "employee"),
+    ensureProducerSystemRole(tenantId, "mvz_internal"),
+    ensureProducerSystemRole(tenantId, "producer_viewer"),
+  ]);
+}
+
+async function ensureRolePermissionSet(roleId: string, permissionKeys: PermissionKey[]) {
+  const supabaseAdmin = getSupabaseAdminClient();
+  const [permissionCatalogResult, currentRolePermissionsResult] = await Promise.all([
+    supabaseAdmin.from("permissions").select("id,key").in("key", permissionKeys),
+    supabaseAdmin
+      .from("tenant_role_permissions")
+      .select("permission_id")
+      .eq("tenant_role_id", roleId),
+  ]);
+
+  if (permissionCatalogResult.error) {
+    throw new Error(permissionCatalogResult.error.message);
+  }
+
+  if (currentRolePermissionsResult.error) {
+    throw new Error(currentRolePermissionsResult.error.message);
+  }
+
+  const existingPermissionIds = new Set(
+    (currentRolePermissionsResult.data ?? []).map((row) => row.permission_id)
+  );
+  const missingPermissions = (permissionCatalogResult.data ?? [])
+    .filter((permission) => !existingPermissionIds.has(permission.id))
+    .map((permission) => ({
+      tenant_role_id: roleId,
+      permission_id: permission.id,
+    }));
+
+  if (missingPermissions.length === 0) {
+    return;
+  }
+
+  const insertResult = await supabaseAdmin.from("tenant_role_permissions").insert(missingPermissions);
+
+  if (insertResult.error) {
+    throw new Error(insertResult.error.message);
+  }
+}
+
+export async function ensureMvzSystemRole(
+  tenantId: string,
+  roleKey: "mvz_government" | "mvz_internal"
+): Promise<string> {
+  const supabaseAdmin = getSupabaseAdminClient();
+  const existingRole = await supabaseAdmin
+    .from("tenant_roles")
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .eq("key", roleKey)
+    .maybeSingle();
+
+  if (existingRole.error) {
+    throw new Error(existingRole.error.message);
+  }
+
+  let roleId = existingRole.data?.id ?? null;
+
+  if (!roleId) {
+    const createdRole = await supabaseAdmin
+      .from("tenant_roles")
+      .insert({
+        tenant_id: tenantId,
+        key: roleKey,
+        name: ROLE_LABELS[roleKey as AppRole],
+        is_system: true,
+        priority: MVZ_SYSTEM_ROLE_PRIORITY[roleKey],
+      })
+      .select("id")
+      .single();
+
+    if (createdRole.error || !createdRole.data) {
+      throw new Error(createdRole.error?.message ?? "MVZ_ROLE_CREATE_FAILED");
+    }
+
+    roleId = createdRole.data.id;
+  }
+
+  await ensureRolePermissionSet(roleId, resolveDefaultPermissionsForTenantRole("mvz", roleKey));
+
+  return roleId;
+}
+
+export async function ensureMvzSystemRoles(tenantId: string) {
+  await Promise.all([
+    ensureMvzSystemRole(tenantId, "mvz_government"),
+    ensureMvzSystemRole(tenantId, "mvz_internal"),
+  ]);
 }
 
 function buildPermissionGroupLabel(groupKey: string) {
@@ -76,10 +252,14 @@ function buildCustomRoleSlug(name: string) {
 
 async function resolvePermissionCatalog(panel: TenantRolePanel) {
   const supabaseAdmin = getSupabaseAdminClient();
+  const allowedKeys =
+    panel === "producer"
+      ? Array.from(PRODUCER_PERMISSION_CATALOG_KEYS)
+      : Array.from(MVZ_PERMISSION_CATALOG_KEYS);
   const permissionsResult = await supabaseAdmin
     .from("permissions")
     .select("id,key,description,module")
-    .eq("module", panel)
+    .in("key", allowedKeys)
     .order("key", { ascending: true });
 
   if (permissionsResult.error) {
@@ -88,8 +268,15 @@ async function resolvePermissionCatalog(panel: TenantRolePanel) {
 
   return (permissionsResult.data ?? [])
     .filter(
-      (permission): permission is { id: string; key: PermissionKey; description: string | null; module: string | null } =>
-        isPermissionKey(permission.key) && permission.key.startsWith(`${panel}.`)
+      (permission): permission is { id: string; key: PermissionKey; description: string | null; module: string | null } => {
+        if (!isPermissionKey(permission.key)) {
+          return false;
+        }
+
+        return panel === "producer"
+          ? PRODUCER_PERMISSION_CATALOG_KEYS.has(permission.key)
+          : MVZ_PERMISSION_CATALOG_KEYS.has(permission.key);
+      }
     )
     .map((permission) => {
       const parts = permission.key.split(".");
@@ -114,6 +301,12 @@ export async function listPermissionCatalogForPanel(
 }
 
 async function resolveVisibleRolesForTenant(tenantId: string, panel: TenantRolePanel) {
+  if (panel === "producer") {
+    await ensureProducerSystemRoles(tenantId);
+  } else {
+    await ensureMvzSystemRoles(tenantId);
+  }
+
   const supabaseAdmin = getSupabaseAdminClient();
   const rolesResult = await supabaseAdmin
     .from("tenant_roles")

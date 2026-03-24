@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-23
+Last Updated: 2026-03-24
 Source of Truth: Canonical database reference for schema, IAM tables, views, RLS helpers, MVZ hierarchy additions, and IoT telemetry tables.
 # DURANIA MVP PRO — Documentación de Base de Datos
 
@@ -42,7 +42,7 @@ La base de datos está diseñada sobre un modelo **multi-tenant con tres tipos d
 | Tipo | Panel | Descripción | Instancias |
 |---|---|---|---|
 | `government` | Panel Administrador | Gobierno del estado. Gestiona productores, MVZ, ranchos y normativa. | 1 (global) |
-| `producer` | Panel Productor | Un tenant por cada productor. Contiene sus ranchos (UPPs), animales y empleados. | N (uno por productor) |
+| `producer` | Panel Productor | Un tenant por cada productor. Contiene sus ranchos (UPPs), animales, equipo operativo y MVZ interno. | N (uno por productor) |
 | `mvz` | Panel MVZ | Un tenant por cada MVZ externo. Accede a ranchos asignados para auditorías. | N (uno por MVZ) |
 
 ### Modelo de Roles por Tipo de Tenant
@@ -56,6 +56,7 @@ La base de datos está diseñada sobre un modelo **multi-tenant con tres tipos d
 | `producer` | `producer_viewer` | Usuario de consulta en panel productor |
 | `mvz` | `tenant_admin` | Administrador del perfil MVZ |
 | `mvz` | `mvz_government` | Auditor externo, accede a ranchos asignados por gobierno |
+| `producer` | `mvz_internal` | Veterinario interno del productor. Se da de alta desde productor pero opera en el panel MVZ |
 | `mvz` | `mvz_internal` | Miembro interno del tenant MVZ con acceso operativo sin administrar settings |
 
 ### Cadena de Acceso IAM
@@ -78,6 +79,8 @@ permissions               ← admin.* | mvz.* | producer.*
 
 ### Flujo de Login y Routing
 
+Base SQL de referencia:
+
 Al autenticar un usuario, llamar `auth_get_panel_type()` para saber a qué panel redirigir:
 
 ```sql
@@ -88,6 +91,11 @@ SELECT public.auth_get_panel_type();
 ```
 
 ---
+
+Regla de aplicacion actual:
+
+- El backend ya no depende solo de `auth_get_panel_type()`.
+- Si `tenant.type = 'producer'` y el rol principal es `mvz_internal`, el panel efectivo se resuelve como `/mvz`.
 
 ## 2. Tablas
 
@@ -228,11 +236,12 @@ Roles disponibles dentro de un tenant. Los roles de sistema (`is_system = true`)
 Reglas operativas actuales:
 
 - `government` reserva `tenant_admin`.
-- `producer` reserva `producer`, `employee` y `producer_viewer`.
+- `producer` reserva `producer`, `employee`, `mvz_internal` y `producer_viewer`.
 - `mvz` reserva `mvz_government` y `mvz_internal`.
 - Los roles base visibles y los roles custom pueden editarse desde la UI de settings.
 - La eliminacion de un rol base o custom se permite solo si no tiene filas activas en `tenant_user_roles`; si sigue asignado a miembros, la operacion debe bloquearse.
 - Los roles custom usan `is_system = false` y la `key` interna sigue el patron `custom_<slug>`.
+- Si el rol es `mvz_internal` dentro de un tenant `producer`, el panel activo se resuelve como MVZ y no como productor.
 
 ---
 
@@ -306,6 +315,8 @@ Unidades de Producción Pecuaria (ranchos). Pertenecen al tenant del productor. 
 
 Acceso granular de empleados y `mvz_internal` a UPPs específicas dentro del tenant del productor.
 
+Para `mvz_internal`, esta tabla tambien funciona como origen de sincronizacion hacia `mvz_upp_assignments` para poblar el panel MVZ con los ranchos asignados.
+
 | Columna | Tipo | Descripción |
 |---|---|---|
 | `id` | `UUID` | PK |
@@ -325,23 +336,32 @@ Acceso granular de empleados y `mvz_internal` a UPPs específicas dentro del ten
 
 #### `mvz_profiles`
 
-Datos profesionales del MVZ externo. Cada MVZ tiene su propio tenant (`owner_tenant_id`). Puede auditar UPPs de distintos tenants de productores.
+Datos profesionales del MVZ. Puede representar tanto a un MVZ externo con tenant propio como a un `mvz_internal` dentro de un tenant `producer`.
 
 | Columna | Tipo | Descripción |
 |---|---|---|
 | `id` | `UUID` | PK |
-| `owner_tenant_id` | `UUID` | FK → `tenants(id)` · Tenant propio del MVZ (`type = 'mvz'`) |
+| `owner_tenant_id` | `UUID` | FK → `tenants(id)` · Tenant dueño del perfil (`type = 'mvz'` o `type = 'producer'`) |
 | `user_id` | `UUID` | FK → `profiles(id)` · Unique |
 | `full_name` | `TEXT` | — |
 | `license_number` | `TEXT` | Número de cédula. Unique |
 | `status` | `TEXT` | `'active'` \| `'inactive'` |
 | `created_at` | `TIMESTAMPTZ` | — |
 
+Reglas operativas:
+
+- `user_id` sigue siendo unico y representa una sola ficha profesional por usuario.
+- Un mismo `owner_tenant_id` ya puede tener varios registros en `mvz_profiles`.
+- `sql/migration_008_allow_multiple_mvz_profiles_per_tenant.sql` elimina la restriccion vieja que forzaba un solo MVZ por tenant.
+
 ---
 
 #### `mvz_upp_assignments`
 
-Asigna un MVZ global a UPPs para auditorías. **Esta tabla es cross-tenant por diseño**: el MVZ pertenece a un tenant `mvz` pero las UPPs pertenecen a tenants de productores.
+Asigna un MVZ a UPPs para trabajo de campo. Puede usarse en dos escenarios:
+
+- MVZ externo (`mvz_government`) asignado por gobierno a ranchos de productores.
+- MVZ interno (`mvz_internal`) sincronizado desde un tenant productor hacia sus propios ranchos.
 
 | Columna | Tipo | Descripción |
 |---|---|---|
@@ -349,13 +369,13 @@ Asigna un MVZ global a UPPs para auditorías. **Esta tabla es cross-tenant por d
 | `mvz_profile_id` | `UUID` | FK → `mvz_profiles(id)` |
 | `upp_id` | `UUID` | FK → `upps(id)` · Puede ser de cualquier tenant `producer` |
 | `status` | `TEXT` | `'active'` \| `'inactive'` |
-| `assigned_by_user_id` | `UUID` | FK → `profiles(id)` · Debe ser usuario del tenant `government` |
+| `assigned_by_user_id` | `UUID` | FK → `profiles(id)` · Usuario que otorgó o sincronizó la asignación |
 | `assigned_at` | `TIMESTAMPTZ` | — |
 | `unassigned_at` | `TIMESTAMPTZ` | Nullable |
 
 **Constraint:** `UNIQUE(mvz_profile_id, upp_id)`
 
-> ⚠️ No tiene `tenant_id`. Es explícitamente cross-tenant. El acceso se controla por `auth_mvz_assigned_to_upp()`.
+> ⚠️ No tiene `tenant_id`. Puede operar cross-tenant para MVZ externos y dentro del mismo tenant productor para `mvz_internal`. El acceso se controla por `auth_mvz_assigned_to_upp()`.
 
 ---
 
@@ -1034,6 +1054,38 @@ WHERE tenant_id = $producer_tenant_id AND key = 'employee';
 -- 4. Dar acceso a UPPs específicas (opcional)
 INSERT INTO public.user_upp_access (tenant_id, user_id, upp_id, access_level, granted_by_user_id)
 VALUES ($producer_tenant_id, $user_id, $upp_id, 'editor', auth.uid());
+```
+
+---
+
+### Alta de MVZ Interno (desde productor)
+
+```sql
+-- 1. Crear usuario en Supabase Auth → $user_id
+
+-- 2. Crear membresía en el tenant del productor
+INSERT INTO public.tenant_memberships (tenant_id, user_id, invited_by_user_id)
+VALUES ($producer_tenant_id, $user_id, auth.uid())
+RETURNING id; -- $membership_id
+
+-- 3. Asignar rol mvz_internal
+INSERT INTO public.tenant_user_roles (membership_id, tenant_role_id)
+SELECT $membership_id, id FROM public.tenant_roles
+WHERE tenant_id = $producer_tenant_id AND key = 'mvz_internal';
+
+-- 4. Crear ficha profesional MVZ
+INSERT INTO public.mvz_profiles (owner_tenant_id, user_id, full_name, license_number)
+VALUES ($producer_tenant_id, $user_id, 'Dra. Veterinaria Interna', 'ABC123456')
+RETURNING id; -- $mvz_profile_id
+
+-- 5. Asignar ranchos operativos
+INSERT INTO public.user_upp_access (tenant_id, user_id, upp_id, access_level, granted_by_user_id)
+VALUES ($producer_tenant_id, $user_id, $upp_id, 'editor', auth.uid());
+
+-- 6. Sincronizar visibilidad del panel MVZ
+INSERT INTO public.mvz_upp_assignments (mvz_profile_id, upp_id, assigned_by_user_id)
+VALUES ($mvz_profile_id, $upp_id, auth.uid())
+ON CONFLICT (mvz_profile_id, upp_id) DO NOTHING;
 ```
 
 ---

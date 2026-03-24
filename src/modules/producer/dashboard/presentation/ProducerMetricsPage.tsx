@@ -5,8 +5,8 @@ import { ProducerDashboardPageContent } from "./ProducerDashboardPage";
 export default function ProducerMetricsPage() {
   return (
     <ProducerDashboardPageContent
-      title="Metricas de la organizacion"
-      description="Vista agregada del tenant productor con indicadores globales de operacion."
+      title="Indicadores de la organización"
+      description="Vista general de la organización productora con sus indicadores principales."
       showProjectCards={false}
       forceOrganizationScope
     />

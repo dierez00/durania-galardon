@@ -1,15 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { TenantRolesManager } from "@/modules/iam";
-import MvzMembersPage from "@/modules/mvz/members/presentation/MvzMembersPage";
 import { useTenantWorkspace } from "@/modules/workspace";
-import { Card, CardContent } from "@/shared/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import MvzSettingsProfileTab from "./MvzSettingsProfileTab";
 import MvzSettingsRanchosTab from "./MvzSettingsRanchosTab";
 
-type MvzSettingsTabKey = "profile" | "ranchos" | "team" | "roles";
+type MvzSettingsTabKey = "profile" | "ranchos";
 
 function hasAnyPermission(permissions: string[], expected: string[]) {
   return expected.some((permission) => permissions.includes(permission));
@@ -34,32 +32,6 @@ export default function MvzSettingsPage() {
           visible: hasAnyPermission(permissions, ["mvz.assignments.read"]),
           content: <MvzSettingsRanchosTab />,
         },
-        {
-          key: "team" as const,
-          label: "Equipo",
-          visible: hasAnyPermission(permissions, ["mvz.members.read", "mvz.members.write"]),
-          content: (
-            <MvzMembersPage
-              title="Equipo MVZ"
-              description="Alta, cambio de rol y suspension de miembros del tenant MVZ."
-              canManage={permissions.includes("mvz.members.write")}
-            />
-          ),
-        },
-        {
-          key: "roles" as const,
-          label: "Roles",
-          visible: hasAnyPermission(permissions, ["mvz.roles.read", "mvz.roles.write"]),
-          content: (
-            <TenantRolesManager
-              endpoint="/api/mvz/roles"
-              title="Roles del tenant MVZ"
-              description="Administra roles base protegidos, clones y permisos custom para el equipo MVZ."
-              emptyLabel="No hay roles visibles para este tenant MVZ."
-              canManage={permissions.includes("mvz.roles.write")}
-            />
-          ),
-        },
       ].filter((tab) => tab.visible),
     [permissions]
   );
@@ -77,16 +49,27 @@ export default function MvzSettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Configuracion</h1>
+        <h1 className="text-2xl font-bold">Configuración</h1>
         <p className="text-sm text-muted-foreground">
-          Perfil del tenant MVZ, ranchos asignados, equipo y roles editables por panel.
+          Datos de la organización MVZ y ranchos asignados para tu trabajo en campo.
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Gestión de personal</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground">
+          Las altas del personal MVZ se realizan fuera de este panel. Gobierno da de alta a las
+          cuentas con rol MVZ Gobierno y cada productor da de alta a las cuentas con rol MVZ
+          Interno.
+        </CardContent>
+      </Card>
 
       {tabs.length === 0 || !activeTab ? (
         <Card>
           <CardContent className="py-8 text-sm text-muted-foreground">
-            No cuentas con permisos para visualizar tabs de configuracion en este panel.
+            No cuentas con permisos para ver esta sección de configuración.
           </CardContent>
         </Card>
       ) : (

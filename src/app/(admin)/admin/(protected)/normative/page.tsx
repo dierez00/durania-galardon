@@ -37,7 +37,7 @@ export default function AdminNormativePage() {
 
     const accessToken = await getAccessToken();
     if (!accessToken) {
-      setErrorMessage("No existe sesion activa.");
+      setErrorMessage("No existe sesión activa.");
       setLoading(false);
       return;
     }
@@ -66,7 +66,7 @@ export default function AdminNormativePage() {
   const createSetting = async () => {
     const accessToken = await getAccessToken();
     if (!accessToken) {
-      setErrorMessage("No existe sesion activa.");
+      setErrorMessage("No existe sesión activa.");
       return;
     }
 
@@ -96,13 +96,13 @@ export default function AdminNormativePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Catalogos / Configuracion Normativa</h1>
-        <p className="text-sm text-muted-foreground">Regla 60%, vigencia TB/BR, agostadero y parametros sanitarios.</p>
+        <h1 className="text-2xl font-bold">Catálogos y configuración normativa</h1>
+        <p className="text-sm text-muted-foreground">Regla 60 %, vigencia TB/BR, agostadero y parámetros sanitarios.</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Nuevo parametro normativo</CardTitle>
+          <CardTitle>Nuevo parámetro normativo</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
           <div className="space-y-2">
@@ -115,7 +115,7 @@ export default function AdminNormativePage() {
           </div>
           <div>
             <Button onClick={createSetting} disabled={!key.trim() || !value.trim()}>
-              Guardar parametro
+              Guardar parámetro
             </Button>
           </div>
         </CardContent>
@@ -123,7 +123,7 @@ export default function AdminNormativePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Parametros vigentes</CardTitle>
+          <CardTitle>Parámetros vigentes</CardTitle>
         </CardHeader>
         <CardContent>
           {errorMessage ? <p className="mb-3 text-sm text-destructive">{errorMessage}</p> : null}

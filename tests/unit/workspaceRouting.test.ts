@@ -25,4 +25,12 @@ describe("resolveWorkspaceLocation", () => {
       detailId: null,
     });
   });
+
+  it("returns normalized Spanish labels for organization and project sections", () => {
+    const producerLocation = resolveWorkspaceLocation("/producer/projects/upp-2");
+    const mvzLocation = resolveWorkspaceLocation("/mvz/ranchos/upp-1/historial-clinico");
+
+    expect(producerLocation?.sectionLabel).toBe("Resumen");
+    expect(mvzLocation?.sectionLabel).toBe("Historial clínico");
+  });
 });

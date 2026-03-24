@@ -4,7 +4,7 @@ import {
   isPermissionKey,
   isTenantAdminRole,
   redirectPathForRole,
-  ROLE_DEFAULT_PERMISSIONS,
+  resolveDefaultPermissionsForTenantRole,
   type AppRole,
   type PermissionKey,
   type TenantPanelType,
@@ -120,6 +120,14 @@ function resolveDefaultRoleKeyForTenantType(type: TenantType): string {
   }
 
   return "producer";
+}
+
+function resolvePanelTypeForContext(row: Pick<UserContextRow, "tenant_type" | "role_key">): TenantType {
+  if (row.tenant_type === "producer" && row.role_key === "mvz_internal") {
+    return "mvz";
+  }
+
+  return row.tenant_type;
 }
 
 function resolveDefaultRoleNameForTenantType(type: TenantType): string {
@@ -347,13 +355,13 @@ async function resolvePrimaryContext(
     .filter(isPermissionKey);
 
   if (permissions.length === 0 && usedDefaultRole) {
-    permissions = [...ROLE_DEFAULT_PERMISSIONS[compatibleRole]];
+    permissions = [...resolveDefaultPermissionsForTenantRole(row.tenant_type, row.role_key)];
   }
 
   return {
     row,
     permissions,
-    panelType: row.tenant_type,
+    panelType: resolvePanelTypeForContext(row),
   };
 }
 
@@ -440,8 +448,7 @@ export async function resolveAuthenticatedRequestUser(
       roleKey: contextResult.row.role_key,
       roleName: contextResult.row.role_name ?? contextResult.row.role_key,
       isSystemRole: contextResult.row.is_system_role,
-      isMvzInternal:
-        contextResult.row.tenant_type === "mvz" && contextResult.row.role_key === "mvz_internal",
+      isMvzInternal: contextResult.row.role_key === "mvz_internal",
       tenantId: contextResult.row.tenant_id,
       tenantSlug: contextResult.row.tenant_slug,
       tenantType: contextResult.row.tenant_type,

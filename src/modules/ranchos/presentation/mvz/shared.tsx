@@ -103,7 +103,7 @@ export function ViewModeToggle({
       </ToggleGroupItem>
       <ToggleGroupItem value="card" aria-label="Vista de tarjetas">
         <LayoutGrid className="mr-1 h-4 w-4" />
-        Cards
+        Tarjetas
       </ToggleGroupItem>
     </ToggleGroup>
   );

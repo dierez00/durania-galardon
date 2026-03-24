@@ -56,7 +56,7 @@ export default function MvzSettingsProfileTab() {
       try {
         const accessToken = await getAccessToken();
         if (!accessToken) {
-          setErrorMessage("No existe sesion activa.");
+          setErrorMessage("No existe sesión activa.");
           return;
         }
 
@@ -69,7 +69,7 @@ export default function MvzSettingsProfileTab() {
 
         const body = (await response.json()) as MvzSettingsPayload;
         if (!response.ok || !body.ok) {
-          setErrorMessage(body.error?.message ?? "No fue posible cargar configuracion.");
+          setErrorMessage(body.error?.message ?? "No fue posible cargar la configuración.");
           return;
         }
 
@@ -98,7 +98,7 @@ export default function MvzSettingsProfileTab() {
     try {
       const accessToken = await getAccessToken();
       if (!accessToken) {
-        setErrorMessage("No existe sesion activa.");
+        setErrorMessage("No existe sesión activa.");
         return;
       }
 
@@ -115,7 +115,7 @@ export default function MvzSettingsProfileTab() {
 
       const body = (await response.json()) as MvzSettingsPayload;
       if (!response.ok || !body.ok) {
-        setErrorMessage(body.error?.message ?? "No fue posible guardar configuracion.");
+        setErrorMessage(body.error?.message ?? "No fue posible guardar la configuración.");
         return;
       }
 
@@ -157,7 +157,7 @@ export default function MvzSettingsProfileTab() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Ultima asignacion</CardTitle>
+            <CardTitle className="text-base">Última asignación</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm font-medium">
@@ -171,7 +171,7 @@ export default function MvzSettingsProfileTab() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Visitas proximas</CardTitle>
+            <CardTitle className="text-base">Visitas próximas</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{loading ? "-" : summary.upcomingVisits}</p>
@@ -191,12 +191,12 @@ export default function MvzSettingsProfileTab() {
         <CardHeader>
           <CardTitle>Perfil del panel</CardTitle>
           <CardDescription>
-            Configuracion del tenant MVZ y resumen de la operacion asignada en este panel.
+            Datos de la organización MVZ y resumen de la actividad atendida desde este panel.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="organizationName">Nombre de la organizacion</Label>
+            <Label htmlFor="organizationName">Nombre de la organización</Label>
             <Input
               id="organizationName"
               value={organizationName}
@@ -209,7 +209,7 @@ export default function MvzSettingsProfileTab() {
             <Input id="organizationSlug" value={organizationSlug} readOnly />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="organizationType">Tipo de tenant</Label>
+            <Label htmlFor="organizationType">Tipo de organización</Label>
             <Input id="organizationType" value={organizationType || "mvz"} readOnly />
           </div>
           <div className="space-y-2">

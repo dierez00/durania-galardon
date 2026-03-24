@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-22
+Last Updated: 2026-03-24
 Source of Truth: Active route map, legacy redirects, and guard expectations for the current application.
 
 # Rutas y guards
@@ -50,13 +50,15 @@ Source of Truth: Active route map, legacy redirects, and guard expectations for 
     - `/producer/exportaciones`
     - `/producer/documentos`
     - `/producer/empleados`
+  - Nota
+    - el tenant productor tambien puede contener `mvz_internal`, pero ese rol no usa `/producer/*`; entra por `/mvz/*`
 
 - `mvz_government` y `mvz_internal`
   - Organizacion
     - `/mvz`
     - `/mvz/metrics`
     - `/mvz/profile`
-    - `/mvz/settings` con cualquier permiso de settings (`mvz.tenant.*`, `mvz.assignments.read`, `mvz.members.*`, `mvz.roles.*`) excepto `mvz_internal`
+    - `/mvz/settings` con tabs `Perfil` y `Ranchos` para `mvz_government`
   - Proyecto
     - `/mvz/ranchos/[uppId]`
     - `/mvz/ranchos/[uppId]/animales`
@@ -106,6 +108,7 @@ Regla especial `mvz_internal`:
 - si tiene una sola asignacion activa, `/mvz` redirige a `/mvz/ranchos/[uppId]`
 - si tiene varias asignaciones, `/mvz` muestra una lista minima para elegir rancho
 - `/mvz/settings`, `/mvz/metrics` y `/mvz/dashboard` se bloquean y redirigen a `/mvz`
+- si el rol `mvz_internal` vive dentro de un tenant `producer`, la app igual resuelve `panelType = mvz` y mantiene este mismo comportamiento
 
 ## Shell tenant
 
@@ -127,6 +130,7 @@ Reglas activas del shell:
 - El selector de proyecto/rancho ya no vive debajo del breadcrumb: en modo proyecto se renderiza inline dentro del breadcrumb.
 - En productor, el patron visible es `Inicio > <UPP actual>`.
 - En MVZ, el patron visible es `Inicio > <rancho actual>`.
+- El mismo patron de selector inline se conserva al entrar al detalle de animales, tanto en productor como en MVZ.
 
 ## Guards principales
 
@@ -138,6 +142,7 @@ Reglas activas del shell:
   - resuelve el home del panel segun permisos (`/producer`, `/producer/settings`, `/producer/profile`, `/mvz`, `/mvz/settings`, `/mvz/profile`)
   - permite `/producer/settings` con cualquier permiso de tabs producer
   - permite `/mvz/settings` con cualquier permiso de tabs MVZ salvo `mvz_internal`
+  - deja `/mvz/settings` limitado a informacion de perfil del panel y ranchos asignados; no expone administracion de equipo o roles
   - bloquea `mvz_internal` en `/mvz/settings`, `/mvz/metrics` y `/mvz/dashboard`
 - `src/server/authz/index.ts`
   - aplica `roles`, `permissions` y `scope.uppId`

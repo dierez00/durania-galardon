@@ -144,10 +144,6 @@ const MVZ_GOVERNMENT_PERMISSION_SET: PermissionKey[] = [
   "mvz.tenant.write",
   "mvz.profile.read",
   "mvz.profile.write",
-  "mvz.members.read",
-  "mvz.members.write",
-  "mvz.roles.read",
-  "mvz.roles.write",
   "mvz.ranch.read",
   "mvz.ranch.animals.read",
   "mvz.ranch.clinical.read",
@@ -161,7 +157,7 @@ const MVZ_GOVERNMENT_PERMISSION_SET: PermissionKey[] = [
   "mvz.ranch.visits.read",
   "mvz.ranch.visits.write",
 ];
-const MVZ_INTERNAL_PERMISSION_SET: PermissionKey[] = [
+export const MVZ_TENANT_INTERNAL_PERMISSION_SET: PermissionKey[] = [
   "mvz.dashboard.read",
   "mvz.assignments.read",
   "mvz.bovinos.read",
@@ -169,6 +165,26 @@ const MVZ_INTERNAL_PERMISSION_SET: PermissionKey[] = [
   "mvz.tests.write",
   "mvz.tests.sync",
   "mvz.exports.read",
+  "mvz.notifications.read",
+  "mvz.ranch.read",
+  "mvz.ranch.animals.read",
+  "mvz.ranch.clinical.read",
+  "mvz.ranch.vaccinations.read",
+  "mvz.ranch.vaccinations.write",
+  "mvz.ranch.incidents.read",
+  "mvz.ranch.incidents.write",
+  "mvz.ranch.reports.read",
+  "mvz.ranch.documents.read",
+  "mvz.ranch.documents.write",
+  "mvz.ranch.visits.read",
+  "mvz.ranch.visits.write",
+];
+export const PRODUCER_MVZ_INTERNAL_PERMISSION_SET: PermissionKey[] = [
+  "mvz.assignments.read",
+  "mvz.bovinos.read",
+  "mvz.tests.read",
+  "mvz.tests.write",
+  "mvz.tests.sync",
   "mvz.notifications.read",
   "mvz.ranch.read",
   "mvz.ranch.animals.read",
@@ -227,11 +243,24 @@ const PRODUCER_VIEWER_PERMISSION_SET: PermissionKey[] = [
 export const ROLE_DEFAULT_PERMISSIONS: Record<AppRole, PermissionKey[]> = {
   tenant_admin: ADMIN_PERMISSION_SET,
   mvz_government: MVZ_GOVERNMENT_PERMISSION_SET,
-  mvz_internal: MVZ_INTERNAL_PERMISSION_SET,
+  mvz_internal: MVZ_TENANT_INTERNAL_PERMISSION_SET,
   producer: PRODUCER_PERMISSION_SET,
   employee: PRODUCER_EMPLOYEE_PERMISSION_SET,
   producer_viewer: PRODUCER_VIEWER_PERMISSION_SET,
 };
+
+export function resolveDefaultPermissionsForTenantRole(
+  tenantType: TenantPanelType,
+  roleKey: string | null | undefined
+): PermissionKey[] {
+  const compatibleRole = deriveCompatibleRole(tenantType, roleKey);
+
+  if (tenantType === "producer" && roleKey === "mvz_internal") {
+    return PRODUCER_MVZ_INTERNAL_PERMISSION_SET;
+  }
+
+  return ROLE_DEFAULT_PERMISSIONS[compatibleRole];
+}
 
 export function isAppRole(value: string): value is AppRole {
   return APP_ROLES.includes(value as AppRole);
@@ -246,6 +275,10 @@ export function deriveCompatibleRole(
   }
 
   if (tenantType === "producer") {
+    if (roleKey === "mvz_internal") {
+      return "mvz_internal";
+    }
+
     if (roleKey === "employee") {
       return "employee";
     }
@@ -320,10 +353,6 @@ export const MVZ_SETTINGS_NAV_PERMISSIONS: PermissionKey[] = [
   "mvz.tenant.read",
   "mvz.tenant.write",
   "mvz.assignments.read",
-  "mvz.members.read",
-  "mvz.members.write",
-  "mvz.roles.read",
-  "mvz.roles.write",
 ];
 
 function hasAnyPermission(permissions: PermissionKey[], expected: PermissionKey[]) {

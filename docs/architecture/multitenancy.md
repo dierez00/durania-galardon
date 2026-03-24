@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-19
+Last Updated: 2026-03-24
 Source of Truth: Canonical tenant resolution and two-level workspace behavior for the current runtime.
 
 # Multi-tenant
@@ -57,6 +57,10 @@ La jerarquia MVZ usa dos contextos distintos:
 - Contexto tenant: resuelto por middleware (`tenantSlug`).
 - Contexto rancho (UPP): resuelto por URL (`/mvz/ranchos/[uppId]`) y persistido en `sessionStorage`.
 
+Nota operativa:
+
+- Si el usuario tiene rol `mvz_internal` dentro de un tenant `producer`, el tenant origen sigue siendo `producer`, pero el `panelType` activo se resuelve como `mvz` para reutilizar shell, guards y rutas MVZ.
+
 Clave de persistencia cliente:
 
 - `mvz:selectedUppId:<tenantId>`
@@ -84,6 +88,7 @@ Comportamiento UI actual del workspace:
 - El cambio de proyecto/ranchos entre contextos ya no usa un selector separado bajo la topbar; usa un dropdown inline sobre el segundo item del breadcrumb.
 - El sidebar tenant es compacto y no repite el contexto actual en una card lateral.
 - La persistencia cliente no cambia: el proyecto activo y el ultimo modulo siguen viviendo en `sessionStorage`.
+- En productor, el detalle de animal dentro de `/producer/projects/[uppId]/animales/[id]` conserva la misma logica de breadcrumb y selector inline de contexto.
 
 ## Endpoint de prueba
 

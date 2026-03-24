@@ -6,6 +6,7 @@ import {
   MVZ_SETTINGS_NAV_PERMISSIONS,
   PRODUCER_SETTINGS_NAV_PERMISSIONS,
   redirectPathForRole,
+  resolveDefaultPermissionsForTenantRole,
   resolvePanelHomePath,
 } from "../../src/shared/lib/auth";
 
@@ -43,8 +44,24 @@ describe("shared auth role helpers", () => {
 
   it("derives compatible panel roles for custom tenant roles", () => {
     expect(deriveCompatibleRole("producer", "custom_operador")).toBe("producer");
+    expect(deriveCompatibleRole("producer", "mvz_internal")).toBe("mvz_internal");
     expect(deriveCompatibleRole("mvz", "custom_supervisor")).toBe("mvz_government");
     expect(deriveCompatibleRole("mvz", "mvz_internal")).toBe("mvz_internal");
+  });
+
+  it("resolves fallback permissions for mvz interno inside producer tenants", () => {
+    const permissions = resolveDefaultPermissionsForTenantRole("producer", "mvz_internal");
+
+    expect(permissions).toEqual(
+      expect.arrayContaining([
+        "mvz.assignments.read",
+        "mvz.tests.write",
+        "mvz.ranch.visits.write",
+      ])
+    );
+    expect(permissions).not.toEqual(
+      expect.arrayContaining(["producer.employees.write", "producer.bovinos.read"])
+    );
   });
 
   it("resolves panel home paths from permissions", () => {
@@ -58,7 +75,7 @@ describe("shared auth role helpers", () => {
     expect(
       resolvePanelHomePath({
         panelType: "mvz",
-        permissions: ["mvz.roles.write"],
+        permissions: ["mvz.tenant.write"],
       })
     ).toBe("/mvz/settings");
 
@@ -76,7 +93,10 @@ describe("shared auth role helpers", () => {
       expect.arrayContaining(["producer.tenant.write", "producer.employees.write", "producer.roles.write"])
     );
     expect(MVZ_SETTINGS_NAV_PERMISSIONS).toEqual(
-      expect.arrayContaining(["mvz.tenant.write", "mvz.members.write", "mvz.roles.write"])
+      expect.arrayContaining(["mvz.tenant.write", "mvz.assignments.read"])
+    );
+    expect(MVZ_SETTINGS_NAV_PERMISSIONS).not.toEqual(
+      expect.arrayContaining(["mvz.members.write", "mvz.roles.write"])
     );
   });
 });

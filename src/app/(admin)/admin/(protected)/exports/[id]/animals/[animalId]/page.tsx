@@ -24,7 +24,7 @@ export default function AdminExportacionAnimalDetailPage({
       if (data) {
         setAnimal(data);
       } else {
-        setError("No se encontrÃ³ el animal.");
+        setError("No se encontró el animal.");
       }
     } catch {
       setError("Error al cargar los datos del animal.");

@@ -47,7 +47,7 @@ export default function AdminAppointmentsPage() {
 
     const accessToken = await getAccessToken();
     if (!accessToken) {
-      setErrorMessage("No existe sesion activa.");
+      setErrorMessage("No existe sesión activa.");
       setLoading(false);
       return;
     }
@@ -98,7 +98,7 @@ export default function AdminAppointmentsPage() {
 
     if (!response.ok) {
       const body = await response.json();
-      setErrorMessage(body.error?.message ?? "No fue posible actualizar cita.");
+      setErrorMessage(body.error?.message ?? "No fue posible actualizar la cita.");
       return;
     }
 
@@ -108,8 +108,10 @@ export default function AdminAppointmentsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Citas Publicas</h1>
-        <p className="text-sm text-muted-foreground">Solicitudes desde portal publico y su seguimiento.</p>
+        <h1 className="text-2xl font-bold">Citas públicas</h1>
+        <p className="text-sm text-muted-foreground">
+          Solicitudes enviadas desde el portal público y su seguimiento.
+        </p>
       </div>
 
       <Card>
@@ -129,7 +131,7 @@ export default function AdminAppointmentsPage() {
                   <TableHead>Servicio</TableHead>
                   <TableHead>Contacto</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead>Accion</TableHead>
+                  <TableHead>Acción</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

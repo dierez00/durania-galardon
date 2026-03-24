@@ -26,7 +26,7 @@ const MVZ_COLUMNS: SpreadsheetColumn<AdminMvzBatchRowInput>[] = [
     header: "Email",
     required: true,
     normalize: (value) => value.trim().toLowerCase(),
-    validate: (value) => (EMAIL_REGEX.test(value) ? null : "Email invalido."),
+    validate: (value) => (EMAIL_REGEX.test(value) ? null : "Correo inválido."),
   },
   {
     key: "fullName",
@@ -48,13 +48,13 @@ export default function AdminMvzBatchCreatePage() {
   const handleDownloadCredentials = () => {
     if (createdRows.length === 0) return;
     const buffer = buildExcelBuffer(
-      ["Fila", "ID entidad", "Tenant", "Email", "Invitacion enviada"],
+      ["Fila", "ID entidad", "Organización", "Correo", "Invitación enviada"],
       createdRows.map((row) => [
         String(row.rowIndex + 1),
         row.entityId,
         row.tenantId,
         row.email,
-        row.invitationSent ? "Si" : "No",
+        row.invitationSent ? "Sí" : "No",
       ])
     );
     downloadExcel("mvz-invitaciones.xlsx", buffer);
@@ -67,7 +67,7 @@ export default function AdminMvzBatchCreatePage() {
           <h1 className="text-2xl font-bold">Alta masiva de MVZ</h1>
           <p className="text-sm text-muted-foreground">
             Pega filas desde Excel o importa un archivo .xlsx para crear hasta 100 registros.
-            Las cuentas nuevas recibiran una invitacion por correo para activar su acceso.
+            Las cuentas nuevas recibirán una invitación por correo para activar su acceso.
           </p>
         </div>
         <Button asChild variant="outline">
@@ -105,9 +105,9 @@ export default function AdminMvzBatchCreatePage() {
                 <TableRow>
                   <TableHead>Fila</TableHead>
                   <TableHead>ID entidad</TableHead>
-                  <TableHead>Tenant</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Invitacion enviada</TableHead>
+                  <TableHead>Organización</TableHead>
+                  <TableHead>Correo</TableHead>
+                  <TableHead>Invitación enviada</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -117,7 +117,7 @@ export default function AdminMvzBatchCreatePage() {
                     <TableCell className="font-mono text-xs">{row.entityId}</TableCell>
                     <TableCell className="font-mono text-xs">{row.tenantId}</TableCell>
                     <TableCell>{row.email}</TableCell>
-                    <TableCell>{row.invitationSent ? "Invitacion enviada" : "Asignado a cuenta existente"}</TableCell>
+                    <TableCell>{row.invitationSent ? "Invitación enviada" : "Asignado a cuenta existente"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

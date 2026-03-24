@@ -48,7 +48,7 @@ const producerNavigation: NavigationItem[] = [
   { name: "Movilizacion", href: "/producer/movilizacion", icon: Truck, permission: "producer.movements.read" },
   { name: "Exportaciones", href: "/producer/exportaciones", icon: Ship, permission: "producer.exports.read" },
   { name: "Documentos", href: "/producer/documentos", icon: FileText, permission: "producer.documents.read" },
-  { name: "Empleados", href: "/producer/empleados", icon: Users, permission: "producer.employees.read" },
+  { name: "Equipo", href: "/producer/empleados", icon: Users, permission: "producer.employees.read" },
 ];
 
 const mvzNavigation: NavigationItem[] = [
