@@ -14,7 +14,10 @@ Migraciones activas:
 - `sql/migration_001_duraniaMVP.sql`
 - `sql/migration_002_mvz_hierarchy.sql`
 - `sql/migration_003_fix_rls_politicies.sql`
-- `sql/20260323_add_iot_telemetry_tables.sql`
+- `sql/migration_004_settings_profile_split.sql`
+- `sql/migration_005_mvz_settings_permissions_backfill.sql`
+- `sql/migration_006_tenant_custom_roles.sql`
+- `sql/migration_007_add_iot_telemetry_tables.sql`
 - `sql/views.sql`
 - `sql/seeds.sql`
 
