@@ -445,6 +445,8 @@ model users {
   oauth_consents              oauth_consents[]
   one_time_tokens             one_time_tokens[]
   sessions                    sessions[]
+  webauthn_challenges         webauthn_challenges[]
+  webauthn_credentials        webauthn_credentials[]
   profiles                    profiles?
 
   @@index([instance_id])
@@ -455,22 +457,25 @@ model users {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model animals {
-  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenant_id           String                @db.Uuid
-  upp_id              String                @db.Uuid
-  siniiga_tag         String                @unique
-  sex                 String
-  birth_date          DateTime?             @db.Date
-  status              String                @default("active")
-  mother_animal_id    String?               @db.Uuid
-  created_at          DateTime              @default(now()) @db.Timestamptz(6)
-  animal_vaccinations animal_vaccinations[]
-  animals             animals?              @relation("animalsToanimals", fields: [mother_animal_id], references: [id], onUpdate: NoAction)
-  other_animals       animals[]             @relation("animalsToanimals")
-  tenants             tenants               @relation(fields: [tenant_id], references: [id], onUpdate: NoAction)
-  upps                upps                  @relation(fields: [upp_id], references: [id], onUpdate: NoAction)
-  field_tests         field_tests[]
-  sanitary_incidents  sanitary_incidents[]
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id             String                  @db.Uuid
+  upp_id                String                  @db.Uuid
+  siniiga_tag           String                  @unique
+  sex                   String
+  birth_date            DateTime?               @db.Date
+  status                String                  @default("active")
+  mother_animal_id      String?                 @db.Uuid
+  created_at            DateTime                @default(now()) @db.Timestamptz(6)
+  animal_vaccinations   animal_vaccinations[]
+  animals               animals?                @relation("animalsToanimals", fields: [mother_animal_id], references: [id], onUpdate: NoAction)
+  other_animals         animals[]               @relation("animalsToanimals")
+  tenants               tenants                 @relation(fields: [tenant_id], references: [id], onUpdate: NoAction)
+  upps                  upps                    @relation(fields: [upp_id], references: [id], onUpdate: NoAction)
+  collar_animal_history collar_animal_history[]
+  collars               collars[]
+  field_tests           field_tests[]
+  sanitary_incidents    sanitary_incidents[]
+  telemetry             telemetry[]
 
   @@index([status], map: "idx_animals_status")
   @@index([tenant_id], map: "idx_animals_tenant")
@@ -749,6 +754,7 @@ model producer_documents {
   ocr_confidence     Decimal?       @db.Decimal
   ocr_validated_at   DateTime?      @db.Timestamptz(6)
   ocr_engine_version String?
+  comments           String?
   document_types     document_types @relation(fields: [document_type_id], references: [id], onUpdate: NoAction)
   producers          producers      @relation(fields: [producer_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   tenants            tenants        @relation(fields: [tenant_id], references: [id], onUpdate: NoAction)
@@ -787,7 +793,10 @@ model profiles {
   id                                                                  String                   @id @db.Uuid
   status                                                              String                   @default("active")
   created_at                                                          DateTime                 @default(now()) @db.Timestamptz(6)
+  email                                                               String?
   audit_logs                                                          audit_logs[]
+  collar_animal_history_collar_animal_history_linked_byToprofiles     collar_animal_history[]  @relation("collar_animal_history_linked_byToprofiles")
+  collar_animal_history_collar_animal_history_unlinked_byToprofiles   collar_animal_history[]  @relation("collar_animal_history_unlinked_byToprofiles")
   export_requests_export_requests_approved_by_admin_user_idToprofiles export_requests[]        @relation("export_requests_approved_by_admin_user_idToprofiles")
   export_requests_export_requests_requested_by_user_idToprofiles      export_requests[]        @relation("export_requests_requested_by_user_idToprofiles")
   export_requests_export_requests_validated_by_mvz_user_idToprofiles  export_requests[]        @relation("export_requests_validated_by_mvz_user_idToprofiles")
@@ -810,6 +819,7 @@ model profiles {
   user_upp_access_user_upp_access_granted_by_user_idToprofiles        user_upp_access[]        @relation("user_upp_access_granted_by_user_idToprofiles")
   user_upp_access_user_upp_access_user_idToprofiles                   user_upp_access[]        @relation("user_upp_access_user_idToprofiles")
 
+  @@index([email], map: "idx_profiles_email")
   @@schema("public")
 }
 
@@ -908,32 +918,35 @@ model tenant_user_roles {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model tenants {
-  id                                                                String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                                                                String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   type                                                              String
-  slug                                                              String                 @unique
+  slug                                                              String                  @unique
   name                                                              String
-  status                                                            String                 @default("active")
-  created_by_user_id                                                String?                @db.Uuid
-  created_at                                                        DateTime               @default(now()) @db.Timestamptz(6)
+  status                                                            String                  @default("active")
+  created_by_user_id                                                String?                 @db.Uuid
+  created_at                                                        DateTime                @default(now()) @db.Timestamptz(6)
   animal_vaccinations                                               animal_vaccinations[]
   animals                                                           animals[]
   appointment_requests                                              appointment_requests[]
   audit_logs                                                        audit_logs[]
+  collar_animal_history                                             collar_animal_history[]
+  collars                                                           collars[]
   export_requests                                                   export_requests[]
   field_tests                                                       field_tests[]
   movement_requests                                                 movement_requests[]
   mvz_profiles                                                      mvz_profiles?
   mvz_visits                                                        mvz_visits[]
   normative_settings                                                normative_settings[]
-  notification_events_notification_events_sender_tenant_idTotenants notification_events[]  @relation("notification_events_sender_tenant_idTotenants")
-  notification_events_notification_events_target_tenant_idTotenants notification_events[]  @relation("notification_events_target_tenant_idTotenants")
+  notification_events_notification_events_sender_tenant_idTotenants notification_events[]   @relation("notification_events_sender_tenant_idTotenants")
+  notification_events_notification_events_target_tenant_idTotenants notification_events[]   @relation("notification_events_target_tenant_idTotenants")
   producer_documents                                                producer_documents[]
   producers                                                         producers?
   sanitary_incidents                                                sanitary_incidents[]
   state_quarantines                                                 state_quarantines[]
+  telemetry                                                         telemetry[]
   tenant_memberships                                                tenant_memberships[]
   tenant_roles                                                      tenant_roles[]
-  profiles                                                          profiles?              @relation(fields: [created_by_user_id], references: [id], onUpdate: NoAction)
+  profiles                                                          profiles?               @relation(fields: [created_by_user_id], references: [id], onUpdate: NoAction)
   upp_documents                                                     upp_documents[]
   upps                                                              upps[]
   user_upp_access                                                   user_upp_access[]
@@ -1085,6 +1098,7 @@ model upp_documents {
   is_current          Boolean   @default(true)
   uploaded_at         DateTime  @default(now()) @db.Timestamptz(6)
   updated_at          DateTime  @default(now()) @db.Timestamptz(6)
+  comments            String?
   tenants             tenants   @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   profiles            profiles? @relation("upp_documents_uploaded_by_user_idToprofiles", fields: [uploaded_by_user_id], references: [id], onUpdate: NoAction)
   upps                upps      @relation(fields: [upp_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -1112,6 +1126,127 @@ model user_upp_access {
   @@unique([user_id, upp_id])
   @@index([tenant_id], map: "idx_user_upp_access_tenant")
   @@index([user_id], map: "idx_user_upp_access_user")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model webauthn_challenges {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String?  @db.Uuid
+  challenge_type String
+  session_data   Json
+  created_at     DateTime @default(now()) @db.Timestamptz(6)
+  expires_at     DateTime @db.Timestamptz(6)
+  users          users?   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([expires_at])
+  @@index([user_id])
+  @@schema("auth")
+}
+
+model webauthn_credentials {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String    @db.Uuid
+  credential_id    Bytes     @unique
+  public_key       Bytes
+  attestation_type String    @default("")
+  aaguid           String?   @db.Uuid
+  sign_count       BigInt    @default(0)
+  transports       Json      @default("[]")
+  backup_eligible  Boolean   @default(false)
+  backed_up        Boolean   @default(false)
+  friendly_name    String    @default("")
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime  @default(now()) @db.Timestamptz(6)
+  last_used_at     DateTime? @db.Timestamptz(6)
+  users            users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id])
+  @@schema("auth")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model collar_animal_history {
+  id                                                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  collar_id_fk                                         String    @db.Uuid
+  animal_id                                            String    @db.Uuid
+  tenant_id                                            String    @db.Uuid
+  linked_by                                            String?   @db.Uuid
+  unlinked_by                                          String?   @db.Uuid
+  linked_at                                            DateTime  @default(now()) @db.Timestamptz(6)
+  unlinked_at                                          DateTime? @db.Timestamptz(6)
+  notes                                                String?
+  animals                                              animals   @relation(fields: [animal_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "cah_animal_fkey")
+  collars                                              collars   @relation(fields: [collar_id_fk], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "cah_collar_fkey")
+  profiles_collar_animal_history_linked_byToprofiles   profiles? @relation("collar_animal_history_linked_byToprofiles", fields: [linked_by], references: [id], onUpdate: NoAction, map: "cah_linked_by_fkey")
+  tenants                                              tenants   @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "cah_tenant_fkey")
+  profiles_collar_animal_history_unlinked_byToprofiles profiles? @relation("collar_animal_history_unlinked_byToprofiles", fields: [unlinked_by], references: [id], onUpdate: NoAction, map: "cah_unlinked_by_fkey")
+
+  @@index([animal_id], map: "idx_cah_animal")
+  @@index([collar_id_fk], map: "idx_cah_collar")
+  @@index([linked_at(sort: Desc)], map: "idx_cah_linked")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model collars {
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id             String?                 @db.Uuid
+  animal_id             String?                 @db.Uuid
+  collar_id             String                  @unique
+  status                String                  @default("inactive")
+  firmware_version      String?
+  purchased_at          DateTime?               @db.Timestamptz(6)
+  linked_at             DateTime?               @db.Timestamptz(6)
+  unlinked_at           DateTime?               @db.Timestamptz(6)
+  created_at            DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime                @default(now()) @db.Timestamptz(6)
+  collar_animal_history collar_animal_history[]
+  animals               animals?                @relation(fields: [animal_id], references: [id], onUpdate: NoAction)
+  tenants               tenants?                @relation(fields: [tenant_id], references: [id], onUpdate: NoAction)
+  telemetry             telemetry[]
+
+  @@index([animal_id], map: "idx_collars_animal_id")
+  @@index([collar_id], map: "idx_collars_collar_id")
+  @@index([status], map: "idx_collars_status")
+  @@index([tenant_id], map: "idx_collars_tenant_id")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model telemetry {
+  id          BigInt   @id @default(autoincrement())
+  collar_uuid String   @db.Uuid
+  collar_id   String
+  tenant_id   String?  @db.Uuid
+  animal_id   String?  @db.Uuid
+  latitude    Float?
+  longitude   Float?
+  altitude    Float?
+  speed       Float?
+  temperature Float?
+  activity    Int?
+  bat_voltage Float?
+  bat_percent Int?
+  accel_x     Float?
+  accel_y     Float?
+  accel_z     Float?
+  gyro_x      Float?
+  gyro_y      Float?
+  gyro_z      Float?
+  rssi        Int?
+  snr         Float?
+  timestamp   DateTime @default(now()) @db.Timestamptz(6)
+  animals     animals? @relation(fields: [animal_id], references: [id], onUpdate: NoAction, map: "telemetry_animal_fkey")
+  collars     collars  @relation(fields: [collar_uuid], references: [id], onUpdate: NoAction, map: "telemetry_collar_fkey")
+  tenants     tenants? @relation(fields: [tenant_id], references: [id], onUpdate: NoAction, map: "telemetry_tenant_fkey")
+
+  @@index([animal_id], map: "idx_telemetry_animal_id")
+  @@index([collar_id], map: "idx_telemetry_collar_id")
+  @@index([collar_uuid], map: "idx_telemetry_collar_uuid")
+  @@index([tenant_id], map: "idx_telemetry_tenant_id")
+  @@index([timestamp(sort: Desc)], map: "idx_telemetry_timestamp")
   @@schema("public")
 }
 
