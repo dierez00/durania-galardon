@@ -367,20 +367,10 @@ SELECT
   a.upp_id,
   a.tenant_id,
   a.siniiga_tag,
-  a.name,
   a.sex,
   a.birth_date,
-  a.breed,
-  a.weight_kg,
-  a.age_years,
-  a.health_status,
-  a.last_vaccine_at,
   a.status                                      AS animal_status,
   a.mother_animal_id,
-  cc.current_collar_uuid,
-  cc.current_collar_id,
-  cc.current_collar_status,
-  cc.current_collar_linked_at,
   -- Rancho
   u.name                                        AS upp_name,
   u.upp_code,
@@ -402,7 +392,17 @@ SELECT
     WHEN tb.tb_status IS NULL      OR br.br_status IS NULL               THEN 'sin_pruebas'
     WHEN tb.tb_status = 'por_vencer' OR br.br_status = 'por_vencer'      THEN 'por_vencer'
     ELSE 'ok'
-  END                                           AS sanitary_alert
+  END                                           AS sanitary_alert,
+  a.name,
+  a.breed,
+  a.weight_kg,
+  a.age_years,
+  a.health_status,
+  a.last_vaccine_at,
+  cc.current_collar_uuid,
+  cc.current_collar_id,
+  cc.current_collar_status,
+  cc.current_collar_linked_at
 FROM public.animals             a
 JOIN public.upps                u  ON u.id = a.upp_id
 LEFT JOIN last_tb               tb ON tb.animal_id = a.id
