@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase-browser";
 import { resolveClientRole } from "@/shared/lib/auth-client";
@@ -39,6 +39,14 @@ function resolveDefaultPanel(flowType: AuthFlowType | null) {
 }
 
 export default function SetPasswordPage() {
+  return (
+    <Suspense fallback={<SetPasswordPageLoading />}>
+      <SetPasswordPageContent />
+    </Suspense>
+  );
+}
+
+function SetPasswordPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [password, setPassword] = useState("");
@@ -289,6 +297,18 @@ export default function SetPasswordPage() {
               </form>
             </>
           )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function SetPasswordPageLoading() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background p-6">
+      <Card className="w-full max-w-lg shadow-lg">
+        <CardContent className="pt-6">
+          <p className="text-sm text-muted-foreground">Cargando...</p>
         </CardContent>
       </Card>
     </div>

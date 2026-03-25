@@ -37,6 +37,14 @@ interface LoginApiResponse {
   };
 }
 
+export default function PublicLoginPage() {
+  return (
+    <Suspense fallback={<PublicLoginPageFallback />}>
+      <PublicLoginPageContent />
+    </Suspense>
+  );
+}
+
 function PublicLoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -245,18 +253,10 @@ function PublicLoginPageContent() {
   );
 }
 
-function LoginPageLoading() {
+function PublicLoginPageFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-8">
-      <p className="text-sm text-muted-foreground">Cargando acceso...</p>
+      <p className="text-sm text-muted-foreground">Cargando...</p>
     </div>
-  );
-}
-
-export default function PublicLoginPage() {
-  return (
-    <Suspense fallback={<LoginPageLoading />}>
-      <PublicLoginPageContent />
-    </Suspense>
   );
 }
