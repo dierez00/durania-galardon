@@ -11,6 +11,10 @@ export interface UppDocument {
   issuedAt: string | null;
   expiryDate: string | null;
   uploadedAt: string;
+  fullText: string | null;
+  ocrText: string | null;
+  ocrFields: Record<string, unknown> | null;
+  ocrMetadata: Record<string, unknown> | null;
 }
 
 export type DocumentStatus = "pending" | "validated" | "expired" | "rejected";

@@ -24,6 +24,10 @@ type ProducerDocumentRow = {
   expiry_date: string | null;
   uploaded_at: string;
   ocr_confidence?: number | null;
+  full_text?: string | null;
+  ocr_text?: string | null;
+  ocr_fields?: Record<string, unknown> | null;
+  ocr_metadata?: Record<string, unknown> | null;
 };
 
 function mapProducerDocument(row: ProducerDocumentRow): ProducerDocument {
@@ -42,6 +46,10 @@ function mapProducerDocument(row: ProducerDocumentRow): ProducerDocument {
     expiryDate: row.expiry_date,
     uploadedAt: row.uploaded_at,
     ocrConfidence: row.ocr_confidence ?? null,
+    fullText: row.full_text ?? null,
+    ocrText: row.ocr_text ?? null,
+    ocrFields: row.ocr_fields ?? null,
+    ocrMetadata: row.ocr_metadata ?? null,
   };
 }
 
@@ -61,7 +69,7 @@ export class ServerProducerDocumentsRepository implements IProducerDocumentsRepo
     const result = await supabaseAdmin
       .from("producer_documents")
       .select(
-        "id,tenant_id,producer_id,document_type_id,file_storage_key,file_hash,uploaded_at,status,comments,is_current,expiry_date,ocr_confidence,document_type:document_types(key,name)"
+        "id,tenant_id,producer_id,document_type_id,file_storage_key,file_hash,uploaded_at,status,comments,is_current,expiry_date,ocr_confidence,full_text,ocr_text,ocr_fields,ocr_metadata,document_type:document_types(key,name)"
       )
       .eq("tenant_id", this.tenantId)
       .eq("producer_id", producerId)
@@ -131,7 +139,7 @@ export class ServerProducerDocumentsRepository implements IProducerDocumentsRepo
         expiry_date: expiryDate || null,
       })
       .select(
-        "id,tenant_id,producer_id,document_type_id,file_storage_key,file_hash,uploaded_at,status,comments,is_current,expiry_date,ocr_confidence,document_type:document_types(key,name)"
+        "id,tenant_id,producer_id,document_type_id,file_storage_key,file_hash,uploaded_at,status,comments,is_current,expiry_date,ocr_confidence,full_text,ocr_text,ocr_fields,ocr_metadata,document_type:document_types(key,name)"
       )
       .single();
 

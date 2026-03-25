@@ -2,6 +2,7 @@
 
 import { FileText, CheckCircle, Clock, XCircle, AlertTriangle } from "lucide-react";
 import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/lib/utils";
 import { toneToBadgeVariant, type SemanticTone } from "@/shared/ui/theme";
 import type { AdminProductorDocument } from "@/modules/admin/productores/domain/entities/AdminProductorDetailEntity";
@@ -9,13 +10,14 @@ import type { AdminProductorDocument } from "@/modules/admin/productores/domain/
 interface AdminProductorDocumentCardProps {
   doc: AdminProductorDocument;
   className?: string;
+  onReview?: (doc: AdminProductorDocument) => void;
 }
 
 function getDocStatusConfig(status: string) {
   switch (status) {
-    case "approved":
+    case "validated":
       return {
-        label: "Aprobado",
+        label: "Validado",
         icon: CheckCircle,
         tone: "success" as const,
       };
@@ -58,6 +60,7 @@ function formatDate(isoDate: string | null): string {
 export function AdminProductorDocumentCard({
   doc,
   className,
+  onReview,
 }: Readonly<AdminProductorDocumentCardProps>) {
   const config = getDocStatusConfig(doc.status);
   const StatusIcon = config.icon;
@@ -104,6 +107,11 @@ export function AdminProductorDocumentCard({
         {!doc.isCurrent && (
           <p className="text-[11px] text-muted-foreground mt-1 italic">Versión anterior</p>
         )}
+        <div className="mt-3">
+          <Button size="sm" variant="outline" onClick={() => onReview?.(doc)}>
+            Revisar documento
+          </Button>
+        </div>
       </div>
     </div>
   );

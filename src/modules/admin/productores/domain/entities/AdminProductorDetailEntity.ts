@@ -37,12 +37,37 @@ export interface AdminProductorUpp {
 
 export interface AdminProductorDocument {
   id: string;
+  sourceType: AdminDocumentSourceType;
+  sourceId: string;
+  uppId: string | null;
+  uppName: string | null;
   documentType: string;
-  status: string;
+  fileStorageKey: string;
+  status: AdminDocumentStatus;
   comments: string | null;
   isCurrent: boolean;
+  issuedAt: string | null;
   expiryDate: string | null;
   uploadedAt: string;
+}
+
+export type AdminDocumentSourceType = "producer" | "upp";
+
+export type AdminDocumentStatus = "pending" | "validated" | "expired" | "rejected";
+
+export interface AdminProductorDocumentDetail extends AdminProductorDocument {
+  extractedFields: Record<string, unknown> | null;
+  ocrFields: Record<string, unknown> | null;
+  ocrMetadata: Record<string, unknown> | null;
+  ocrConfidence: number | null;
+}
+
+export interface ReviewAdminProductorDocumentInput {
+  documentId: string;
+  sourceType: AdminDocumentSourceType;
+  status: AdminDocumentStatus;
+  comments?: string | null;
+  expiryDate?: string | null;
 }
 
 export interface AdminProductorVisit {

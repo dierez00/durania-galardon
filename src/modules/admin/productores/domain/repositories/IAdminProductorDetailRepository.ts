@@ -1,14 +1,28 @@
 import type {
+  AdminDocumentSourceType,
   AdminProductorDetallado,
   AdminProductorDocument,
+  AdminProductorDocumentDetail,
   AdminProductorUpp,
   AdminProductorVisitsPaginated,
+  ReviewAdminProductorDocumentInput,
 } from "@/modules/admin/productores/domain/entities/AdminProductorDetailEntity";
 
 export interface IAdminProductorDetailRepository {
   getById(id: string): Promise<AdminProductorDetallado | null>;
   getUpps(id: string): Promise<AdminProductorUpp[]>;
   getDocuments(id: string): Promise<AdminProductorDocument[]>;
+  getDocumentDetail(
+    producerId: string,
+    sourceType: AdminDocumentSourceType,
+    documentId: string
+  ): Promise<AdminProductorDocumentDetail | null>;
+  getDocumentSignedUrl(
+    producerId: string,
+    sourceType: AdminDocumentSourceType,
+    documentId: string
+  ): Promise<string | null>;
+  reviewDocument(producerId: string, input: ReviewAdminProductorDocumentInput): Promise<void>;
   getVisits(id: string, page: number): Promise<AdminProductorVisitsPaginated>;
   updateStatus(id: string, status: "active" | "inactive"): Promise<void>;
   /**

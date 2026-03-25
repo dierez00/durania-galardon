@@ -1,13 +1,23 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
 import { ServerAdminProductorDetailRepository } from "@/modules/admin/productores/infra/supabase/ServerAdminProductorDetailRepository";
-import { getSupabaseAdminClient } from "@/server/auth/supabase";
 import { logAuditEvent } from "@/server/audit";
+import type { AdminDocumentSourceType } from "@/modules/admin/productores/domain/entities/AdminProductorDetailEntity";
+import { ReviewAdminProductorDocumentUseCase } from "@/modules/admin/productores/application/use-cases/ReviewAdminProductorDocument";
+import {
+  AdminDocumentReviewValidationError,
+} from "@/modules/admin/productores/domain/services/adminDocumentReviewPolicy";
 
-interface UpdateProducerDocumentBody {
+interface ReviewDocumentBody {
+  sourceType?: AdminDocumentSourceType;
   documentId?: string;
-  status?: "pending" | "validated" | "expired" | "rejected";
+  status?: "validated" | "expired" | "rejected" | "pending";
   comments?: string | null;
+  expiryDate?: string | null;
+}
+
+function isValidSourceType(value: string | null): value is AdminDocumentSourceType {
+  return value === "producer" || value === "upp";
 }
 
 export async function GET(
@@ -25,6 +35,56 @@ export async function GET(
 
   const { id } = await params;
   const repository = new ServerAdminProductorDetailRepository();
+  const url = new URL(request.url);
+  const view = url.searchParams.get("view");
+  const sourceTypeParam = url.searchParams.get("sourceType");
+  const documentIdParam = url.searchParams.get("documentId")?.trim();
+
+  if (view === "detail") {
+    if (!isValidSourceType(sourceTypeParam)) {
+      return apiError("INVALID_QUERY", "Debe enviar sourceType valido (producer|upp).", 400);
+    }
+    if (!documentIdParam) {
+      return apiError("INVALID_QUERY", "Debe enviar documentId para solicitar detalle.", 400);
+    }
+
+    try {
+      const document = await repository.getDocumentDetail(id, sourceTypeParam, documentIdParam);
+      if (!document) {
+        return apiError("ADMIN_PRODUCER_DOCUMENT_NOT_FOUND", "No existe documento para ese productor.", 404);
+      }
+      return apiSuccess({ document });
+    } catch (error) {
+      return apiError(
+        "ADMIN_PRODUCER_DOCUMENT_DETAIL_FAILED",
+        error instanceof Error ? error.message : "No fue posible cargar el detalle del documento.",
+        500
+      );
+    }
+  }
+
+  if (view === "file") {
+    if (!isValidSourceType(sourceTypeParam)) {
+      return apiError("INVALID_QUERY", "Debe enviar sourceType valido (producer|upp).", 400);
+    }
+    if (!documentIdParam) {
+      return apiError("INVALID_QUERY", "Debe enviar documentId para solicitar archivo.", 400);
+    }
+
+    try {
+      const signedUrl = await repository.getDocumentSignedUrl(id, sourceTypeParam, documentIdParam);
+      if (!signedUrl) {
+        return apiError("ADMIN_PRODUCER_DOCUMENT_NOT_FOUND", "No existe documento para ese productor.", 404);
+      }
+      return apiSuccess({ url: signedUrl });
+    } catch (error) {
+      return apiError(
+        "ADMIN_PRODUCER_DOCUMENT_SIGNED_URL_FAILED",
+        error instanceof Error ? error.message : "No fue posible generar URL firmada.",
+        500
+      );
+    }
+  }
 
   try {
     const documents = await repository.getDocuments(id);
@@ -51,45 +111,56 @@ export async function PATCH(
     return auth.response;
   }
 
-  let body: UpdateProducerDocumentBody;
+  let body: ReviewDocumentBody;
   try {
-    body = (await request.json()) as UpdateProducerDocumentBody;
+    body = (await request.json()) as ReviewDocumentBody;
   } catch {
     return apiError("INVALID_BODY", "El cuerpo de la solicitud no es JSON valido.");
   }
 
   const { id: producerId } = await params;
   const documentId = body.documentId?.trim();
+  const sourceType = body.sourceType;
+
+  if (!sourceType || !isValidSourceType(sourceType)) {
+    return apiError("INVALID_PAYLOAD", "Debe enviar sourceType valido (producer|upp).", 400);
+  }
   if (!documentId) {
     return apiError("INVALID_PAYLOAD", "Debe enviar documentId.");
   }
-
-  const updatePayload: Record<string, unknown> = {};
-  if (body.status !== undefined) {
-    updatePayload.status = body.status;
-  }
-  if (body.comments !== undefined) {
-    const normalizedComments = typeof body.comments === "string" ? body.comments.trim() : body.comments;
-    updatePayload.comments = normalizedComments || null;
+  if (!body.status) {
+    return apiError("INVALID_PAYLOAD", "Debe enviar status.", 400);
   }
 
-  if (Object.keys(updatePayload).length === 0) {
-    return apiError("INVALID_PAYLOAD", "Debe enviar al menos un campo para actualizar.");
+  const repository = new ServerAdminProductorDetailRepository();
+  const useCase = new ReviewAdminProductorDocumentUseCase(repository);
+
+  const previous = await repository.getDocumentDetail(producerId, sourceType, documentId);
+  if (!previous) {
+    return apiError("ADMIN_PRODUCER_DOCUMENT_NOT_FOUND", "No existe documento con ese id para el productor.", 404);
   }
 
-  const supabaseAdmin = getSupabaseAdminClient();
-  const updateResult = await supabaseAdmin
-    .from("producer_documents")
-    .update(updatePayload)
-    .eq("producer_id", producerId)
-    .eq("id", documentId)
-    .select("id,status,comments,is_current,expiry_date,uploaded_at")
-    .maybeSingle();
-
-  if (updateResult.error) {
-    return apiError("ADMIN_PRODUCER_DOCUMENT_UPDATE_FAILED", updateResult.error.message, 400);
+  try {
+    await useCase.execute(producerId, {
+      documentId,
+      sourceType,
+      status: body.status,
+      comments: body.comments,
+      expiryDate: body.expiryDate,
+    });
+  } catch (error) {
+    if (error instanceof AdminDocumentReviewValidationError) {
+      return apiError("INVALID_PAYLOAD", error.message, 400);
+    }
+    return apiError(
+      "ADMIN_PRODUCER_DOCUMENT_UPDATE_FAILED",
+      error instanceof Error ? error.message : "No fue posible actualizar el documento.",
+      400
+    );
   }
-  if (!updateResult.data) {
+
+  const updated = await repository.getDocumentDetail(producerId, sourceType, documentId);
+  if (!updated) {
     return apiError("ADMIN_PRODUCER_DOCUMENT_NOT_FOUND", "No existe documento con ese id para el productor.", 404);
   }
 
@@ -101,9 +172,19 @@ export async function PATCH(
     resourceId: documentId,
     payload: {
       producerId,
-      ...updatePayload,
+      sourceType,
+      before: {
+        status: previous.status,
+        comments: previous.comments,
+        expiryDate: previous.expiryDate,
+      },
+      after: {
+        status: updated.status,
+        comments: updated.comments,
+        expiryDate: updated.expiryDate,
+      },
     },
   });
 
-  return apiSuccess({ document: updateResult.data });
+  return apiSuccess({ document: updated });
 }

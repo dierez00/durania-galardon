@@ -21,6 +21,10 @@ interface ProducerDocumentDTO {
   expiry_date?: string;
   uploaded_at: string;
   ocr_confidence?: number;
+  full_text?: string | null;
+  ocr_text?: string | null;
+  ocr_fields?: Record<string, unknown> | null;
+  ocr_metadata?: Record<string, unknown> | null;
 }
 import { calculateFileHash } from "../utils/fileHashCalculator";
 
@@ -121,6 +125,10 @@ export class ProducerDocumentsApiRepository implements IProducerDocumentsReposit
       expiryDate: raw.expiry_date ?? null,
       uploadedAt: raw.uploaded_at,
       ocrConfidence: raw.ocr_confidence ?? null,
+      fullText: raw.full_text ?? null,
+      ocrText: raw.ocr_text ?? null,
+      ocrFields: raw.ocr_fields ?? null,
+      ocrMetadata: raw.ocr_metadata ?? null,
     };
   }
 }

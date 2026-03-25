@@ -3,6 +3,7 @@ import { requireAuthorized } from "@/server/authz";
 import { getSupabaseAdminClient } from "@/server/auth/supabase";
 import { logAuditEvent } from "@/server/audit";
 import { ServerProducerDocumentsRepository } from "@/modules/producer/documents/infra/supabase/ServerProducerDocumentsRepository";
+import { processProducerDocumentOcrInBackground } from "@/modules/producer/documents/infra/ocr/processDocumentOcr";
 import {
   calculateFileHash,
   findProducerIdForUserOrTenant,
@@ -47,6 +48,10 @@ export async function GET(request: Request) {
         is_current: document.isCurrent,
         expiry_date: document.expiryDate,
         ocr_confidence: document.ocrConfidence,
+        full_text: document.fullText,
+        ocr_text: document.ocrText,
+        ocr_fields: document.ocrFields,
+        ocr_metadata: document.ocrMetadata,
         document_type: {
           key: document.documentTypeKey,
           name: document.documentTypeName,
@@ -97,6 +102,13 @@ export async function POST(request: Request) {
   try {
     const document = await repository.upload(file, documentTypeKey, expiryDate);
 
+    void processProducerDocumentOcrInBackground({
+      documentId: document.id,
+      file,
+      documentTypeKey,
+      source: "upload",
+    });
+
     await logAuditEvent({
       request,
       user: auth.context.user,
@@ -123,6 +135,10 @@ export async function POST(request: Request) {
           comments: document.comments,
           is_current: document.isCurrent,
           expiry_date: document.expiryDate,
+          full_text: document.fullText,
+          ocr_text: document.ocrText,
+          ocr_fields: document.ocrFields,
+          ocr_metadata: document.ocrMetadata,
           document_type: {
             key: document.documentTypeKey,
             name: document.documentTypeName,
@@ -192,7 +208,7 @@ export async function PATCH(request: Request) {
     .eq("producer_id", producerId)
     .eq("id", id)
     .select(
-      "id,tenant_id,producer_id,document_type_id,file_storage_key,file_hash,uploaded_at,status,comments,is_current,expiry_date,ocr_confidence"
+      "id,tenant_id,producer_id,document_type_id,file_storage_key,file_hash,uploaded_at,status,comments,is_current,expiry_date,ocr_confidence,full_text,ocr_text,ocr_fields,ocr_metadata"
     )
     .maybeSingle();
 

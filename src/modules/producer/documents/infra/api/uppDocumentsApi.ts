@@ -16,6 +16,10 @@ interface UppDocumentDTO {
   issued_at?: string;
   expiry_date?: string;
   uploaded_at: string;
+  full_text?: string | null;
+  ocr_text?: string | null;
+  ocr_fields?: Record<string, unknown> | null;
+  ocr_metadata?: Record<string, unknown> | null;
 }
 
 export class UppDocumentsApiRepository implements IUppDocumentsRepository {
@@ -118,6 +122,10 @@ export class UppDocumentsApiRepository implements IUppDocumentsRepository {
       issuedAt: raw.issued_at ?? null,
       expiryDate: raw.expiry_date ?? null,
       uploadedAt: raw.uploaded_at,
+      fullText: raw.full_text ?? null,
+      ocrText: raw.ocr_text ?? null,
+      ocrFields: raw.ocr_fields ?? null,
+      ocrMetadata: raw.ocr_metadata ?? null,
     };
   }
 }

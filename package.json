@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "ocr:backfill": "node --env-file=.env ./scripts/backfill-ocr-documents.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.17.1",

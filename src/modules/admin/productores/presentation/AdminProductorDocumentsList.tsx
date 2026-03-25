@@ -8,11 +8,13 @@ import type { AdminProductorDocument } from "@/modules/admin/productores/domain/
 interface AdminProductorDocumentsListProps {
   documents: AdminProductorDocument[];
   loading?: boolean;
+  onReview?: (document: AdminProductorDocument) => void;
 }
 
 export function AdminProductorDocumentsList({
   documents,
   loading = false,
+  onReview,
 }: Readonly<AdminProductorDocumentsListProps>) {
   if (loading) {
     return (
@@ -37,7 +39,7 @@ export function AdminProductorDocumentsList({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {documents.map((doc) => (
-        <AdminProductorDocumentCard key={doc.id} doc={doc} />
+        <AdminProductorDocumentCard key={`${doc.sourceType}:${doc.id}`} doc={doc} onReview={onReview} />
       ))}
     </div>
   );

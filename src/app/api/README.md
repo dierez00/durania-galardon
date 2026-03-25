@@ -61,6 +61,12 @@ Si el modulo aun no expone alias desde `index.ts`, el reexport puede apuntar tem
 - `GET /api/admin/audit`
 - `GET|PATCH /api/admin/appointments`
 
+Contrato operativo de `admin/producers/:id/documents`:
+- `GET /api/admin/producers/:id/documents`: listado unificado de `producer_documents` y `upp_documents` del productor.
+- `GET /api/admin/producers/:id/documents?view=detail&sourceType=producer|upp&documentId=...`: detalle con metadatos OCR para modal de revision.
+- `GET /api/admin/producers/:id/documents?view=file&sourceType=producer|upp&documentId=...`: URL firmada para preview del archivo.
+- `PATCH /api/admin/producers/:id/documents`: actualiza estado/comentarios/vigencia con reglas de revision (rechazo con comentario obligatorio y vencido con comentario automatico).
+
 ## Producer
 
 - `GET /api/producer/dashboard`

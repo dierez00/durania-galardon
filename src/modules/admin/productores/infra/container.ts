@@ -6,6 +6,9 @@ import { ApiAdminProductorDetailRepository } from "./api/ApiAdminProductorDetail
 import { GetAdminProductorDetailUseCase } from "../application/use-cases/GetAdminProductorDetail";
 import { GetAdminProductorUppsUseCase } from "../application/use-cases/GetAdminProductorUpps";
 import { GetAdminProductorDocumentsUseCase } from "../application/use-cases/GetAdminProductorDocuments";
+import { GetAdminProductorDocumentDetailUseCase } from "../application/use-cases/GetAdminProductorDocumentDetail";
+import { GetAdminProductorDocumentSignedUrlUseCase } from "../application/use-cases/GetAdminProductorDocumentSignedUrl";
+import { ReviewAdminProductorDocumentUseCase } from "../application/use-cases/ReviewAdminProductorDocument";
 import { GetAdminProductorVisitsUseCase } from "../application/use-cases/GetAdminProductorVisits";
 import {
   UpdateAdminProductorStatusUseCase,
@@ -23,6 +26,9 @@ export const createProductoresBatchUseCase = new CreateAdminProductoresBatch(rep
 export const getProductorDetailUseCase = new GetAdminProductorDetailUseCase(detailRepository);
 export const getProductorUppsUseCase = new GetAdminProductorUppsUseCase(detailRepository);
 export const getProductorDocumentsUseCase = new GetAdminProductorDocumentsUseCase(detailRepository);
+export const getProductorDocumentDetailUseCase = new GetAdminProductorDocumentDetailUseCase(detailRepository);
+export const getProductorDocumentSignedUrlUseCase = new GetAdminProductorDocumentSignedUrlUseCase(detailRepository);
+export const reviewProductorDocumentUseCase = new ReviewAdminProductorDocumentUseCase(detailRepository);
 export const getProductorVisitsUseCase = new GetAdminProductorVisitsUseCase(detailRepository);
 export const updateProductorStatusUseCase = new UpdateAdminProductorStatusUseCase(detailRepository);
 export const updateProductorInfoUseCase = new UpdateAdminProductorInfoUseCase(detailRepository);
