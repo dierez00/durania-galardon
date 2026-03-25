@@ -67,6 +67,14 @@ function sexLabel(sex: string): string {
   return sex;
 }
 
+function healthStatusLabel(status: string | null): string {
+  if (!status) return "Sin definir";
+  if (status === "healthy") return "Sano";
+  if (status === "observation") return "Observacion";
+  if (status === "quarantine") return "Cuarentena";
+  return status;
+}
+
 function Check({ value }: Readonly<{ value: boolean | null | undefined }>) {
   if (value === true) return <span className="text-success font-medium">Sí</span>;
   if (value === false) return <span className="text-error font-medium">No</span>;
@@ -195,7 +203,10 @@ function AnimalesTabContent({
       <TableHeader>
         <TableRow>
           <TableHead>Arete SINIIGA</TableHead>
+          <TableHead>Perfil</TableHead>
           <TableHead>Sexo</TableHead>
+          <TableHead>Salud</TableHead>
+          <TableHead>Collar</TableHead>
           <TableHead>Estado</TableHead>
           <TableHead>Alerta sanitaria</TableHead>
           <TableHead>Últ. TB</TableHead>
@@ -209,7 +220,29 @@ function AnimalesTabContent({
           return (
             <TableRow key={a.id}>
               <TableCell className="font-mono text-xs">{a.siniigaTag}</TableCell>
+              <TableCell className="text-sm">
+                <div className="font-medium">{a.name ?? "Sin nombre"}</div>
+                <div className="text-xs text-muted-foreground">
+                  {[a.breed, a.ageYears != null ? `${a.ageYears} ano(s)` : null]
+                    .filter(Boolean)
+                    .join(" · ") || "Sin perfil ampliado"}
+                </div>
+              </TableCell>
               <TableCell>{sexLabel(a.sex)}</TableCell>
+              <TableCell className="text-sm">
+                <div>{healthStatusLabel(a.healthStatus)}</div>
+                <div className="text-xs text-muted-foreground">
+                  {a.weightKg != null ? `${a.weightKg.toFixed(1)} kg` : "Peso sin registro"}
+                </div>
+              </TableCell>
+              <TableCell className="text-sm">
+                <div className="font-mono">{a.currentCollarId ?? "Sin collar"}</div>
+                <div className="text-xs text-muted-foreground">
+                  {a.currentCollarLinkedAt
+                    ? new Date(a.currentCollarLinkedAt).toLocaleDateString("es-MX")
+                    : "Sin vinculo activo"}
+                </div>
+              </TableCell>
               <TableCell>
                 <Badge variant={toneToBadgeVariant[a.status === "active" ? "success" : "neutral"]} className="text-xs">
                   {a.status === "active" ? "Activo" : "Inactivo"}

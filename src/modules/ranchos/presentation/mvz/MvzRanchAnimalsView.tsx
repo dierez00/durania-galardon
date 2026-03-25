@@ -37,10 +37,20 @@ export function MvzRanchAnimalsView({
               upp_code: animal.upp_code,
               upp_status: overview.upp_status,
               siniiga_tag: animal.siniiga_tag,
+              name: animal.name,
               sex: animal.sex,
               birth_date: animal.birth_date,
+              breed: animal.breed,
+              weight_kg: animal.weight_kg,
+              age_years: animal.age_years,
+              health_status: animal.health_status,
+              last_vaccine_at: animal.last_vaccine_at,
               status: animal.animal_status,
               mother_animal_id: animal.mother_animal_id,
+              current_collar_uuid: animal.current_collar_uuid,
+              current_collar_id: animal.current_collar_id,
+              current_collar_status: animal.current_collar_status,
+              current_collar_linked_at: animal.current_collar_linked_at,
               sanitary: {
                 tb_date: animal.tb_date,
                 tb_result: animal.tb_result,
@@ -95,7 +105,11 @@ export function MvzRanchAnimalsView({
       {loading ? (
         <LoadingState label="Cargando animales..." />
       ) : (
-        <BovinoList bovinos={bovinos} detailHrefBase={`/mvz/ranchos/${uppId}/animales`} />
+        <BovinoList
+          bovinos={bovinos}
+          showUpp={false}
+          detailHrefBase={`/mvz/ranchos/${uppId}/animales`}
+        />
       )}
     </div>
   );

@@ -11,8 +11,14 @@ import { toApiBovino } from "@/modules/bovinos/infra/http/shared";
 interface ProducerBovinoBody {
   uppId?: string;
   siniigaTag?: string;
+  name?: string;
+  breed?: string;
   sex?: "M" | "F";
   birthDate?: string;
+  ageYears?: number;
+  weightKg?: number;
+  healthStatus?: "healthy" | "observation" | "quarantine";
+  lastVaccineAt?: string;
   motherAnimalId?: string;
 }
 
@@ -69,10 +75,34 @@ export async function POST(request: Request) {
 
   const uppId = body.uppId?.trim();
   const siniigaTag = body.siniigaTag?.trim();
+  const name = body.name?.trim() || null;
+  const breed = body.breed?.trim() || null;
   const sex = body.sex;
+  const ageYears = typeof body.ageYears === "number" ? body.ageYears : null;
+  const weightKg = typeof body.weightKg === "number" ? body.weightKg : null;
+  const healthStatus = body.healthStatus ?? null;
+  const lastVaccineAt = body.lastVaccineAt?.trim() || null;
 
   if (!uppId || !siniigaTag || !sex) {
     return apiError("INVALID_PAYLOAD", "Debe enviar uppId, siniigaTag y sex.");
+  }
+
+  if (ageYears !== null && (!Number.isInteger(ageYears) || ageYears < 0)) {
+    return apiError("INVALID_PAYLOAD", "Debe enviar ageYears como entero mayor o igual a 0.");
+  }
+
+  if (weightKg !== null && (!Number.isFinite(weightKg) || weightKg < 0)) {
+    return apiError("INVALID_PAYLOAD", "Debe enviar weightKg como numero mayor o igual a 0.");
+  }
+
+  if (
+    healthStatus !== null &&
+    !["healthy", "observation", "quarantine"].includes(healthStatus)
+  ) {
+    return apiError(
+      "INVALID_PAYLOAD",
+      "Debe enviar healthStatus valido: healthy, observation o quarantine."
+    );
   }
 
   const canAccess = await auth.context.canAccessUpp(uppId);
@@ -87,12 +117,20 @@ export async function POST(request: Request) {
       tenant_id: auth.context.user.tenantId,
       upp_id: uppId,
       siniiga_tag: siniigaTag,
+      name,
       sex,
       birth_date: body.birthDate ?? null,
+      breed,
+      weight_kg: weightKg,
+      age_years: ageYears,
+      health_status: healthStatus,
+      last_vaccine_at: lastVaccineAt,
       status: "active",
       mother_animal_id: body.motherAnimalId?.trim() || null,
     })
-    .select("id,upp_id,siniiga_tag,sex,birth_date,status,mother_animal_id,created_at")
+    .select(
+      "id,upp_id,siniiga_tag,name,sex,birth_date,breed,weight_kg,age_years,health_status,last_vaccine_at,status,mother_animal_id,created_at"
+    )
     .single();
 
   if (createResult.error || !createResult.data) {
@@ -112,7 +150,13 @@ export async function POST(request: Request) {
     payload: {
       uppId,
       siniigaTag,
+      name,
+      breed,
       sex,
+      ageYears,
+      weightKg,
+      healthStatus,
+      lastVaccineAt,
     },
   });
 

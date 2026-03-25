@@ -105,6 +105,7 @@ export function MvzBovinoDetail({ uppId, animalId }: Readonly<MvzBovinoDetailPro
   return (
     <BovinoDetailContent
       bovino={bovino}
+      panel="mvz"
       loading={loading}
       error={error}
       activeTab={activeTab}

@@ -8,10 +8,20 @@ function toBovinoRecord(
     upp_name: string;
     upp_code: string | null;
     siniiga_tag: string;
+    name: string | null;
     sex: "M" | "F";
     birth_date: string | null;
+    breed: string | null;
+    weight_kg: number | null;
+    age_years: number | null;
+    health_status: string | null;
+    last_vaccine_at: string | null;
     animal_status: string;
     mother_animal_id: string | null;
+    current_collar_uuid: string | null;
+    current_collar_id: string | null;
+    current_collar_status: string | null;
+    current_collar_linked_at: string | null;
     tb_date: string | null;
     tb_result: string | null;
     tb_valid_until: string | null;
@@ -31,10 +41,20 @@ function toBovinoRecord(
     upp_code: row.upp_code,
     upp_status: uppStatus,
     siniiga_tag: row.siniiga_tag,
+    name: row.name,
     sex: row.sex,
     birth_date: row.birth_date,
+    breed: row.breed,
+    weight_kg: row.weight_kg,
+    age_years: row.age_years,
+    health_status: row.health_status,
+    last_vaccine_at: row.last_vaccine_at,
     status: row.animal_status,
     mother_animal_id: row.mother_animal_id,
+    current_collar_uuid: row.current_collar_uuid,
+    current_collar_id: row.current_collar_id,
+    current_collar_status: row.current_collar_status,
+    current_collar_linked_at: row.current_collar_linked_at,
     sanitary: {
       tb_date: row.tb_date,
       tb_result: row.tb_result,
@@ -67,7 +87,7 @@ export async function GET(
   const animalResult = await access.supabaseAdmin
     .from("v_animals_sanitary")
     .select(
-      "animal_id,upp_id,upp_name,upp_code,siniiga_tag,sex,birth_date,animal_status,mother_animal_id,tb_date,tb_result,tb_valid_until,tb_status,br_date,br_result,br_valid_until,br_status,sanitary_alert"
+      "animal_id,upp_id,upp_name,upp_code,siniiga_tag,name,sex,birth_date,breed,weight_kg,age_years,health_status,last_vaccine_at,animal_status,mother_animal_id,current_collar_uuid,current_collar_id,current_collar_status,current_collar_linked_at,tb_date,tb_result,tb_valid_until,tb_status,br_date,br_result,br_valid_until,br_status,sanitary_alert"
     )
     .eq("animal_id", animalId)
     .eq("upp_id", uppId)
@@ -119,7 +139,7 @@ export async function GET(
       access.supabaseAdmin
         .from("v_animals_sanitary")
         .select(
-          "animal_id,upp_id,upp_name,upp_code,siniiga_tag,sex,birth_date,animal_status,mother_animal_id,tb_date,tb_result,tb_valid_until,tb_status,br_date,br_result,br_valid_until,br_status,sanitary_alert"
+          "animal_id,upp_id,upp_name,upp_code,siniiga_tag,name,sex,birth_date,breed,weight_kg,age_years,health_status,last_vaccine_at,animal_status,mother_animal_id,current_collar_uuid,current_collar_id,current_collar_status,current_collar_linked_at,tb_date,tb_result,tb_valid_until,tb_status,br_date,br_result,br_valid_until,br_status,sanitary_alert"
         )
         .eq("mother_animal_id", animalId)
         .eq("upp_id", uppId)

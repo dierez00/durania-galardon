@@ -123,7 +123,7 @@ export const BovinosFilters: React.FC<BovinosFiltersProps> = ({
           <SearchBar
             value={filters.search}
             onChange={(v) => set("search", v)}
-            placeholder="Buscar por arete SINIIGA, rancho o clave UPP..."
+            placeholder="Buscar por arete, nombre, raza, collar o rancho..."
           />
           {actionButtons.length > 0 && <ActionButtons buttons={actionButtons} />}
         </FiltersRow>

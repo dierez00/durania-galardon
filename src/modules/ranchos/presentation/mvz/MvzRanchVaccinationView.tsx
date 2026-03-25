@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { SanitarioBadge } from "@/modules/bovinos/presentation";
 import { Button } from "@/shared/ui/button";
@@ -81,6 +82,7 @@ export function MvzRanchVaccinationView({
   uppId,
   refreshKey,
 }: Readonly<MvzRanchTabProps>) {
+  const searchParams = useSearchParams();
   const [vaccinations, setVaccinations] = useState<MvzRanchVaccinationRecord[]>([]);
   const [animals, setAnimals] = useState<MvzRanchAnimalRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,10 +95,11 @@ export function MvzRanchVaccinationView({
   const [saving, setSaving] = useState(false);
 
   const openCreateDialog = useCallback(() => {
-    setForm(getInitialForm());
+    const animalId = searchParams.get("animalId")?.trim() ?? "";
+    setForm({ ...getInitialForm(), animalId });
     setFormError("");
     setDialogOpen(true);
-  }, []);
+  }, [searchParams]);
 
   useAutoOpenCreateAction(openCreateDialog);
 

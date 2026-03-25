@@ -1,13 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import {
   Activity,
   AlertTriangle,
   CalendarDays,
+  ClipboardPlus,
   FlaskConical,
   GitFork,
   Loader2,
   MapPin,
+  ScrollText,
   Syringe,
   Tag,
   Truck,
@@ -19,6 +22,9 @@ import type { BovinoFieldTest } from "@/modules/bovinos/domain/entities/BovinoFi
 import type { BovinoSanitaryIncident } from "@/modules/bovinos/domain/entities/BovinoSanitaryIncident";
 import type { BovinoVaccination } from "@/modules/bovinos/domain/entities/BovinoVaccination";
 import { exportabilityReason } from "@/modules/bovinos/domain/services/checkExportability";
+import { buildProjectHref } from "@/modules/workspace/presentation/workspace-routing";
+import { Button } from "@/shared/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { DetailEmptyState } from "@/shared/ui/detail/DetailEmptyState";
 import { DetailHeader } from "@/shared/ui/detail/DetailHeader";
 import { DetailInfoGrid } from "@/shared/ui/detail/DetailInfoGrid";
@@ -38,6 +44,7 @@ import type { BovinoDetailTab } from "./hooks/useBovinoDetail";
 
 interface BovinoDetailContentProps {
   bovino: Bovino | null;
+  panel: "producer" | "mvz";
   loading: boolean;
   error: string;
   activeTab: BovinoDetailTab;
@@ -52,7 +59,7 @@ interface BovinoDetailContentProps {
 }
 
 function fmt(d: string | null | undefined): string {
-  if (!d) return "—";
+  if (!d) return "-";
   return new Date(d).toLocaleDateString("es-MX", {
     year: "numeric",
     month: "short",
@@ -61,20 +68,29 @@ function fmt(d: string | null | undefined): string {
 }
 
 function bool(v: boolean | null): string {
-  if (v === null) return "—";
-  return v ? "Sí" : "No";
+  if (v === null) return "-";
+  return v ? "Si" : "No";
+}
+
+function formatHealthStatus(status: string | null | undefined): string {
+  if (!status) return "-";
+  if (status === "healthy") return "Sano";
+  if (status === "observation") return "Observacion";
+  if (status === "quarantine") return "Cuarentena";
+  return status;
 }
 
 const TABS = [
   { key: "pruebas", label: "Pruebas TB/BR", icon: FlaskConical },
   { key: "incidentes", label: "Incidentes sanitarios", icon: AlertTriangle },
-  { key: "genealogia", label: "Genealogía", icon: GitFork },
+  { key: "genealogia", label: "Genealogia", icon: GitFork },
   { key: "vacunaciones", label: "Vacunaciones", icon: Syringe },
   { key: "exportaciones", label: "Exportaciones", icon: Truck },
 ] as const;
 
 export function BovinoDetailContent({
   bovino,
+  panel,
   loading,
   error,
   activeTab,
@@ -104,6 +120,49 @@ export function BovinoDetailContent({
     );
   }
 
+  const quickActions =
+    panel === "mvz"
+      ? [
+          {
+            label: "Agregar vacuna",
+            description: "Abre vacunacion con este animal precargado.",
+            href: `${buildProjectHref("mvz", bovino.upp_id, "vacunacion")}?action=nuevo&animalId=${encodeURIComponent(bovino.id)}`,
+            icon: Syringe,
+          },
+          {
+            label: "Agregar reporte",
+            description: "Abre incidencias con este animal listo para captura.",
+            href: `${buildProjectHref("mvz", bovino.upp_id, "incidencias")}?action=nuevo&animalId=${encodeURIComponent(bovino.id)}`,
+            icon: ClipboardPlus,
+          },
+          {
+            label: "Ver reportes",
+            description: "Consulta el resumen operativo del rancho.",
+            href: buildProjectHref("mvz", bovino.upp_id, "reportes"),
+            icon: ScrollText,
+          },
+        ]
+      : [
+          {
+            label: "Ver exportaciones",
+            description: "Revisa el seguimiento exportable del proyecto.",
+            href: `${buildProjectHref("producer", bovino.upp_id, "exportaciones")}?animalId=${encodeURIComponent(bovino.id)}`,
+            icon: Truck,
+          },
+          {
+            label: "Abrir movilizaciones",
+            description: "Continua el flujo operativo del rancho con este animal en contexto.",
+            href: `${buildProjectHref("producer", bovino.upp_id, "movilizacion")}?animalId=${encodeURIComponent(bovino.id)}`,
+            icon: ClipboardPlus,
+          },
+          {
+            label: "Ver documentos",
+            description: "Consulta la documentacion del proyecto relacionada al animal.",
+            href: `${buildProjectHref("producer", bovino.upp_id, "documentos")}?animalId=${encodeURIComponent(bovino.id)}`,
+            icon: ScrollText,
+          },
+        ];
+
   const infoItems = [
     {
       label: "Arete SINIIGA",
@@ -111,26 +170,62 @@ export function BovinoDetailContent({
       icon: Tag,
     },
     {
+      label: "Nombre",
+      value: bovino.name || "-",
+      icon: User2,
+    },
+    {
       label: "Sexo",
       value: bovino.sex === "M" ? "Macho" : "Hembra",
       icon: User2,
     },
-    { label: "Fecha de nacimiento", value: fmt(bovino.birth_date), icon: CalendarDays },
+    {
+      label: "Fecha de nacimiento",
+      value: fmt(bovino.birth_date),
+      icon: CalendarDays,
+    },
+    {
+      label: "Raza",
+      value: bovino.breed || "-",
+      icon: Tag,
+    },
+    {
+      label: "Edad",
+      value: bovino.age_years != null ? `${bovino.age_years} ano(s)` : "-",
+      icon: CalendarDays,
+    },
+    {
+      label: "Peso",
+      value: bovino.weight_kg != null ? `${bovino.weight_kg.toFixed(1)} kg` : "-",
+      icon: Activity,
+    },
+    {
+      label: "Estado de salud",
+      value: bovino.health_status ? <SanitarioBadge estado={bovino.health_status} /> : "-",
+      icon: Activity,
+    },
+    {
+      label: "Ultima vacuna",
+      value: fmt(bovino.last_vaccine_at),
+      icon: Syringe,
+    },
     {
       label: "Madre",
       value: bovino.mother_animal_id ? (
         <span className="font-mono text-xs">{bovino.mother_animal_id}</span>
-      ) : null,
+      ) : (
+        "-"
+      ),
       icon: GitFork,
     },
     {
       label: "Rancho (UPP)",
-      value: bovino.upp_name || "—",
+      value: bovino.upp_name || "-",
       icon: MapPin,
     },
     {
       label: "Clave UPP",
-      value: bovino.upp_code || "—",
+      value: bovino.upp_code || "-",
       icon: Tag,
     },
     {
@@ -143,12 +238,33 @@ export function BovinoDetailContent({
       value: <SanitarioBadge estado={bovino.status} />,
       icon: Activity,
     },
+    {
+      label: "Collar actual",
+      value: bovino.current_collar_id ? (
+        <div className="space-y-1">
+          <div className="font-mono text-xs">{bovino.current_collar_id}</div>
+          <div className="text-xs text-muted-foreground">{fmt(bovino.current_collar_linked_at)}</div>
+        </div>
+      ) : (
+        "-"
+      ),
+      icon: Tag,
+    },
+    {
+      label: "Estado del collar",
+      value: bovino.current_collar_status ? (
+        <SanitarioBadge estado={bovino.current_collar_status} />
+      ) : (
+        "-"
+      ),
+      icon: Activity,
+    },
   ];
 
   return (
     <div className="space-y-6">
       <DetailHeader
-        title={bovino.siniiga_tag}
+        title={bovino.name ? `${bovino.name} / ${bovino.siniiga_tag}` : bovino.siniiga_tag}
         subtitle={`${bovino.upp_name}${bovino.upp_code ? ` (${bovino.upp_code})` : ""}`}
         backHref={backHref}
         backLabel={backLabel}
@@ -156,6 +272,27 @@ export function BovinoDetailContent({
         statusLabel={bovino.status}
         statusVariant={bovino.status === "active" ? "active" : "inactive"}
       />
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        {quickActions.map(({ label, description, href, icon: Icon }) => (
+          <Card key={label}>
+            <CardHeader className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="rounded-full border border-border bg-muted/60 p-2">
+                  <Icon className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <CardTitle className="text-base">{label}</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">{description}</p>
+              <Button asChild size="sm">
+                <Link href={href}>Abrir</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
       <div className="flex flex-wrap items-center gap-4 px-1">
         <div className="flex items-center gap-2">
@@ -174,6 +311,16 @@ export function BovinoDetailContent({
             label="Brucelosis"
           />
         </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground">Salud:</span>
+          <span className="text-sm">{formatHealthStatus(bovino.health_status)}</span>
+        </div>
+        {bovino.current_collar_id ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground">Collar:</span>
+            <span className="font-mono text-xs">{bovino.current_collar_id}</span>
+          </div>
+        ) : null}
         <ExportableCheckBadge
           canExport={bovino.canExport}
           reason={bovino.canExport ? undefined : exportabilityReason(bovino)}
@@ -202,7 +349,7 @@ export function BovinoDetailContent({
                 <TableHead>Tipo</TableHead>
                 <TableHead>Fecha muestra</TableHead>
                 <TableHead>Resultado</TableHead>
-                <TableHead>Válido hasta</TableHead>
+                <TableHead>Valido hasta</TableHead>
                 <TableHead>MVZ</TableHead>
                 <TableHead>Capturado en</TableHead>
               </TableRow>
@@ -216,11 +363,11 @@ export function BovinoDetailContent({
                     <SanitarioBadge estado={fieldTest.result} />
                   </TableCell>
                   <TableCell>{fmt(fieldTest.valid_until)}</TableCell>
-                  <TableCell className="text-muted-foreground">{fieldTest.mvz_name ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{fieldTest.mvz_name ?? "-"}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {fieldTest.captured_lat != null && fieldTest.captured_lng != null
                       ? `${fieldTest.captured_lat.toFixed(4)}, ${fieldTest.captured_lng.toFixed(4)}`
-                      : "—"}
+                      : "-"}
                   </TableCell>
                 </TableRow>
               ))}
@@ -259,7 +406,7 @@ export function BovinoDetailContent({
                   </TableCell>
                   <TableCell>{fmt(incident.detected_at)}</TableCell>
                   <TableCell>{fmt(incident.resolved_at)}</TableCell>
-                  <TableCell className="text-muted-foreground">{incident.mvz_name ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{incident.mvz_name ?? "-"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -270,7 +417,7 @@ export function BovinoDetailContent({
         (offspring.length === 0 ? (
           <DetailEmptyState
             icon={GitFork}
-            message="Sin crías registradas"
+            message="Sin crias registradas"
             description="No se han registrado descendientes para este bovino."
           />
         ) : (
@@ -278,6 +425,7 @@ export function BovinoDetailContent({
             <TableHeader>
               <TableRow>
                 <TableHead>Arete SINIIGA</TableHead>
+                <TableHead>Perfil</TableHead>
                 <TableHead>Sexo</TableHead>
                 <TableHead>Nacimiento</TableHead>
                 <TableHead>Estado</TableHead>
@@ -288,6 +436,10 @@ export function BovinoDetailContent({
               {offspring.map((offspringAnimal) => (
                 <TableRow key={offspringAnimal.id}>
                   <TableCell className="font-mono font-medium">{offspringAnimal.siniiga_tag}</TableCell>
+                  <TableCell>
+                    <div className="font-medium">{offspringAnimal.name ?? "Sin nombre"}</div>
+                    <div className="text-xs text-muted-foreground">{offspringAnimal.breed ?? "-"}</div>
+                  </TableCell>
                   <TableCell>{offspringAnimal.sex === "M" ? "Macho" : "Hembra"}</TableCell>
                   <TableCell>{fmt(offspringAnimal.birth_date)}</TableCell>
                   <TableCell>
@@ -305,7 +457,7 @@ export function BovinoDetailContent({
           <DetailEmptyState
             icon={Syringe}
             message="Sin vacunaciones registradas"
-            description="No existe historial de vacunación para este bovino."
+            description="No existe historial de vacunacion para este bovino."
           />
         ) : (
           <Table>
@@ -315,7 +467,7 @@ export function BovinoDetailContent({
                 <TableHead>Dosis</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Aplicada</TableHead>
-                <TableHead>Próxima dosis</TableHead>
+                <TableHead>Proxima dosis</TableHead>
                 <TableHead>MVZ</TableHead>
               </TableRow>
             </TableHeader>
@@ -323,13 +475,13 @@ export function BovinoDetailContent({
               {vaccinations.map((vaccination) => (
                 <TableRow key={vaccination.id}>
                   <TableCell className="font-medium">{vaccination.vaccine_name}</TableCell>
-                  <TableCell className="text-muted-foreground">{vaccination.dose ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{vaccination.dose ?? "-"}</TableCell>
                   <TableCell>
                     <SanitarioBadge estado={vaccination.status} />
                   </TableCell>
                   <TableCell>{fmt(vaccination.applied_at)}</TableCell>
                   <TableCell>{fmt(vaccination.due_at)}</TableCell>
-                  <TableCell className="text-muted-foreground">{vaccination.mvz_name ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{vaccination.mvz_name ?? "-"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -340,8 +492,8 @@ export function BovinoDetailContent({
         (exports.length === 0 ? (
           <DetailEmptyState
             icon={Truck}
-            message="Sin solicitudes de exportación"
-            description="Este bovino no ha participado en ninguna solicitud de exportación."
+            message="Sin solicitudes de exportacion"
+            description="Este bovino no ha participado en ninguna solicitud de exportacion."
           />
         ) : (
           <Table>
@@ -349,7 +501,7 @@ export function BovinoDetailContent({
               <TableRow>
                 <TableHead>Estado</TableHead>
                 <TableHead>Mes</TableHead>
-                <TableHead>Regla 60 días</TableHead>
+                <TableHead>Regla 60 dias</TableHead>
                 <TableHead>TB/BR validado</TableHead>
                 <TableHead>Arete azul</TableHead>
                 <TableHead>Motivo bloqueo</TableHead>
@@ -363,13 +515,13 @@ export function BovinoDetailContent({
                     <SanitarioBadge estado={exportRequest.status} />
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {exportRequest.monthly_bucket ?? "—"}
+                    {exportRequest.monthly_bucket ?? "-"}
                   </TableCell>
                   <TableCell>{bool(exportRequest.compliance_60_rule)}</TableCell>
                   <TableCell>{bool(exportRequest.tb_br_validated)}</TableCell>
                   <TableCell>{bool(exportRequest.blue_tag_assigned)}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {exportRequest.blocked_reason ?? "—"}
+                    {exportRequest.blocked_reason ?? "-"}
                   </TableCell>
                   <TableCell>{fmt(exportRequest.created_at)}</TableCell>
                 </TableRow>

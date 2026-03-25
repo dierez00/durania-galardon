@@ -9,6 +9,8 @@ Source of Truth: Historical log of documentation-only changes. Current operation
 
 ### Added
 
+- `docs/reference/modules/bovinos.md`: referencia tecnica actualizada del modulo compartido de animales, incluyendo perfil ampliado, snapshot de collar y acciones rapidas por panel.
+- `docs/data/database.md`: documenta la migracion 010 sobre `animals`, el flujo de staging/backfill y la extension de `v_animals_sanitary`.
 - `docs/data/database.md`: flujo SQL de alta de `mvz_internal` desde productor y sincronización a `mvz_profiles` + `mvz_upp_assignments`.
 - `docs/architecture/mvz-hierarchy.md`: reglas UX del panel MVZ por rancho, con KPIs solo en `Resumen`, acciones rápidas y mapeo visual de estados en `Incidencias`.
 - `docs/data/database.md`: seccion IoT y telemetria (`collars`, `collar_animal_history`, `telemetry`) con catalogo de columnas, indices, grants/RLS y operaciones frecuentes.
@@ -26,6 +28,7 @@ Source of Truth: Historical log of documentation-only changes. Current operation
 
 ### Changed
 
+- `CHANGELOG.md`: registra la migracion `migration_010_animals_backfill_and_collar_link.sql` y los cambios visibles en tablas y fichas de animales para productor y MVZ.
 - `docs/architecture/auth-admin.md`: documenta que `mvz_government` ya no administra personal/roles desde el panel MVZ, que `mvz_internal` puede vivir en un tenant `producer` y que `producer/employees` crea ficha profesional MVZ.
 - `docs/architecture/tenant-iam.md`: actualiza los roles base de productor para incluir `mvz_internal`, aclara el alta externa del personal MVZ y registra `migration_008_allow_multiple_mvz_profiles_per_tenant.sql`.
 - `docs/architecture/routing.md`: refleja que `mvz_internal` dentro de productor entra por `/mvz`, que `/mvz/settings` queda limitado a `Perfil` y `Ranchos`, y que el selector inline se conserva en detalle de animales.
@@ -74,3 +77,4 @@ Source of Truth: Historical log of documentation-only changes. Current operation
 - `docs/data/prisma-from-sql.md`: mapeo Prisma desde SQL y notas de compatibilidad.
 - `docs/architecture/multitenancy.md`: flujo de resolucion de tenant y middleware.
 - `docs/guides/setup.md`: setup local y comandos operativos.
+

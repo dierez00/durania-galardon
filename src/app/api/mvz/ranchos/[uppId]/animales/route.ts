@@ -19,7 +19,7 @@ export async function GET(
   const animalsResult = await access.supabaseAdmin
     .from("v_animals_sanitary")
     .select(
-      "animal_id,upp_id,tenant_id,siniiga_tag,sex,birth_date,animal_status,mother_animal_id,upp_name,upp_code,tb_date,tb_result,tb_valid_until,tb_status,br_date,br_result,br_valid_until,br_status,sanitary_alert"
+      "animal_id,upp_id,tenant_id,siniiga_tag,name,sex,birth_date,breed,weight_kg,age_years,health_status,last_vaccine_at,animal_status,mother_animal_id,current_collar_uuid,current_collar_id,current_collar_status,current_collar_linked_at,upp_name,upp_code,tb_date,tb_result,tb_valid_until,tb_status,br_date,br_result,br_valid_until,br_status,sanitary_alert"
     )
     .eq("upp_id", uppId)
     .order("siniiga_tag", { ascending: true });

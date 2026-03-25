@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
@@ -85,6 +86,7 @@ export function MvzRanchIncidentsView({
   uppId,
   refreshKey,
 }: Readonly<MvzRanchTabProps>) {
+  const searchParams = useSearchParams();
   const [incidents, setIncidents] = useState<MvzRanchIncidentRecord[]>([]);
   const [animals, setAnimals] = useState<MvzRanchAnimalRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,10 +100,11 @@ export function MvzRanchIncidentsView({
   const { viewMode, setViewMode } = useSessionViewMode(`mvz:ranch:${uppId}:incidencias:view`);
 
   const openCreateDialog = useCallback(() => {
-    setForm(getInitialForm());
+    const animalId = searchParams.get("animalId")?.trim() ?? "";
+    setForm({ ...getInitialForm(), animalId });
     setFormError("");
     setDialogOpen(true);
-  }, []);
+  }, [searchParams]);
 
   useAutoOpenCreateAction(openCreateDialog);
 
