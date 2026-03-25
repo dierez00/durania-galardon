@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarCheck, CheckCircle2, Clock4, Stethoscope } from "lucide-react";
+import { parseAuthCallbackState } from "@/modules/auth/shared/callback";
 import { cn } from "@/shared/lib/utils";
 import { Alert, AlertDescription } from "@/shared/ui/alert";
 import { Badge } from "@/shared/ui/badge";
@@ -95,6 +97,16 @@ function buildIcs({
 }
 
 export default function LandingPage() {
+  return (
+    <Suspense fallback={<LandingPageLoading />}>
+      <LandingPageContent />
+    </Suspense>
+  );
+}
+
+function LandingPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState(1);
   const [serviceId, setServiceId] = useState<string>("");
   const [dateValue, setDateValue] = useState<string>("");
@@ -115,6 +127,46 @@ export default function LandingPage() {
   const canGoStep3 = Boolean(selectedDate && timeValue);
   const canConfirm = Boolean(selectedService && selectedDate && timeValue && fullName);
   const canDownload = Boolean(selectedService && selectedDate && timeValue && requestStatus === "saved");
+
+  useEffect(() => {
+    const callbackState = parseAuthCallbackState(
+      new URLSearchParams(searchParams.toString()),
+      window.location.hash
+    );
+
+    const hasAuthCallbackPayload =
+      Boolean(callbackState.type && callbackState.tokenHash) ||
+      Boolean(callbackState.accessToken && callbackState.refreshToken) ||
+      Boolean(callbackState.errorCode || callbackState.errorDescription);
+
+    if (!hasAuthCallbackPayload) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams();
+
+    if (callbackState.type) {
+      nextParams.set("type", callbackState.type);
+    }
+    if (callbackState.tokenHash) {
+      nextParams.set("token_hash", callbackState.tokenHash);
+    }
+    if (callbackState.accessToken) {
+      nextParams.set("access_token", callbackState.accessToken);
+    }
+    if (callbackState.refreshToken) {
+      nextParams.set("refresh_token", callbackState.refreshToken);
+    }
+    if (callbackState.errorCode) {
+      nextParams.set("error_code", callbackState.errorCode);
+    }
+    if (callbackState.errorDescription) {
+      nextParams.set("error_description", callbackState.errorDescription);
+    }
+
+    const query = nextParams.toString();
+    router.replace(query ? `/auth/set-password?${query}` : "/auth/set-password");
+  }, [router, searchParams]);
 
   return (
     <div className="min-h-screen bg-linear-to-br from-background via-brand-surface to-secondary/40">
@@ -433,6 +485,18 @@ export default function LandingPage() {
             </CardContent>
           </Card>
         </section>
+      </div>
+    </div>
+  );
+}
+
+function LandingPageLoading() {
+  return (
+    <div className="min-h-screen bg-linear-to-br from-background via-brand-surface to-secondary/40">
+      <div className="mx-auto max-w-6xl px-6 py-8 md:py-12">
+        <div className="rounded-3xl border border-border/80 bg-card/90 p-6 shadow-sm backdrop-blur">
+          <p className="text-sm text-muted-foreground">Cargando...</p>
+        </div>
       </div>
     </div>
   );

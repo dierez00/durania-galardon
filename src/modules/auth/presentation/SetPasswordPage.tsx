@@ -34,6 +34,28 @@ interface InviteContextResponse {
   };
 }
 
+function mapCallbackErrorMessage(rawMessage: string | null | undefined) {
+  if (!rawMessage) {
+    return "No fue posible validar el enlace de acceso.";
+  }
+
+  const normalized = rawMessage.toLowerCase();
+
+  if (
+    normalized.includes("expired") ||
+    normalized.includes("expir") ||
+    normalized.includes("otp") && normalized.includes("invalid")
+  ) {
+    return "El enlace expiro o ya fue utilizado. Solicita uno nuevo.";
+  }
+
+  if (normalized.includes("invalid") || normalized.includes("malformed")) {
+    return "El enlace no es valido. Solicita uno nuevo desde el panel de acceso.";
+  }
+
+  return rawMessage;
+}
+
 function resolveDefaultPanel(flowType: AuthFlowType | null) {
   return flowType === "invite" ? "Completar registro" : "Crear nueva contrasena";
 }
@@ -58,6 +80,8 @@ function SetPasswordPageContent() {
   const [context, setContext] = useState<InviteContextResponse["data"] | null>(null);
 
   const title = useMemo(() => resolveDefaultPanel(flowType), [flowType]);
+  const fallbackHref = flowType === "recovery" ? "/forgot-password" : "/login";
+  const fallbackLabel = flowType === "recovery" ? "Solicitar un nuevo enlace" : "Volver a iniciar sesion";
 
   useEffect(() => {
     let cancelled = false;
@@ -72,10 +96,22 @@ function SetPasswordPageContent() {
           window.location.hash
         );
         const supabase = getSupabaseBrowserClient();
+        setFlowType(callbackState.type);
 
         if (callbackState.errorDescription) {
           if (!cancelled) {
-            setErrorMessage(callbackState.errorDescription);
+            setErrorMessage(mapCallbackErrorMessage(callbackState.errorDescription));
+            setLoading(false);
+          }
+          return;
+        }
+
+        if (
+          !callbackState.tokenHash &&
+          !(callbackState.accessToken && callbackState.refreshToken)
+        ) {
+          if (!cancelled) {
+            setErrorMessage("El enlace no contiene credenciales validas. Solicita uno nuevo.");
             setLoading(false);
           }
           return;
@@ -89,7 +125,7 @@ function SetPasswordPageContent() {
 
           if (setSessionResult.error) {
             if (!cancelled) {
-              setErrorMessage("No fue posible restaurar la sesion del enlace.");
+              setErrorMessage(mapCallbackErrorMessage(setSessionResult.error.message));
               setLoading(false);
             }
             return;
@@ -102,7 +138,7 @@ function SetPasswordPageContent() {
 
           if (verifyResult.error) {
             if (!cancelled) {
-              setErrorMessage(verifyResult.error.message);
+              setErrorMessage(mapCallbackErrorMessage(verifyResult.error.message));
               setLoading(false);
             }
             return;
@@ -114,7 +150,7 @@ function SetPasswordPageContent() {
 
         if (!accessToken) {
           if (!cancelled) {
-            setErrorMessage("El enlace ya no es valido o la sesion no pudo establecerse.");
+            setErrorMessage("No fue posible establecer tu sesion con este enlace. Solicita uno nuevo.");
             setLoading(false);
           }
           return;
@@ -130,7 +166,9 @@ function SetPasswordPageContent() {
 
         if (!response.ok || !body.ok || !body.data) {
           if (!cancelled) {
-            setErrorMessage(body.error?.message ?? "No fue posible cargar el contexto de acceso.");
+            setErrorMessage(
+              mapCallbackErrorMessage(body.error?.message ?? "No fue posible cargar el contexto de acceso.")
+            );
             setLoading(false);
           }
           return;
@@ -143,7 +181,7 @@ function SetPasswordPageContent() {
         }
       } catch {
         if (!cancelled) {
-          setErrorMessage("Ocurrio un error al validar el enlace.");
+          setErrorMessage("No pudimos validar el enlace en este momento. Intenta solicitar uno nuevo.");
           setLoading(false);
         }
       }
@@ -234,8 +272,8 @@ function SetPasswordPageContent() {
               <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
                 {errorMessage}
               </p>
-              <Link className="text-sm text-primary hover:underline" href="/login">
-                Volver a iniciar sesion
+              <Link className="text-sm text-primary hover:underline" href={fallbackHref}>
+                {fallbackLabel}
               </Link>
             </div>
           ) : (
