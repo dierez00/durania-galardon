@@ -21,6 +21,10 @@ type UppDocumentRow = {
   issued_at: string | null;
   expiry_date: string | null;
   uploaded_at: string;
+  full_text?: string | null;
+  ocr_text?: string | null;
+  ocr_fields?: Record<string, unknown> | null;
+  ocr_metadata?: Record<string, unknown> | null;
 };
 
 function mapUppDocument(row: UppDocumentRow): UppDocument {
@@ -37,6 +41,10 @@ function mapUppDocument(row: UppDocumentRow): UppDocument {
     issuedAt: row.issued_at,
     expiryDate: row.expiry_date,
     uploadedAt: row.uploaded_at,
+    fullText: row.full_text ?? null,
+    ocrText: row.ocr_text ?? null,
+    ocrFields: row.ocr_fields ?? null,
+    ocrMetadata: row.ocr_metadata ?? null,
   };
 }
 

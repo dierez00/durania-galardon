@@ -4,6 +4,7 @@ import { apiSuccess, apiError } from "@/shared/lib/api-response";
 import { logAuditEvent } from "@/server/audit";
 import { ServerUppDocumentsRepository } from "@/modules/producer/documents/infra/supabase/ServerUppDocumentsRepository";
 import { calculateFileHash } from "@/modules/producer/documents/infra/supabase/shared";
+import { processUppDocumentOcrInBackground } from "@/modules/producer/documents/infra/ocr/processDocumentOcr";
 import {
   logProducerAccessServer,
   sampleProducerAccessIds,
@@ -79,6 +80,10 @@ export async function GET(request: NextRequest) {
         issued_at: document.issuedAt,
         expiry_date: document.expiryDate,
         uploaded_at: document.uploadedAt,
+        full_text: document.fullText,
+        ocr_text: document.ocrText,
+        ocr_fields: document.ocrFields,
+        ocr_metadata: document.ocrMetadata,
       })),
     });
   } catch (error) {
@@ -138,6 +143,13 @@ export async function POST(request: NextRequest) {
 
   try {
     const document = await repository.upload(file, uppId, documentType, expiryDate, bovinoId);
+
+    void processUppDocumentOcrInBackground({
+      documentId: document.id,
+      file,
+      documentType,
+      source: "upload",
+    });
 
     await logAuditEvent({
       request,

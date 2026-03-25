@@ -13,6 +13,10 @@ export interface ProducerDocument {
   expiryDate: string | null;
   uploadedAt: string;
   ocrConfidence: number | null;
+  fullText: string | null;
+  ocrText: string | null;
+  ocrFields: Record<string, unknown> | null;
+  ocrMetadata: Record<string, unknown> | null;
 }
 
 export type DocumentStatus = "pending" | "validated" | "expired" | "rejected";
