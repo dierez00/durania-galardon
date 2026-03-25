@@ -463,6 +463,12 @@ model animals {
   siniiga_tag           String                  @unique
   sex                   String
   birth_date            DateTime?               @db.Date
+  name                  String?
+  breed                 String?
+  weight_kg             Float?
+  age_years             Int?
+  health_status         String?
+  last_vaccine_at       DateTime?               @db.Timestamptz(6)
   status                String                  @default("active")
   mother_animal_id      String?                 @db.Uuid
   created_at            DateTime                @default(now()) @db.Timestamptz(6)
@@ -480,6 +486,34 @@ model animals {
   @@index([status], map: "idx_animals_status")
   @@index([tenant_id], map: "idx_animals_tenant")
   @@index([upp_id], map: "idx_animals_upp")
+  @@schema("public")
+}
+
+model stg_animals_backfill {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ear_tag         String
+  name            String?
+  age_years       Int?
+  breed           String?
+  sex             String?
+  weight_kg       Float?
+  health_status   String?
+  last_vaccine_at DateTime? @db.Timestamptz(6)
+  source_row_ref  String?
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@schema("public")
+}
+
+model stg_collar_links_backfill {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ear_tag        String
+  collar_id      String
+  linked_at      DateTime? @db.Timestamptz(6)
+  notes          String?
+  source_row_ref String?
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+
   @@schema("public")
 }
 

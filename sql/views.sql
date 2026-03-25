@@ -346,16 +346,41 @@ last_br AS (
   JOIN public.test_types  tt ON tt.id = ft.test_type_id
   WHERE tt.key = 'br'
   ORDER BY ft.animal_id, ft.sample_date DESC
+),
+current_collar AS (
+  SELECT
+    c.animal_id,
+    c.id AS current_collar_uuid,
+    c.collar_id AS current_collar_id,
+    c.status AS current_collar_status,
+    c.linked_at AS current_collar_linked_at,
+    ROW_NUMBER() OVER (
+      PARTITION BY c.animal_id
+      ORDER BY COALESCE(c.linked_at, c.created_at) DESC, c.created_at DESC, c.id DESC
+    ) AS rn
+  FROM public.collars c
+  WHERE c.animal_id IS NOT NULL
+    AND c.status IN ('linked', 'active')
 )
 SELECT
   a.id                                          AS animal_id,
   a.upp_id,
   a.tenant_id,
   a.siniiga_tag,
+  a.name,
   a.sex,
   a.birth_date,
+  a.breed,
+  a.weight_kg,
+  a.age_years,
+  a.health_status,
+  a.last_vaccine_at,
   a.status                                      AS animal_status,
   a.mother_animal_id,
+  cc.current_collar_uuid,
+  cc.current_collar_id,
+  cc.current_collar_status,
+  cc.current_collar_linked_at,
   -- Rancho
   u.name                                        AS upp_name,
   u.upp_code,
@@ -381,7 +406,8 @@ SELECT
 FROM public.animals             a
 JOIN public.upps                u  ON u.id = a.upp_id
 LEFT JOIN last_tb               tb ON tb.animal_id = a.id
-LEFT JOIN last_br               br ON br.animal_id = a.id;
+LEFT JOIN last_br               br ON br.animal_id = a.id
+LEFT JOIN current_collar        cc ON cc.animal_id = a.id AND cc.rn = 1;
 -- ============================================================
 -- 8. v_mvz_dashboard_global
 --    Dashboard global MVZ con KPIs agregados de todas sus UPPs.
