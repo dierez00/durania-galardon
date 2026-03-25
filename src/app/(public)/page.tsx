@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarCheck, CheckCircle2, Clock4, Stethoscope } from "lucide-react";
 import { parseAuthCallbackState } from "@/modules/auth/shared/callback";
@@ -97,6 +97,14 @@ function buildIcs({
 }
 
 export default function LandingPage() {
+  return (
+    <Suspense fallback={<LandingPageLoading />}>
+      <LandingPageContent />
+    </Suspense>
+  );
+}
+
+function LandingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [step, setStep] = useState(1);
@@ -477,6 +485,18 @@ export default function LandingPage() {
             </CardContent>
           </Card>
         </section>
+      </div>
+    </div>
+  );
+}
+
+function LandingPageLoading() {
+  return (
+    <div className="min-h-screen bg-linear-to-br from-background via-brand-surface to-secondary/40">
+      <div className="mx-auto max-w-6xl px-6 py-8 md:py-12">
+        <div className="rounded-3xl border border-border/80 bg-card/90 p-6 shadow-sm backdrop-blur">
+          <p className="text-sm text-muted-foreground">Cargando...</p>
+        </div>
       </div>
     </div>
   );
