@@ -108,8 +108,8 @@ describe("producer delete document routes", () => {
     expect(deleteEq).not.toHaveBeenCalled();
   });
 
-  it("bloquea DELETE personal cuando solo existe una version", async () => {
-    const { client, deleteEq } = createSupabaseMock(
+  it("permite DELETE personal pending aunque solo exista una version", async () => {
+    const { client, deleteEq, storageRemove } = createSupabaseMock(
       {
         id: "doc-2",
         producer_id: "producer-1",
@@ -137,10 +137,10 @@ describe("producer delete document routes", () => {
     );
     const body = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(body.ok).toBe(false);
-    expect(body.error.code).toBe("DELETION_BLOCKED");
-    expect(deleteEq).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(deleteEq).toHaveBeenCalled();
+    expect(storageRemove).toHaveBeenCalled();
   });
 
   it("permite DELETE personal no validado cuando existe otra version", async () => {

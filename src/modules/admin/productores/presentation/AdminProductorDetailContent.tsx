@@ -24,6 +24,7 @@ import { AdminProductorUppsList } from "./AdminProductorUppsList";
 import { AdminProductorDocumentsList } from "./AdminProductorDocumentsList";
 import { AdminProductorVisitsTable } from "./AdminProductorVisitsTable";
 import { AdminProductorInfoTab } from "./AdminProductorInfoTab";
+import { AdminProductorDocumentReviewDialog } from "./components/AdminProductorDocumentReviewDialog";
 import { useAdminProductorDetail } from "./hooks/useAdminProductorDetail";
 import type { ProductorDetailTab } from "./hooks/useAdminProductorDetail";
 
@@ -45,6 +46,24 @@ export function AdminProductorDetailContent({
   loadingUpps,
   documents,
   loadingDocuments,
+  reviewDialogOpen,
+  selectedDocument,
+  selectedDocumentDetail,
+  selectedDocumentUrl,
+  loadingSelectedDocument,
+  loadingSelectedFile,
+  reviewError,
+  reviewStatus,
+  reviewComments,
+  reviewExpiryDate,
+  reviewDirty,
+  isReviewSaving,
+  setReviewStatus,
+  setReviewComments,
+  setReviewExpiryDate,
+  handleOpenDocumentReview,
+  handleCloseReviewDialog,
+  handleSaveDocumentReview,
   visits,
   visitsTotal,
   visitsPage,
@@ -163,7 +182,11 @@ export function AdminProductorDetailContent({
         )}
 
         {activeTab === "documentos" && (
-          <AdminProductorDocumentsList documents={documents} loading={loadingDocuments} />
+          <AdminProductorDocumentsList
+            documents={documents}
+            loading={loadingDocuments}
+            onReview={handleOpenDocumentReview}
+          />
         )}
 
         {activeTab === "visitas" && (
@@ -200,6 +223,27 @@ export function AdminProductorDetailContent({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AdminProductorDocumentReviewDialog
+        open={reviewDialogOpen}
+        onOpenChange={handleCloseReviewDialog}
+        selectedDocument={selectedDocument}
+        detail={selectedDocumentDetail}
+        fileUrl={selectedDocumentUrl}
+        loading={loadingSelectedDocument}
+        loadingFile={loadingSelectedFile}
+        error={reviewError}
+        status={reviewStatus}
+        comments={reviewComments}
+        expiryDate={reviewExpiryDate}
+        dirty={reviewDirty}
+        isSaving={isReviewSaving}
+        onStatusChange={setReviewStatus}
+        onCommentsChange={setReviewComments}
+        onExpiryDateChange={setReviewExpiryDate}
+        onSave={() => handleSaveDocumentReview(false)}
+        onSaveAndNext={() => handleSaveDocumentReview(true)}
+      />
     </div>
   );
 }

@@ -6,7 +6,10 @@ import {
   getProductorDetailUseCase,
   getProductorUppsUseCase,
   getProductorDocumentsUseCase,
+  getProductorDocumentDetailUseCase,
+  getProductorDocumentSignedUrlUseCase,
   getProductorVisitsUseCase,
+  reviewProductorDocumentUseCase,
   updateProductorStatusUseCase,
   updateProductorInfoUseCase,
   deleteProductorUseCase,
@@ -14,12 +17,33 @@ import {
 import { UpdateAdminProductorInfoValidationError } from "@/modules/admin/productores/application/dto/UpdateAdminProductorInfoDTO";
 import type {
   AdminProductorDetallado,
+  AdminProductorDocumentDetail,
   AdminProductorDocument,
   AdminProductorUpp,
   AdminProductorVisit,
+  AdminDocumentStatus,
 } from "@/modules/admin/productores/domain/entities/AdminProductorDetailEntity";
 
 export type ProductorDetailTab = "info" | "upps" | "documentos" | "visitas";
+
+function nextDocumentCandidate(
+  documents: AdminProductorDocument[],
+  current: AdminProductorDocument | null
+): AdminProductorDocument | null {
+  const filtered = documents.filter(
+    (doc) => !(doc.id === current?.id && doc.sourceType === current?.sourceType)
+  );
+  if (filtered.length === 0) return null;
+
+  const sorted = [...filtered].sort((a, b) => {
+    const pendingWeightA = a.status === "pending" ? 0 : 1;
+    const pendingWeightB = b.status === "pending" ? 0 : 1;
+    if (pendingWeightA !== pendingWeightB) return pendingWeightA - pendingWeightB;
+    return new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime();
+  });
+
+  return sorted[0] ?? null;
+}
 
 export function useAdminProductorDetail(id: string) {
   const router = useRouter();
@@ -36,6 +60,23 @@ export function useAdminProductorDetail(id: string) {
   // ── Documents ───────────────────────────────────────────────────────────────
   const [documents, setDocuments] = useState<AdminProductorDocument[]>([]);
   const [loadingDocuments, setLoadingDocuments] = useState(false);
+
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<AdminProductorDocument | null>(null);
+  const [selectedDocumentDetail, setSelectedDocumentDetail] = useState<AdminProductorDocumentDetail | null>(null);
+  const [selectedDocumentUrl, setSelectedDocumentUrl] = useState<string | null>(null);
+  const [loadingSelectedDocument, setLoadingSelectedDocument] = useState(false);
+  const [loadingSelectedFile, setLoadingSelectedFile] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [reviewStatus, setReviewStatus] = useState<AdminDocumentStatus>("pending");
+  const [reviewComments, setReviewComments] = useState("");
+  const [reviewExpiryDate, setReviewExpiryDate] = useState("");
+  const [reviewInitialState, setReviewInitialState] = useState<{
+    status: AdminDocumentStatus;
+    comments: string;
+    expiryDate: string;
+  } | null>(null);
+  const [isReviewSaving, setIsReviewSaving] = useState(false);
 
   // ── Visits ──────────────────────────────────────────────────────────────────
   const [visits, setVisits] = useState<AdminProductorVisit[]>([]);
@@ -87,18 +128,124 @@ export function useAdminProductorDetail(id: string) {
   }, [id, upps.length]);
 
   // ── Load Documents (lazy) ────────────────────────────────────────────────────
-  const loadDocuments = useCallback(async () => {
-    if (documents.length > 0) return;
+  const loadDocuments = useCallback(async (force = false) => {
+    if (!force && documents.length > 0) return documents;
     setLoadingDocuments(true);
     try {
       const data = await getProductorDocumentsUseCase.execute(id);
       setDocuments(data);
+      return data;
     } catch {
-      // silently fail
+      return [];
     } finally {
       setLoadingDocuments(false);
     }
   }, [id, documents.length]);
+
+  const handleOpenDocumentReview = useCallback(
+    async (document: AdminProductorDocument) => {
+      setSelectedDocument(document);
+      setReviewDialogOpen(true);
+      setReviewError(null);
+      setLoadingSelectedDocument(true);
+      setLoadingSelectedFile(true);
+      setSelectedDocumentDetail(null);
+      setSelectedDocumentUrl(null);
+
+      try {
+        const [detail, signedUrl] = await Promise.all([
+          getProductorDocumentDetailUseCase.execute(id, document.sourceType, document.id),
+          getProductorDocumentSignedUrlUseCase.execute(id, document.sourceType, document.id),
+        ]);
+
+        if (!detail) {
+          setReviewError("No fue posible cargar el detalle del documento.");
+          return;
+        }
+
+        setSelectedDocumentDetail(detail);
+        setSelectedDocumentUrl(signedUrl);
+
+        const nextStatus = detail.status;
+        const nextComments = detail.comments ?? "";
+        const nextExpiryDate = detail.expiryDate ?? "";
+
+        setReviewStatus(nextStatus);
+        setReviewComments(nextComments);
+        setReviewExpiryDate(nextExpiryDate);
+        setReviewInitialState({
+          status: nextStatus,
+          comments: nextComments,
+          expiryDate: nextExpiryDate,
+        });
+      } catch {
+        setReviewError("No fue posible cargar la revisión del documento.");
+      } finally {
+        setLoadingSelectedDocument(false);
+        setLoadingSelectedFile(false);
+      }
+    },
+    [id]
+  );
+
+  const handleCloseReviewDialog = useCallback((open: boolean) => {
+    setReviewDialogOpen(open);
+    if (!open) {
+      setReviewError(null);
+      setSelectedDocument(null);
+      setSelectedDocumentDetail(null);
+      setSelectedDocumentUrl(null);
+      setReviewInitialState(null);
+      setReviewStatus("pending");
+      setReviewComments("");
+      setReviewExpiryDate("");
+    }
+  }, []);
+
+  const handleSaveDocumentReview = useCallback(
+    async (saveAndNext: boolean) => {
+      if (!selectedDocument) return;
+
+      setReviewError(null);
+      setIsReviewSaving(true);
+      try {
+        await reviewProductorDocumentUseCase.execute(id, {
+          documentId: selectedDocument.id,
+          sourceType: selectedDocument.sourceType,
+          status: reviewStatus,
+          comments: reviewComments,
+          expiryDate: reviewExpiryDate || null,
+        });
+
+        const refreshedDocuments = await loadDocuments(true);
+
+        if (saveAndNext) {
+          const next = nextDocumentCandidate(refreshedDocuments, selectedDocument);
+          if (next) {
+            await handleOpenDocumentReview(next);
+            setIsReviewSaving(false);
+            return;
+          }
+        }
+
+        handleCloseReviewDialog(false);
+      } catch (error) {
+        setReviewError(error instanceof Error ? error.message : "No fue posible guardar la revisión.");
+      } finally {
+        setIsReviewSaving(false);
+      }
+    },
+    [
+      selectedDocument,
+      id,
+      reviewStatus,
+      reviewComments,
+      reviewExpiryDate,
+      loadDocuments,
+      handleOpenDocumentReview,
+      handleCloseReviewDialog,
+    ]
+  );
 
   // ── Load Visits (lazy + paginable) ───────────────────────────────────────────
   const loadVisits = useCallback(
@@ -214,6 +361,28 @@ export function useAdminProductorDetail(id: string) {
 
     documents,
     loadingDocuments,
+    reviewDialogOpen,
+    selectedDocument,
+    selectedDocumentDetail,
+    selectedDocumentUrl,
+    loadingSelectedDocument,
+    loadingSelectedFile,
+    reviewError,
+    reviewStatus,
+    reviewComments,
+    reviewExpiryDate,
+    reviewDirty:
+      !!reviewInitialState &&
+      (reviewStatus !== reviewInitialState.status ||
+        reviewComments !== reviewInitialState.comments ||
+        reviewExpiryDate !== reviewInitialState.expiryDate),
+    isReviewSaving,
+    setReviewStatus,
+    setReviewComments,
+    setReviewExpiryDate,
+    handleOpenDocumentReview,
+    handleCloseReviewDialog,
+    handleSaveDocumentReview,
 
     visits,
     visitsTotal,

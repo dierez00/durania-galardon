@@ -1,9 +1,12 @@
 import type {
+  AdminDocumentSourceType,
   AdminProductorDetallado,
   AdminProductorDocument,
+  AdminProductorDocumentDetail,
   AdminProductorUpp,
   AdminProductorUppMvz,
   AdminProductorVisitsPaginated,
+  ReviewAdminProductorDocumentInput,
 } from "@/modules/admin/productores/domain/entities/AdminProductorDetailEntity";
 import type { IAdminProductorDetailRepository } from "@/modules/admin/productores/domain/repositories/IAdminProductorDetailRepository";
 import {
@@ -12,6 +15,7 @@ import {
   updateAuthUserEmail,
 } from "@/server/auth/provisioning";
 import { getSupabaseProvisioningClient } from "@/server/auth/supabase";
+import { DOCUMENTS_BUCKET } from "@/modules/producer/documents/infra/supabase/shared";
 
 type MvzAssignmentSourceRow = {
   upp_id: string;
@@ -24,6 +28,81 @@ type MvzAssignmentSourceRow = {
     status: string;
   }> | null;
 };
+
+type ProducerDocumentSourceRow = {
+  id: string;
+  producer_id: string;
+  status: "pending" | "validated" | "expired" | "rejected";
+  comments: string | null;
+  is_current: boolean;
+  expiry_date: string | null;
+  uploaded_at: string;
+  file_storage_key: string;
+  extracted_fields: Record<string, unknown> | null;
+  ocr_fields: Record<string, unknown> | null;
+  ocr_metadata: Record<string, unknown> | null;
+  ocr_confidence: number | null;
+  document_types: Array<{ name: string }> | { name: string } | null;
+};
+
+type UppDocumentSourceRow = {
+  id: string;
+  upp_id: string;
+  status: "pending" | "validated" | "expired" | "rejected";
+  comments: string | null;
+  is_current: boolean;
+  issued_at: string | null;
+  expiry_date: string | null;
+  uploaded_at: string;
+  file_storage_key: string;
+  ocr_fields: Record<string, unknown> | null;
+  ocr_metadata: Record<string, unknown> | null;
+  document_type: string;
+  upps: Array<{ producer_id: string; name: string }> | { producer_id: string; name: string } | null;
+};
+
+function firstRelation<T>(value: T[] | T | null | undefined): T | null {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
+
+function mapProducerDocument(row: ProducerDocumentSourceRow): AdminProductorDocument {
+  const docType = firstRelation(row.document_types);
+  return {
+    id: row.id,
+    sourceType: "producer",
+    sourceId: row.producer_id,
+    uppId: null,
+    uppName: null,
+    documentType: docType?.name ?? "Documento",
+    fileStorageKey: row.file_storage_key,
+    status: row.status,
+    comments: row.comments,
+    isCurrent: row.is_current,
+    issuedAt: null,
+    expiryDate: row.expiry_date,
+    uploadedAt: row.uploaded_at,
+  };
+}
+
+function mapUppDocument(row: UppDocumentSourceRow): AdminProductorDocument {
+  const upp = firstRelation(row.upps);
+  return {
+    id: row.id,
+    sourceType: "upp",
+    sourceId: row.upp_id,
+    uppId: row.upp_id,
+    uppName: upp?.name ?? null,
+    documentType: row.document_type,
+    fileStorageKey: row.file_storage_key,
+    status: row.status,
+    comments: row.comments,
+    isCurrent: row.is_current,
+    issuedAt: row.issued_at,
+    expiryDate: row.expiry_date,
+    uploadedAt: row.uploaded_at,
+  };
+}
 
 export class ServerAdminProductorDetailRepository implements IAdminProductorDetailRepository {
   async getById(id: string): Promise<AdminProductorDetallado | null> {
@@ -67,10 +146,20 @@ export class ServerAdminProductorDetailRepository implements IAdminProductorDeta
       totalVisits = visitsCountResult.count ?? 0;
     }
 
-    const docsCountResult = await supabaseAdmin
+    const producerDocsCountResult = await supabaseAdmin
       .from("producer_documents")
       .select("id", { count: "exact", head: true })
       .eq("producer_id", id);
+
+    let uppDocsTotal = 0;
+    if (!uppIdsResult.error && (uppIdsResult.data ?? []).length > 0) {
+      const uppIds = (uppIdsResult.data ?? []).map((upp) => upp.id);
+      const uppDocsCountResult = await supabaseAdmin
+        .from("upp_documents")
+        .select("id", { count: "exact", head: true })
+        .in("upp_id", uppIds);
+      uppDocsTotal = uppDocsCountResult.count ?? 0;
+    }
 
     const email = producer.user_id ? await fetchAuthUserEmail(producer.user_id) : null;
 
@@ -83,7 +172,7 @@ export class ServerAdminProductorDetailRepository implements IAdminProductorDeta
       createdAt: producer.created_at,
       totalUpps: uppsCountResult.count ?? 0,
       totalBovinos,
-      totalDocuments: docsCountResult.count ?? 0,
+      totalDocuments: (producerDocsCountResult.count ?? 0) + uppDocsTotal,
       totalVisits,
     };
   }
@@ -159,35 +248,178 @@ export class ServerAdminProductorDetailRepository implements IAdminProductorDeta
 
   async getDocuments(id: string): Promise<AdminProductorDocument[]> {
     const supabaseAdmin = getSupabaseProvisioningClient();
-    type DocumentRow = {
-      id: string;
-      status: string;
-      comments: string | null;
-      is_current: boolean;
-      expiry_date: string | null;
-      uploaded_at: string;
-      document_types: { name: string } | null;
-    };
-
-    const docsResult = await supabaseAdmin
+    const producerDocsResult = await supabaseAdmin
       .from("producer_documents")
-      .select("id,status,comments,is_current,expiry_date,uploaded_at,document_types(name)")
+      .select(
+        "id,producer_id,status,comments,is_current,expiry_date,uploaded_at,file_storage_key,extracted_fields,ocr_fields,ocr_metadata,ocr_confidence,document_types(name)"
+      )
       .eq("producer_id", id)
       .order("uploaded_at", { ascending: false });
 
-    if (docsResult.error) {
-      throw new Error(docsResult.error.message);
+    if (producerDocsResult.error) {
+      throw new Error(producerDocsResult.error.message);
     }
 
-    return ((docsResult.data as unknown as DocumentRow[]) ?? []).map((doc) => ({
-      id: doc.id,
-      documentType: doc.document_types?.name ?? "Documento",
-      status: doc.status,
-      comments: doc.comments,
-      isCurrent: doc.is_current,
-      expiryDate: doc.expiry_date,
-      uploadedAt: doc.uploaded_at,
-    }));
+    const uppDocsResult = await supabaseAdmin
+      .from("upp_documents")
+      .select(
+        "id,upp_id,status,comments,is_current,issued_at,expiry_date,uploaded_at,file_storage_key,ocr_fields,ocr_metadata,document_type,upps!inner(producer_id,name)"
+      )
+      .eq("upps.producer_id", id)
+      .order("uploaded_at", { ascending: false });
+
+    if (uppDocsResult.error) {
+      throw new Error(uppDocsResult.error.message);
+    }
+
+    const producerDocuments = ((producerDocsResult.data as unknown as ProducerDocumentSourceRow[]) ?? []).map((row) =>
+      mapProducerDocument(row)
+    );
+
+    const uppDocuments = ((uppDocsResult.data as unknown as UppDocumentSourceRow[]) ?? []).map((row) =>
+      mapUppDocument(row)
+    );
+
+    return [...producerDocuments, ...uppDocuments].sort(
+      (a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+    );
+  }
+
+  async getDocumentDetail(
+    producerId: string,
+    sourceType: AdminDocumentSourceType,
+    documentId: string
+  ): Promise<AdminProductorDocumentDetail | null> {
+    const supabaseAdmin = getSupabaseProvisioningClient();
+
+    if (sourceType === "producer") {
+      const result = await supabaseAdmin
+        .from("producer_documents")
+        .select(
+          "id,producer_id,status,comments,is_current,expiry_date,uploaded_at,file_storage_key,extracted_fields,ocr_fields,ocr_metadata,ocr_confidence,document_types(name)"
+        )
+        .eq("id", documentId)
+        .eq("producer_id", producerId)
+        .maybeSingle();
+
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+      if (!result.data) {
+        return null;
+      }
+
+      const row = result.data as unknown as ProducerDocumentSourceRow;
+      const mapped = mapProducerDocument(row);
+      return {
+        ...mapped,
+        extractedFields: row.extracted_fields ?? null,
+        ocrFields: row.ocr_fields ?? null,
+        ocrMetadata: row.ocr_metadata ?? null,
+        ocrConfidence: row.ocr_confidence ?? null,
+      };
+    }
+
+    const result = await supabaseAdmin
+      .from("upp_documents")
+      .select(
+        "id,upp_id,status,comments,is_current,issued_at,expiry_date,uploaded_at,file_storage_key,ocr_fields,ocr_metadata,document_type,upps!inner(producer_id,name)"
+      )
+      .eq("id", documentId)
+      .eq("upps.producer_id", producerId)
+      .maybeSingle();
+
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+    if (!result.data) {
+      return null;
+    }
+
+    const row = result.data as unknown as UppDocumentSourceRow;
+    const mapped = mapUppDocument(row);
+    return {
+      ...mapped,
+      extractedFields: null,
+      ocrFields: row.ocr_fields ?? null,
+      ocrMetadata: row.ocr_metadata ?? null,
+      ocrConfidence: null,
+    };
+  }
+
+  async getDocumentSignedUrl(
+    producerId: string,
+    sourceType: AdminDocumentSourceType,
+    documentId: string
+  ): Promise<string | null> {
+    const detail = await this.getDocumentDetail(producerId, sourceType, documentId);
+    if (!detail) {
+      return null;
+    }
+
+    const supabaseAdmin = getSupabaseProvisioningClient();
+    const signed = await supabaseAdmin.storage
+      .from(DOCUMENTS_BUCKET)
+      .createSignedUrl(detail.fileStorageKey, 60 * 10);
+
+    if (signed.error || !signed.data?.signedUrl) {
+      throw new Error(signed.error?.message ?? "No se pudo generar URL firmada.");
+    }
+
+    return signed.data.signedUrl;
+  }
+
+  async reviewDocument(producerId: string, input: ReviewAdminProductorDocumentInput): Promise<void> {
+    const supabaseAdmin = getSupabaseProvisioningClient();
+
+    if (input.sourceType === "producer") {
+      const result = await supabaseAdmin
+        .from("producer_documents")
+        .update({
+          status: input.status,
+          comments: input.comments ?? null,
+          expiry_date: input.expiryDate ?? null,
+        })
+        .eq("id", input.documentId)
+        .eq("producer_id", producerId)
+        .select("id")
+        .maybeSingle();
+
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+      if (!result.data) {
+        throw new Error("Documento no encontrado para este productor.");
+      }
+      return;
+    }
+
+    const uppResult = await supabaseAdmin
+      .from("upp_documents")
+      .select("id,upps!inner(producer_id)")
+      .eq("id", input.documentId)
+      .eq("upps.producer_id", producerId)
+      .maybeSingle();
+
+    if (uppResult.error) {
+      throw new Error(uppResult.error.message);
+    }
+    if (!uppResult.data) {
+      throw new Error("Documento no encontrado para este productor.");
+    }
+
+    const updateResult = await supabaseAdmin
+      .from("upp_documents")
+      .update({
+        status: input.status,
+        comments: input.comments ?? null,
+        expiry_date: input.expiryDate ?? null,
+      })
+      .eq("id", input.documentId);
+
+    if (updateResult.error) {
+      throw new Error(updateResult.error.message);
+    }
   }
 
   async getVisits(id: string, page: number): Promise<AdminProductorVisitsPaginated> {

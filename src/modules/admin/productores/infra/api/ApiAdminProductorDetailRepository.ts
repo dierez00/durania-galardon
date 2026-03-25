@@ -1,13 +1,33 @@
 import type {
+  AdminDocumentSourceType,
   AdminProductorDetallado,
   AdminProductorDocument,
+  AdminProductorDocumentDetail,
   AdminProductorUpp,
   AdminProductorVisitsPaginated,
+  ReviewAdminProductorDocumentInput,
 } from "@/modules/admin/productores/domain/entities/AdminProductorDetailEntity";
 import type { IAdminProductorDetailRepository } from "@/modules/admin/productores/domain/repositories/IAdminProductorDetailRepository";
 import { getAccessToken } from "@/shared/lib/auth-session";
 
 const BASE = "/api/admin/producers";
+
+type ApiFailure = {
+  ok: false;
+  error?: { code?: string; message?: string };
+};
+
+function getErrorMessage(json: unknown, fallback: string): string {
+  if (typeof json !== "object" || json === null) {
+    return fallback;
+  }
+
+  const body = json as ApiFailure;
+  if (body.error?.message) {
+    return body.error.message;
+  }
+  return fallback;
+}
 
 function authHeaders(token: string | null): HeadersInit {
   return {
@@ -58,6 +78,64 @@ export class ApiAdminProductorDetailRepository
     return json.data?.documents ?? [];
   }
 
+  async getDocumentDetail(
+    producerId: string,
+    sourceType: AdminDocumentSourceType,
+    documentId: string
+  ): Promise<AdminProductorDocumentDetail | null> {
+    const token = await getAccessToken();
+    const query = new URLSearchParams({
+      view: "detail",
+      sourceType,
+      documentId,
+    });
+    const resp = await fetch(`${BASE}/${producerId}/documents?${query.toString()}`, {
+      headers: authHeaders(token),
+    });
+    if (!resp.ok) return null;
+    const json = (await resp.json()) as {
+      ok: boolean;
+      data?: { document: AdminProductorDocumentDetail };
+    };
+    return json.data?.document ?? null;
+  }
+
+  async getDocumentSignedUrl(
+    producerId: string,
+    sourceType: AdminDocumentSourceType,
+    documentId: string
+  ): Promise<string | null> {
+    const token = await getAccessToken();
+    const query = new URLSearchParams({
+      view: "file",
+      sourceType,
+      documentId,
+    });
+    const resp = await fetch(`${BASE}/${producerId}/documents?${query.toString()}`, {
+      headers: authHeaders(token),
+    });
+    if (!resp.ok) return null;
+    const json = (await resp.json()) as {
+      ok: boolean;
+      data?: { url: string };
+    };
+    return json.data?.url ?? null;
+  }
+
+  async reviewDocument(producerId: string, input: ReviewAdminProductorDocumentInput): Promise<void> {
+    const token = await getAccessToken();
+    const resp = await fetch(`${BASE}/${producerId}/documents`, {
+      method: "PATCH",
+      headers: authHeaders(token),
+      body: JSON.stringify(input),
+    });
+
+    if (!resp.ok) {
+      const json = await resp.json().catch(() => ({}));
+      throw new Error(getErrorMessage(json, "Error al revisar el documento."));
+    }
+  }
+
   async getVisits(
     id: string,
     page: number
@@ -94,8 +172,8 @@ export class ApiAdminProductorDetailRepository
       body: JSON.stringify(payload),
     });
     if (!resp.ok) {
-      const json = (await resp.json().catch(() => ({}))) as { message?: string };
-      throw new Error(json.message ?? "Error al actualizar el perfil del productor.");
+      const json = await resp.json().catch(() => ({}));
+      throw new Error(getErrorMessage(json, "Error al actualizar el perfil del productor."));
     }
   }
 
@@ -107,8 +185,8 @@ export class ApiAdminProductorDetailRepository
       body: JSON.stringify({ email }),
     });
     if (!resp.ok) {
-      const json = (await resp.json().catch(() => ({}))) as { message?: string };
-      throw new Error(json.message ?? "Error al actualizar el correo electrónico.");
+      const json = await resp.json().catch(() => ({}));
+      throw new Error(getErrorMessage(json, "Error al actualizar el correo electrónico."));
     }
   }
 
