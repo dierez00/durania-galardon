@@ -423,22 +423,34 @@ Documentos del productor. Solo puede haber **un documento activo** (`is_current 
 
 #### `animals`
 
-Registro de bovinos por UPP. El `siniiga_tag` es único en todo el sistema.
+Registro de bovinos por UPP. El `siniiga_tag` sigue siendo el identificador canonico del animal en todo el sistema.
 
-| Columna | Tipo | Descripción |
+| Columna | Tipo | Descripcion |
 |---|---|---|
 | `id` | `UUID` | PK |
-| `tenant_id` | `UUID` | FK → `tenants(id)` |
-| `upp_id` | `UUID` | FK → `upps(id)` |
+| `tenant_id` | `UUID` | FK -> `tenants(id)` |
+| `upp_id` | `UUID` | FK -> `upps(id)` |
 | `siniiga_tag` | `TEXT` | Arete SINIIGA. Unique |
+| `name` | `TEXT` | Nombre visible del animal. Nullable |
 | `sex` | `TEXT` | `'M'` \| `'F'` |
 | `birth_date` | `DATE` | Nullable |
+| `breed` | `TEXT` | Raza. Nullable |
+| `weight_kg` | `DOUBLE PRECISION` | Peso en kg. Nullable, >= 0 |
+| `age_years` | `INTEGER` | Edad consolidada en anos. Nullable, >= 0 |
+| `health_status` | `TEXT` | `'healthy'` \| `'observation'` \| `'quarantine'` |
+| `last_vaccine_at` | `TIMESTAMPTZ` | Ultima vacuna registrada. Nullable |
 | `status` | `TEXT` | `'active'` \| `'blocked'` \| `'in_transit'` \| `'inactive'` |
-| `mother_animal_id` | `UUID` | FK → `animals(id)` · Auto-referencia · Nullable |
-| `created_at` | `TIMESTAMPTZ` | — |
+| `mother_animal_id` | `UUID` | FK -> `animals(id)` - Auto-referencia - Nullable |
+| `created_at` | `TIMESTAMPTZ` | - |
+
+Reglas recientes:
+
+- `sql/migration_010_animals_backfill_and_collar_link.sql` agrega el perfil ampliado del animal sin duplicar `ear_tag`; el identificador canonico sigue siendo `siniiga_tag`.
+- `weight_kg` y `age_years` tienen checks defensivos para evitar negativos.
+- el backfill productivo se hace desde staging con `stg_animals_backfill` y `stg_collar_links_backfill`.
+- la promocion canonica se ejecuta con `public.promote_animals_backfill_and_collar_links()` y debe abortar completa ante ambiguedad de arete, conflicto de sexo, nombres incompatibles o collares duplicados.
 
 ---
-
 ### 2.7 Pruebas Sanitarias
 
 #### `test_types`
@@ -925,7 +937,7 @@ ORDER BY sanitary_alert;
 
 ### `v_animals_sanitary`
 
-Animales con su último resultado de prueba TB y BR. Útil para detalle de rancho en panel productor y MVZ.
+Animales con su ultimo resultado de prueba TB y BR, perfil operativo y snapshot del collar activo. Es el contrato principal para detalle de rancho en panel productor y MVZ.
 
 ```sql
 -- Animales con alertas en un rancho
@@ -936,15 +948,40 @@ WHERE upp_id = $upp_id
 ORDER BY sanitary_alert, siniiga_tag;
 ```
 
-| Columna | Descripción |
+| Columna | Descripcion |
 |---|---|
-| `animal_id` / `siniiga_tag` | Identificación |
+| `animal_id` / `siniiga_tag` | Identificacion |
+| `name`, `breed`, `weight_kg`, `age_years` | Perfil operativo del animal |
 | `sex` | `'M'` \| `'F'` |
+| `health_status`, `last_vaccine_at` | Snapshot sanitario resumido |
 | `animal_status` | Estado del animal |
 | `upp_name` | Rancho al que pertenece |
+| `current_collar_uuid`, `current_collar_id`, `current_collar_status`, `current_collar_linked_at` | Collar activo vinculado al animal |
 | `tb_date` / `tb_result` / `tb_status` | Estado TB |
 | `br_date` / `br_result` / `br_status` | Estado BR |
 | `sanitary_alert` | `ok` \| `por_vencer` \| `prueba_vencida` \| `sin_pruebas` \| `positivo` \| `inactivo` |
+
+La vista es el contrato principal consumido por:
+
+- tablas de animales en productor y MVZ
+- ficha detalle de animales
+- vistas admin que muestran detalle consolidado del animal en exportaciones
+
+### Promocion de backfill y collar
+
+La migracion 010 tambien deja un flujo SQL-first para consolidar perfil faltante y vinculo de collar:
+
+```sql
+SELECT * FROM public.promote_animals_backfill_and_collar_links();
+```
+
+Garantias del flujo:
+
+- matching por arete normalizado (`siniiga_tag`)
+- no usa `name` como clave de resolucion
+- no permite dos collares activos para el mismo animal
+- no permite un historial abierto duplicado en `collar_animal_history`
+- mantiene `collars` y `collar_animal_history` consistentes e idempotentes
 
 ---
 
@@ -952,31 +989,30 @@ ORDER BY sanitary_alert, siniiga_tag;
 
 Todas las funciones son `SECURITY DEFINER` con `SET search_path = public`.
 
-| Función | Parámetros | Retorna | Descripción |
+| Funcion | Parametros | Retorna | Descripcion |
 |---|---|---|---|
-| `auth_get_panel_type()` | — | `TEXT` | Tipo de tenant del usuario. Usar en login para routing. |
-| `auth_in_tenant(p_tenant_id)` | `UUID` | `BOOLEAN` | ¿El usuario es miembro activo del tenant? |
-| `auth_has_tenant_role(p_tenant_id, p_role_key)` | `UUID, TEXT` | `BOOLEAN` | ¿El usuario tiene este rol en el tenant? |
-| `auth_has_tenant_permission(p_tenant_id, p_permission_key)` | `UUID, TEXT` | `BOOLEAN` | ¿El usuario tiene este permiso (vía cualquier rol)? |
-| `auth_has_upp_access(p_upp_id, p_min_level)` | `UUID, TEXT` | `BOOLEAN` | ¿El usuario tiene acceso a la UPP con nivel mínimo? (`'viewer'` por defecto) |
-| `auth_mvz_assigned_to_upp(p_upp_id)` | `UUID` | `BOOLEAN` | ¿El MVZ autenticado tiene este rancho asignado? Función cross-tenant basada en membresía activa al tenant MVZ. |
+| `auth_get_panel_type()` | - | `TEXT` | Tipo de tenant del usuario. Usar en login para routing. |
+| `auth_in_tenant(p_tenant_id)` | `UUID` | `BOOLEAN` | Verifica si el usuario es miembro activo del tenant. |
+| `auth_has_tenant_role(p_tenant_id, p_role_key)` | `UUID, TEXT` | `BOOLEAN` | Verifica si el usuario tiene este rol en el tenant. |
+| `auth_has_tenant_permission(p_tenant_id, p_permission_key)` | `UUID, TEXT` | `BOOLEAN` | Verifica si el usuario tiene este permiso por cualquiera de sus roles. |
+| `auth_has_upp_access(p_upp_id, p_min_level)` | `UUID, TEXT` | `BOOLEAN` | Verifica acceso minimo a la UPP. |
+| `auth_mvz_assigned_to_upp(p_upp_id)` | `UUID` | `BOOLEAN` | Verifica si el MVZ autenticado tiene este rancho asignado. |
 
 ```sql
 -- Routing en login
 SELECT public.auth_get_panel_type() AS panel;
 
--- Verificar permiso antes de una operación (en Edge Function)
+-- Verificar permiso antes de una operacion (en Edge Function)
 SELECT public.auth_has_tenant_permission(
   $tenant_id,
   'producer.bovinos.write'
 ) AS can_write;
 
--- Verificar acceso a UPP con nivel mínimo editor
+-- Verificar acceso a UPP con nivel minimo editor
 SELECT public.auth_has_upp_access($upp_id, 'editor');
 ```
 
 ---
-
 ## 6. Operaciones Frecuentes
 
 ### Alta de Productor (desde gobierno)

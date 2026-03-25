@@ -1,379 +1,250 @@
 Status: Reference
 Owner: Engineering
-Last Updated: 2026-03-19
+Last Updated: 2026-03-24
 Source of Truth: Deep technical reference for the live `bovinos` module. System-wide architecture and data rules live in `docs/architecture/overview.md` and `docs/data/database.md`.
-# Módulo Bovinos — Tenant/Producer
 
-> Documentación técnica del módulo `bovinos` implementado bajo arquitectura hexagonal.  
-> Ruta base del tenant: `/producer/bovinos`
+# Modulo Bovinos
 
----
-
-## Índice
-
-1. [Resumen](#resumen)
-2. [Arquitectura](#arquitectura)
-3. [Dominio](#dominio)
-4. [Aplicación](#aplicacion)
-5. [Infraestructura](#infraestructura)
-6. [Rutas API](#rutas-api)
-7. [Presentación](#presentacion)
-8. [Páginas](#paginas)
-9. [Flujo de datos](#flujo-de-datos)
-
----
+Documentacion tecnica del modulo compartido `src/modules/bovinos`, usado por productor, MVZ y superficies admin que consumen detalle sanitario del animal.
 
 ## Resumen
 
-El módulo `bovinos` cubre **Módulo 2 (Control Sanitario)** y **Módulo 3 (REEMO / elegibilidad de exportación)**:
+El modulo `bovinos` concentra control sanitario, elegibilidad de exportacion y la ficha consolidada del animal:
 
-- Listado de animales con indicadores inline de pruebas **TB** y **BR**.
-- Indicador de **exportabilidad** (REEMO) por animal.
-- Página de detalle en `/producer/bovinos/[id]` con 5 pestañas.
-- Conexión real a la base de datos vía la vista `v_animals_sanitary`.
-- Sin cambios en el schema de Prisma.
+- listado de animales con indicadores inline de TB, BR, salud, exportabilidad y collar activo
+- perfil ampliado del animal (`name`, `breed`, `weight_kg`, `age_years`, `health_status`, `last_vaccine_at`)
+- ficha detalle con pruebas, incidentes, genealogia, vacunaciones y exportaciones
+- acciones rapidas contextuales por panel
+- consumo SQL-first desde `v_animals_sanitary`
 
----
+Superficies activas:
+
+- productor: `/producer/bovinos`, `/producer/projects/[uppId]/animales`, `/producer/projects/[uppId]/animales/[id]`
+- MVZ: `/mvz/ranchos/[uppId]/animales`, `/mvz/ranchos/[uppId]/animales/[animalId]`
+- admin: vistas de exportacion que reutilizan el detalle consolidado del animal
 
 ## Arquitectura
 
-```
+```text
 src/modules/bovinos/
-├── domain/
-│   ├── entities/
-│   │   ├── Bovino.ts
-│   │   ├── BovinoFieldTest.ts
-│   │   ├── BovinoSanitaryIncident.ts
-│   │   ├── BovinoVaccination.ts
-│   │   └── BovinoExport.ts
-│   ├── repositories/
-│   │   └── BovinoRepository.ts          ← interfaz
-│   └── services/
-│       ├── checkExportability.ts
-│       └── filterBovinos.ts
-├── application/
-│   └── use-cases/
-│       ├── listBovinos.ts
-│       └── getBovinoDetail.ts
-├── infra/
-│   ├── api/
-│   │   └── bovinosApi.ts                ← HTTP client (fetch)
-│   ├── mappers/
-│   │   ├── bovino.mapper.ts
-│   │   └── fieldTest.mapper.ts
-│   ├── ApiBovinoRepository.ts           ← implementación
-│   └── container.ts                     ← instancias singleton
-└── presentation/
-    ├── hooks/
-    │   ├── useBovinos.ts
-    │   └── useBovinoDetail.ts
-    ├── BovinoList.tsx
-    ├── BovinosFilters.tsx
-    ├── BovinoDetail.tsx
-    ├── SanitarioBadge.tsx
-    ├── PruebaStatusBadge.tsx
-    ├── ExportableCheckBadge.tsx
-    └── index.ts
+|-- domain/
+|   |-- entities/
+|   |-- repositories/
+|   `-- services/
+|-- application/
+|   `-- use-cases/
+|-- infra/
+|   |-- api/
+|   |-- http/
+|   |-- mappers/
+|   |-- mock/
+|   `-- supabase/
+`-- presentation/
+    |-- hooks/
+    |-- BovinoList.tsx
+    |-- BovinoDetail.tsx
+    |-- MvzBovinoDetail.tsx
+    |-- BovinoDetailContent.tsx
+    |-- ProducerBovinosPage.tsx
+    `-- BovinosFilters.tsx
 ```
 
----
+Reglas de ownership:
+
+- `src/modules/bovinos` conserva modelo, mapeo y UI compartida del animal
+- `src/modules/ranchos/presentation/mvz/*` resuelve el contexto del rancho MVZ y reutiliza componentes compartidos
+- `src/app/*` se mantiene como entrypoint delgado
 
 ## Dominio
 
-### `Bovino` — entidad principal
+### Entidad `Bovino`
 
 ```ts
 interface BovinoSanitary {
   tb_date: string | null;
-  tb_result: string | null;       // "negative" | "positive"
+  tb_result: string | null;
   tb_valid_until: string | null;
-  tb_status: string | null;       // "vigente" | "por_vencer" | "vencida" | "sin_prueba"
+  tb_status: string | null;
   br_date: string | null;
   br_result: string | null;
   br_valid_until: string | null;
   br_status: string | null;
-  sanitary_alert: string | null;  // "ok" | "por_vencer" | "prueba_vencida" | "positivo" | "sin_pruebas"
+  sanitary_alert: string | null;
 }
 
 interface Bovino {
   id: string;
   upp_id: string;
   siniiga_tag: string;
+  name: string | null;
   sex: "M" | "F";
   birth_date: string | null;
-  status: string;                 // "active" | "inactive"
+  breed: string | null;
+  weight_kg: number | null;
+  age_years: number | null;
+  health_status: string | null;
+  last_vaccine_at: string | null;
+  status: string;
   mother_animal_id: string | null;
+  current_collar_uuid: string | null;
+  current_collar_id: string | null;
+  current_collar_status: string | null;
+  current_collar_linked_at: string | null;
   upp_name: string;
   upp_code: string | null;
   upp_status: string;
   sanitary: BovinoSanitary;
-  canExport: boolean;             // derivado por checkExportability()
+  canExport: boolean;
 }
 ```
 
-### `BovinosFiltersState`
+### Reglas relevantes
 
-```ts
-interface BovinosFiltersState {
-  search: string;
-  sexo: string;        // "M" | "F" | ""
-  sanitario: string;   // "ok" | "por_vencer" | "prueba_vencida" | "positivo" | "sin_pruebas" | ""
-  exportable: string;  // "apto" | "no_apto" | ""
-  fechaDesde: string;
-  fechaHasta: string;
-}
-```
-
-### Otras entidades
-
-| Entidad | Tabla origen | Campos clave |
-|---|---|---|
-| `BovinoFieldTest` | `field_tests` JOIN `test_types`, `mvz_profiles` | `test_type_key`, `sample_date`, `result`, `valid_until`, `mvz_name` |
-| `BovinoSanitaryIncident` | `sanitary_incidents` | `incident_type`, `severity`, `status`, `detected_at`, `resolved_at` |
-| `BovinoVaccination` | `animal_vaccinations` | `vaccine_name`, `dose`, `applied_at`, `due_at` |
-| `BovinoExport` | `export_requests` | `status`, `compliance_60_rule`, `tb_br_validated`, `blue_tag_assigned`, `monthly_bucket` |
-
-### `BovinoRepository` — interfaz
-
-```ts
-interface BovinoRepository {
-  list(): Promise<Bovino[]>;
-  getById(id: string): Promise<Bovino | null>;
-  listFieldTests(animalId: string): Promise<BovinoFieldTest[]>;
-  listIncidents(animalId: string): Promise<BovinoSanitaryIncident[]>;
-  listVaccinations(animalId: string): Promise<BovinoVaccination[]>;
-  listExports(animalId: string): Promise<BovinoExport[]>;
-  listOffspring(animalId: string): Promise<Bovino[]>;
-}
-```
-
-### `checkExportability` — servicio de dominio
-
-Reglas para que `canExport = true`:
-
-1. `bovino.status === "active"`
-2. `bovino.upp_status !== "quarantined"`
-3. `sanitary.tb_status === "vigente"` AND `sanitary.tb_result === "negative"`
-4. `sanitary.br_status === "vigente"` AND `sanitary.br_result === "negative"`
-
-La función `exportabilityReason(bovino)` devuelve el primer motivo de bloqueo como cadena legible.
-
-### `filterBovinos` — servicio de dominio
-
-Filtrado en memoria que aplica `BovinosFiltersState` sobre el arreglo de `Bovino[]`. Soporta:
-- búsqueda por `siniiga_tag`, `upp_name`, `upp_code`
-- filtro por `sex`, `sanitary_alert`, `canExport`
-- rango de fechas de nacimiento
-
----
-
-## Aplicación
-
-### `ListBovinos`
-
-```ts
-class ListBovinos {
-  execute(filters?: Partial<BovinosFiltersState>): Promise<Bovino[]>
-}
-```
-
-Llama a `repository.list()` y aplica `filterBovinos` si se pasan filtros.
-
-### `GetBovinoDetail`
-
-```ts
-interface BovinoDetailResult {
-  bovino: Bovino;
-  fieldTests: BovinoFieldTest[];
-  incidents: BovinoSanitaryIncident[];
-  vaccinations: BovinoVaccination[];
-  exports: BovinoExport[];
-  offspring: Bovino[];
-}
-
-class GetBovinoDetail {
-  execute(id: string): Promise<BovinoDetailResult | null>
-}
-```
-
-Obtiene el bovino y sus 5 colecciones en paralelo (`Promise.all`).
-
----
+- `canExport` se calcula con `checkExportability()`
+- `health_status` usa `healthy`, `observation`, `quarantine`
+- el collar activo del animal se representa con `current_collar_*`
+- el matching de backfill no usa `name` como clave; el identificador canonico sigue siendo `siniiga_tag`
 
 ## Infraestructura
 
-### `bovinosApi.ts` — cliente HTTP
+### Fuente principal
 
-| Función | Endpoint |
-|---|---|
-| `apiFetchBovinos()` | `GET /api/producer/bovinos` |
-| `apiFetchBovinoById(id)` | `GET /api/producer/bovinos/[id]` |
-| `apiFetchFieldTests(id)` | `GET /api/producer/bovinos/[id]/field-tests` |
-| `apiFetchIncidents(id)` | `GET /api/producer/bovinos/[id]/incidents` |
-| `apiFetchVaccinations(id)` | `GET /api/producer/bovinos/[id]/vaccinations` |
-| `apiFetchExports(id)` | `GET /api/producer/bovinos/[id]/exports` |
-| `apiFetchOffspring(id)` | `GET /api/producer/bovinos/[id]/offspring` |
+La vista `v_animals_sanitary` es el contrato SQL principal para listados y detalle agregado del animal.
 
-Todas las funciones añaden el header `Authorization: Bearer <token>` vía `getAccessToken()`.
+Campos usados por el modulo:
 
-### `bovino.mapper.ts`
+- identidad: `animal_id`, `upp_id`, `siniiga_tag`
+- perfil: `name`, `breed`, `weight_kg`, `age_years`, `sex`, `birth_date`
+- salud: `health_status`, `last_vaccine_at`, `tb_*`, `br_*`, `sanitary_alert`
+- contexto: `upp_name`, `upp_code`, `upp_status`, `animal_status`
+- genealogia: `mother_animal_id`
+- collar: `current_collar_uuid`, `current_collar_id`, `current_collar_status`, `current_collar_linked_at`
 
-Convierte el registro de la API (`BovinoApiRecord`) a la entidad de dominio `Bovino`, calculando `canExport` mediante `checkExportability()`.
+### Repositorios y mappers
 
-### `fieldTest.mapper.ts`
+- `ServerBovinoRepository.ts` resuelve lectura server-side desde Supabase
+- `ApiBovinoRepository.ts` mantiene el cliente HTTP del flujo producer legacy
+- `bovino.mapper.ts` traduce el record SQL/API al modelo de dominio y calcula `canExport`
 
-Convierte `FieldTestApiRecord` a `BovinoFieldTest`.
+## Rutas y contratos
 
-### `ApiBovinoRepository` — implementación
+### Producer
 
-Implementa `BovinoRepository` consumiendo el cliente HTTP y aplicando los mappers.
+- `GET|POST /api/producer/bovinos`
+- `GET /api/producer/bovinos/[id]`
+- `GET /api/producer/bovinos/[id]/field-tests`
+- `GET /api/producer/bovinos/[id]/incidents`
+- `GET /api/producer/bovinos/[id]/vaccinations`
+- `GET /api/producer/bovinos/[id]/exports`
+- `GET /api/producer/bovinos/[id]/offspring`
 
-### `container.ts` — singleton
+`POST /api/producer/bovinos` ya acepta perfil ampliado:
 
-```ts
-export const listBovinosUseCase   = new ListBovinos(new ApiBovinoRepository());
-export const getBovinoDetailUseCase = new GetBovinoDetail(new ApiBovinoRepository());
-```
+- `name`
+- `breed`
+- `ageYears`
+- `weightKg`
+- `healthStatus`
+- `lastVaccineAt`
+- `motherAnimalId`
 
----
+### MVZ
 
-## Rutas API
+- `GET /api/mvz/ranchos/[uppId]/animales`
+- `GET /api/mvz/ranchos/[uppId]/animales/[animalId]`
 
-Todas las rutas están bajo `src/app/api/producer/bovinos/` y requieren:
-- `requireAuthorized({ roles: ["producer","employee"], permissions: ["producer.bovinos.read"] })`
-- Verificación de acceso al UPP vía `auth.context.canAccessUpp(uppId)`
+Las pantallas de vacunacion e incidencias del rancho aceptan navegacion con query params:
 
-| Método | Ruta | Descripción |
-|---|---|---|
-| `GET` | `/api/producer/bovinos` | Lista todos los animales del tenant desde `v_animals_sanitary` |
-| `POST` | `/api/producer/bovinos` | Crea un nuevo animal en la tabla `animals` |
-| `GET` | `/api/producer/bovinos/[id]` | Detalle de un bovino |
-| `GET` | `/api/producer/bovinos/[id]/field-tests` | Pruebas TB/BR del animal |
-| `GET` | `/api/producer/bovinos/[id]/incidents` | Incidentes sanitarios |
-| `GET` | `/api/producer/bovinos/[id]/vaccinations` | Vacunaciones |
-| `GET` | `/api/producer/bovinos/[id]/exports` | Solicitudes de exportación de la UPP |
-| `GET` | `/api/producer/bovinos/[id]/offspring` | Crías (animales donde `mother_animal_id = id`) |
+- `?action=nuevo`
+- `?animalId=<uuid>`
 
-### Vista de base de datos usada
+Esto permite abrir formularios con el animal ya seleccionado desde la ficha detalle.
 
-```
-v_animals_sanitary
-  animal_id, upp_id, tenant_id, siniiga_tag, sex, birth_date,
-  animal_status, mother_animal_id, upp_name, upp_code,
-  tb_date, tb_result, tb_valid_until, tb_status,
-  br_date, br_result, br_valid_until, br_status,
-  sanitary_alert
-```
-
----
-
-## Presentación
-
-### Hooks
-
-#### `useBovinos`
-
-- `useState` para `bovinos`, `loading`, `error`, `filters`, `appliedFilters`
-- Debounce de 400 ms para cambios solo de texto
-- Llama `listBovinosUseCase.execute(appliedFilters)`
-
-```ts
-const { bovinos, loading, error, filters, onFiltersChange, reload } = useBovinos();
-```
-
-#### `useBovinoDetail`
-
-- Carga bovino + todos los tabs en una sola llamada (`getBovinoDetailUseCase.execute(id)`)
-- Gestiona `activeTab` para `DetailTabBar`
-
-```ts
-const {
-  bovino, loading, error, activeTab, setActiveTab,
-  fieldTests, incidents, vaccinations, exports, offspring
-} = useBovinoDetail(id);
-```
-
-### Componentes de badge
-
-| Componente | Propósito |
-|---|---|
-| `SanitarioBadge` | Color-badge genérico para cualquier estado (`active`, `vigente`, `positivo`, etc.) |
-| `PruebaStatusBadge` | Icono + etiqueta para estado de prueba TB o BR individual |
-| `ExportableCheckBadge` | ✓ verde / ✗ rojo con tooltip mostrando el motivo de bloqueo |
+## Presentacion
 
 ### `BovinoList`
 
-Tabla con columnas: **Arete SINIIGA · Sexo · Rancho · Nacimiento · TB · BR · Estado · Exportable · Acciones**
+Tabla compartida para productor y MVZ.
 
-El botón de ojo navega a `/producer/bovinos/[id]` vía `router.push`.
+Columnas activas:
 
-### `BovinosFilters`
+- `Arete SINIIGA`
+- `Perfil`
+- `Sexo`
+- `Rancho` solo cuando la vista no esta contextualizada por proyecto o rancho
+- `Nacimiento`
+- `Salud`
+- `Collar`
+- `TB`
+- `BR`
+- `Estado`
+- `Exportable`
+- `Acciones`
 
-Barra de filtros usando componentes de `@/shared/ui/filters/`:
+Notas UX:
 
-| Control | Campo | Valores |
-|---|---|---|
-| `SearchBar` | `search` | texto libre |
-| `FilterSelect` | `sexo` | `M` / `F` |
-| `FilterSelect` | `sanitario` | `ok` / `por_vencer` / `prueba_vencida` / `positivo` / `sin_pruebas` |
-| `FilterSelect` | `exportable` | `apto` / `no_apto` |
-| `DateRangeFilter` | `fechaDesde` / `fechaHasta` | fechas de nacimiento |
+- el nombre del animal es clickable y navega al mismo detalle que el boton de acciones
+- `showUpp={false}` se usa en tabs contextuales de productor y MVZ para ocultar `Rancho`
 
-### `BovinoDetail`
+### `BovinoDetailContent`
 
-Usa los componentes compartidos de `@/shared/ui/detail/`:
+La ficha detalle muestra:
 
-```
-DetailHeader      ← título = arete SINIIGA, backHref = /producer/bovinos
-DetailInfoGrid    ← 8 campos en 3 columnas
-Indicadores TB/BR + ExportableCheckBadge
-DetailTabBar      ← 5 pestañas
-  pruebas          → Table de field_tests
-  incidentes       → Table de sanitary_incidents
-  genealogia       → Table de crías
-  vacunaciones     → Table de animal_vaccinations
-  exportaciones    → Table de export_requests
-```
+- encabezado con nombre o arete
+- acciones rapidas por panel
+- snapshot sanitario superior
+- `DetailInfoGrid` con perfil, UPP, genealogia y collar
+- tabs para pruebas, incidentes, genealogia, vacunaciones y exportaciones
 
-Cada pestaña vacía muestra `DetailEmptyState` con un icono descriptivo.
+Acciones rapidas por panel:
 
----
+- MVZ: `Agregar vacuna`, `Agregar reporte`, `Ver reportes`
+- productor: `Ver exportaciones`, `Abrir movilizaciones`, `Ver documentos`
 
-## Páginas
+### Productor
 
-### `/producer/bovinos` — `src/app/(tenant)/producer/bovinos/page.tsx`
+`ProducerBovinosPage.tsx` incluye:
 
-- Usa `useBovinos()` + `BovinosFilters` + `BovinoList`
-- Botón **"Alta de bovino"** abre un `Dialog` con formulario (UPP ID, arete, sexo, fecha nacimiento)
-- El formulario llama `POST /api/producer/bovinos` y recarga la lista
+- filtros
+- lista contextual por UPP
+- dialogo de alta de bovino con perfil ampliado
 
-### `/producer/bovinos/[id]` — `src/app/(tenant)/producer/bovinos/[id]/page.tsx`
+### MVZ
 
-```tsx
-export default function ProducerBovinoDetailPage({ params }) {
-  const { id } = use(params);
-  return <BovinoDetail id={id} />;
-}
-```
+`MvzRanchAnimalsView.tsx` reutiliza `BovinoList` dentro del contexto del rancho.
 
----
+`MvzBovinoDetail.tsx` reutiliza la misma ficha detalle y habilita acciones rapidas orientadas a vacunacion e incidencias.
 
 ## Flujo de datos
 
-```
-Página (page.tsx)
-  └─ useBovinos() / useBovinoDetail(id)
-       └─ listBovinosUseCase / getBovinoDetailUseCase   [container.ts]
-            └─ ApiBovinoRepository
-                 └─ bovinosApi.ts  ──►  /api/producer/bovinos/...
-                                             └─ getSupabaseAdminClient()
-                                                  └─ v_animals_sanitary / tablas relacionadas
+```text
+Pantalla
+  -> hook o use-case
+    -> repository
+      -> Supabase o API route
+        -> v_animals_sanitary + tablas relacionadas
 ```
 
-El auth flow en cada request API:
+Detalle:
 
+```text
+BovinoDetail / MvzBovinoDetail
+  -> useBovinoDetail / useMvzBovinoDetail
+    -> ServerBovinoRepository
+      -> animal base
+      -> field_tests
+      -> sanitary_incidents
+      -> animal_vaccinations
+      -> export_requests
+      -> offspring
 ```
-requireAuthorized(request)
-  → valida JWT → extrae tenantId, userId, roles, permissions
-  → canAccessUpp(uppId) → verifica upp_access para el usuario
-```
+
+## Relacion con la migracion 010
+
+La migracion `sql/migration_010_animals_backfill_and_collar_link.sql` extiende el contrato de datos que consume este modulo:
+
+- nuevas columnas de perfil en `animals`
+- snapshot de collar actual en `v_animals_sanitary`
+- backfill controlado desde staging para perfil faltante y vinculacion canonica de collares
+
+Para detalles SQL, restricciones e idempotencia del backfill, ver `docs/data/database.md`.

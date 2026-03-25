@@ -6,6 +6,7 @@ Todas las fechas usan formato YYYY-MM-DD.
 
 ### Added
 
+- Migracion `sql/migration_010_animals_backfill_and_collar_link.sql` para ampliar `animals`, promover backfill desde staging y vincular collares de forma canonica e idempotente.
 - Migracion `sql/migration_008_allow_multiple_mvz_profiles_per_tenant.sql` para permitir varios `mvz_internal` dentro del mismo tenant productor.
 - Flujo publico de recovery e invitacion con:
   - `POST /api/auth/password/recovery`
@@ -52,6 +53,9 @@ Todas las fechas usan formato YYYY-MM-DD.
 
 ### Changed
 
+- `v_animals_sanitary`, `prisma/schema.prisma` y la UI de animales ahora exponen perfil ampliado del animal (`name`, `breed`, `weight_kg`, `age_years`, `health_status`, `last_vaccine_at`) y snapshot del collar activo.
+- Las tablas de animales en productor y MVZ ocultan la columna `Rancho` cuando la vista ya esta contextualizada por proyecto o rancho, y el nombre del animal ahora abre la misma ficha que el boton de acciones.
+- La ficha detalle de animales agrega acciones rapidas por panel; en MVZ abre vacunacion e incidencias con `animalId` precargado y en productor enlaza a exportaciones, movilizaciones y documentos del proyecto.
 - `GET|POST|PATCH /api/producer/employees` ahora soporta altas y ediciones de `mvz_internal` con `fullName`, `licenseNumber`, creacion de `mvz_profiles` y sincronizacion de ranchos a `mvz_upp_assignments`.
 - `mvz_internal` dentro de un tenant productor ahora entra al panel MVZ (`/mvz`) y reutiliza el shell MVZ con sus ranchos asignados.
 - `producer/settings -> Equipo` agrega edicion de rol, ranchos asignados y estado en tabla, y pide nombre profesional + cédula/licencia cuando el rol es `mvz_internal`.
