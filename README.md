@@ -273,6 +273,10 @@ Ejecuta estas comprobaciones minimas:
 
 Este repositorio es de uso privado y propietario.
 
+Titular de derechos: Diego Antunez Ramirez.
+
+Terminos completos: `LICENSE.md`.
+
 - No es software open source.
 - No se autoriza copia, redistribucion ni publicacion total o parcial sin permiso expreso por escrito del propietario.
 - El acceso al codigo fuente se limita a personal y colaboradores autorizados.
