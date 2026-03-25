@@ -28,7 +28,7 @@ export class ServerBovinoRepository implements BovinoRepository {
     const animalsResult = await supabaseAdmin
       .from("v_animals_sanitary")
       .select(
-        "animal_id,upp_id,upp_name,upp_code,siniiga_tag,sex,birth_date,animal_status,mother_animal_id,tb_date,tb_result,tb_valid_until,tb_status,br_date,br_result,br_valid_until,br_status,sanitary_alert"
+        "animal_id,upp_id,upp_name,upp_code,siniiga_tag,name,sex,birth_date,breed,weight_kg,age_years,health_status,last_vaccine_at,animal_status,mother_animal_id,current_collar_uuid,current_collar_id,current_collar_status,current_collar_linked_at,tb_date,tb_result,tb_valid_until,tb_status,br_date,br_result,br_valid_until,br_status,sanitary_alert"
       )
       .eq("tenant_id", this.tenantId)
       .in("upp_id", scopedUppIds)
@@ -48,10 +48,20 @@ export class ServerBovinoRepository implements BovinoRepository {
         upp_code: row.upp_code,
         upp_status: uppStatusMap[row.upp_id] ?? "active",
         siniiga_tag: row.siniiga_tag,
+        name: row.name,
         sex: row.sex,
         birth_date: row.birth_date,
+        breed: row.breed,
+        weight_kg: row.weight_kg,
+        age_years: row.age_years,
+        health_status: row.health_status,
+        last_vaccine_at: row.last_vaccine_at,
         status: row.animal_status,
         mother_animal_id: row.mother_animal_id,
+        current_collar_uuid: row.current_collar_uuid,
+        current_collar_id: row.current_collar_id,
+        current_collar_status: row.current_collar_status,
+        current_collar_linked_at: row.current_collar_linked_at,
         sanitary: {
           tb_date: row.tb_date,
           tb_result: row.tb_result,
@@ -72,7 +82,7 @@ export class ServerBovinoRepository implements BovinoRepository {
     const animalResult = await supabaseAdmin
       .from("v_animals_sanitary")
       .select(
-        "animal_id,upp_id,upp_name,upp_code,siniiga_tag,sex,birth_date,animal_status,mother_animal_id,tb_date,tb_result,tb_valid_until,tb_status,br_date,br_result,br_valid_until,br_status,sanitary_alert"
+        "animal_id,upp_id,upp_name,upp_code,siniiga_tag,name,sex,birth_date,breed,weight_kg,age_years,health_status,last_vaccine_at,animal_status,mother_animal_id,current_collar_uuid,current_collar_id,current_collar_status,current_collar_linked_at,tb_date,tb_result,tb_valid_until,tb_status,br_date,br_result,br_valid_until,br_status,sanitary_alert"
       )
       .eq("tenant_id", this.tenantId)
       .eq("animal_id", id)
@@ -94,10 +104,20 @@ export class ServerBovinoRepository implements BovinoRepository {
       upp_code: animalResult.data.upp_code,
       upp_status: uppStatusMap[animalResult.data.upp_id] ?? "active",
       siniiga_tag: animalResult.data.siniiga_tag,
+      name: animalResult.data.name,
       sex: animalResult.data.sex,
       birth_date: animalResult.data.birth_date,
+      breed: animalResult.data.breed,
+      weight_kg: animalResult.data.weight_kg,
+      age_years: animalResult.data.age_years,
+      health_status: animalResult.data.health_status,
+      last_vaccine_at: animalResult.data.last_vaccine_at,
       status: animalResult.data.animal_status,
       mother_animal_id: animalResult.data.mother_animal_id,
+      current_collar_uuid: animalResult.data.current_collar_uuid,
+      current_collar_id: animalResult.data.current_collar_id,
+      current_collar_status: animalResult.data.current_collar_status,
+      current_collar_linked_at: animalResult.data.current_collar_linked_at,
       sanitary: {
         tb_date: animalResult.data.tb_date,
         tb_result: animalResult.data.tb_result,
@@ -244,7 +264,7 @@ export class ServerBovinoRepository implements BovinoRepository {
     const result = await supabaseAdmin
       .from("v_animals_sanitary")
       .select(
-        "animal_id,upp_id,upp_name,upp_code,siniiga_tag,sex,birth_date,animal_status,mother_animal_id,tb_date,tb_result,tb_valid_until,tb_status,br_date,br_result,br_valid_until,br_status,sanitary_alert"
+        "animal_id,upp_id,upp_name,upp_code,siniiga_tag,name,sex,birth_date,breed,weight_kg,age_years,health_status,last_vaccine_at,animal_status,mother_animal_id,current_collar_uuid,current_collar_id,current_collar_status,current_collar_linked_at,tb_date,tb_result,tb_valid_until,tb_status,br_date,br_result,br_valid_until,br_status,sanitary_alert"
       )
       .eq("tenant_id", this.tenantId)
       .eq("mother_animal_id", animalId)
@@ -265,10 +285,20 @@ export class ServerBovinoRepository implements BovinoRepository {
         upp_code: row.upp_code,
         upp_status: uppStatusMap[row.upp_id] ?? "active",
         siniiga_tag: row.siniiga_tag,
+        name: row.name,
         sex: row.sex,
         birth_date: row.birth_date,
+        breed: row.breed,
+        weight_kg: row.weight_kg,
+        age_years: row.age_years,
+        health_status: row.health_status,
+        last_vaccine_at: row.last_vaccine_at,
         status: row.animal_status,
         mother_animal_id: row.mother_animal_id,
+        current_collar_uuid: row.current_collar_uuid,
+        current_collar_id: row.current_collar_id,
+        current_collar_status: row.current_collar_status,
+        current_collar_linked_at: row.current_collar_linked_at,
         sanitary: {
           tb_date: row.tb_date,
           tb_result: row.tb_result,

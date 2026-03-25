@@ -127,6 +127,7 @@ export function BovinoDetail({ id }: Props) {
   return (
     <BovinoDetailContent
       bovino={bovino}
+      panel="producer"
       loading={loading}
       error={error}
       activeTab={activeTab}

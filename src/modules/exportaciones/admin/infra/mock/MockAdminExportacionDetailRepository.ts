@@ -10,9 +10,18 @@ const MOCK_ANIMALS: AdminExportacionAnimal[] = [
   {
     id: "ani-1",
     siniigaTag: "MX-001-0001",
+    name: "Luna",
     sex: "M",
     birthDate: "2022-05-10",
+    breed: "Angus",
+    weightKg: 412.5,
+    ageYears: 3,
+    healthStatus: "healthy",
+    lastVaccineAt: "2026-02-10T12:00:00Z",
     status: "active",
+    currentCollarId: "C-101",
+    currentCollarStatus: "linked",
+    currentCollarLinkedAt: "2026-01-15T10:00:00Z",
     sanitaryAlert: "ok",
     tbLastDate: "2025-08-10",
     tbResult: "negative",
@@ -26,9 +35,18 @@ const MOCK_ANIMALS: AdminExportacionAnimal[] = [
   {
     id: "ani-2",
     siniigaTag: "MX-001-0002",
+    name: "Aurora",
     sex: "F",
     birthDate: "2021-03-22",
+    breed: "Charolais",
+    weightKg: 438.2,
+    ageYears: 4,
+    healthStatus: "observation",
+    lastVaccineAt: "2026-01-20T09:00:00Z",
     status: "active",
+    currentCollarId: "C-102",
+    currentCollarStatus: "linked",
+    currentCollarLinkedAt: "2025-12-18T09:30:00Z",
     sanitaryAlert: "por_vencer",
     tbLastDate: "2025-03-22",
     tbResult: "negative",
@@ -42,9 +60,18 @@ const MOCK_ANIMALS: AdminExportacionAnimal[] = [
   {
     id: "ani-3",
     siniigaTag: "MX-001-0003",
+    name: null,
     sex: "M",
     birthDate: "2023-01-15",
+    breed: null,
+    weightKg: null,
+    ageYears: 2,
+    healthStatus: null,
+    lastVaccineAt: null,
     status: "active",
+    currentCollarId: null,
+    currentCollarStatus: null,
+    currentCollarLinkedAt: null,
     sanitaryAlert: "sin_pruebas",
     tbLastDate: null,
     tbResult: null,
@@ -105,6 +132,7 @@ export class MockAdminExportacionDetailRepository
       ...base,
       uppId: e?.upp_id ?? "",
       uppName: e?.upp_name ?? null,
+      uppCode: e?.upp_id ? `UPP-${e.upp_id.toUpperCase()}` : null,
       motherAnimalId: null,
       tests: [
         {
@@ -124,6 +152,32 @@ export class MockAdminExportacionDetailRepository
           mvzFullName: "Dr. Carlos Mendoza",
         },
       ].filter((t) => t.sampleDate !== null),
+      vaccinations: [
+        {
+          id: `vacc-${animalId}`,
+          vaccineName: "Brucelosis",
+          dose: "Refuerzo",
+          status: "applied",
+          appliedAt: base.lastVaccineAt,
+          dueAt: null,
+          mvzFullName: "Dr. Carlos Mendoza",
+          notes: null,
+        },
+      ].filter((vaccination) => vaccination.appliedAt !== null),
+      incidents: base.sanitaryAlert === "ok"
+        ? []
+        : [
+            {
+              id: `incident-${animalId}`,
+              incidentType: "Seguimiento sanitario",
+              severity: "medium",
+              status: "open",
+              detectedAt: "2026-03-01T12:00:00Z",
+              resolvedAt: null,
+              mvzFullName: "Dr. Carlos Mendoza",
+              description: "Caso de ejemplo para panel admin.",
+            },
+          ],
     };
   }
 

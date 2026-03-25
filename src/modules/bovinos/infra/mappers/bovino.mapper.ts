@@ -6,10 +6,20 @@ export interface BovinoApiRecord {
   id: string;
   upp_id: string;
   siniiga_tag: string;
+  name?: string | null;
   sex: "M" | "F";
   birth_date: string | null;
+  breed?: string | null;
+  weight_kg?: number | null;
+  age_years?: number | null;
+  health_status?: string | null;
+  last_vaccine_at?: string | null;
   status: string;
   mother_animal_id: string | null;
+  current_collar_uuid?: string | null;
+  current_collar_id?: string | null;
+  current_collar_status?: string | null;
+  current_collar_linked_at?: string | null;
   upp_name: string;
   upp_code: string | null;
   upp_status: string;
@@ -43,10 +53,20 @@ export function toDomainBovino(record: BovinoApiRecord): Bovino {
     id: record.id,
     upp_id: record.upp_id,
     siniiga_tag: record.siniiga_tag,
+    name: record.name ?? null,
     sex: record.sex,
     birth_date: record.birth_date,
+    breed: record.breed ?? null,
+    weight_kg: record.weight_kg ?? null,
+    age_years: record.age_years ?? null,
+    health_status: record.health_status ?? null,
+    last_vaccine_at: record.last_vaccine_at ?? null,
     status: record.status,
     mother_animal_id: record.mother_animal_id,
+    current_collar_uuid: record.current_collar_uuid ?? null,
+    current_collar_id: record.current_collar_id ?? null,
+    current_collar_status: record.current_collar_status ?? null,
+    current_collar_linked_at: record.current_collar_linked_at ?? null,
     upp_name: record.upp_name ?? "",
     upp_code: record.upp_code,
     upp_status: record.upp_status ?? "active",

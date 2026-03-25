@@ -1,24 +1,31 @@
-﻿"use client";
+"use client";
 
 import {
-  Tag,
-  Calendar,
   Activity,
-  ArrowLeft,
-  CheckCircle2,
-  XCircle,
   AlertTriangle,
+  ArrowLeft,
+  Calendar,
+  CheckCircle2,
   Clock,
+  ShieldPlus,
+  Syringe,
+  Tag,
+  XCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
+import { DetailInfoGrid } from "@/shared/ui/detail/DetailInfoGrid";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/shared/ui/table";
 import { cn } from "@/shared/lib/utils";
-import { DetailInfoGrid } from "@/shared/ui/detail/DetailInfoGrid";
 import { toneClass, toneToBadgeVariant, type SemanticTone } from "@/shared/ui/theme";
 import type { AdminExportacionAnimalDetail } from "@/modules/exportaciones/admin/domain/entities/AdminExportacionAnimalEntity";
 
@@ -28,8 +35,8 @@ interface Props {
 }
 
 const TEST_RESULT_BADGE: Record<string, { label: string; tone: SemanticTone; icon: typeof CheckCircle2 }> = {
-  negativo: { label: "Negativo", tone: "success", icon: CheckCircle2 },
-  positivo: { label: "Positivo", tone: "error", icon: XCircle },
+  negative: { label: "Negativo", tone: "success", icon: CheckCircle2 },
+  positive: { label: "Positivo", tone: "error", icon: XCircle },
 };
 
 function sexLabel(sex: string): string {
@@ -38,8 +45,16 @@ function sexLabel(sex: string): string {
   return sex;
 }
 
+function healthStatusLabel(status: string | null): string {
+  if (!status) return "-";
+  if (status === "healthy") return "Sano";
+  if (status === "observation") return "Observacion";
+  if (status === "quarantine") return "Cuarentena";
+  return status;
+}
+
 function ResultBadge({ result }: Readonly<{ result: string | null }>) {
-  if (!result) return <span className="text-muted-foreground">—</span>;
+  if (!result) return <span className="text-muted-foreground">-</span>;
   const cfg = TEST_RESULT_BADGE[result.toLowerCase()] ?? {
     label: result,
     tone: "neutral" as SemanticTone,
@@ -47,117 +62,134 @@ function ResultBadge({ result }: Readonly<{ result: string | null }>) {
   };
   const Icon = cfg.icon;
   return (
-    <Badge variant={toneToBadgeVariant[cfg.tone]} className="text-xs flex items-center gap-1 w-fit">
-      <Icon className="w-3 h-3" />
+    <Badge variant={toneToBadgeVariant[cfg.tone]} className="flex w-fit items-center gap-1 text-xs">
+      <Icon className="h-3 w-3" />
       {cfg.label}
     </Badge>
   );
 }
 
 function TestValidityChip({ validUntil }: Readonly<{ validUntil: string | null }>) {
-  if (!validUntil) return <span className="text-muted-foreground">—</span>;
+  if (!validUntil) return <span className="text-muted-foreground">-</span>;
+
   const today = new Date();
   const expiry = new Date(validUntil);
   const days = Math.floor((expiry.getTime() - today.getTime()) / 86400000);
 
   if (days < 0) {
     return (
-      <span className={cn("text-xs flex items-center gap-1", toneClass("error", "text"))}>
-        <XCircle className="w-3 h-3" />
+      <span className={cn("flex items-center gap-1 text-xs", toneClass("error", "text"))}>
+        <XCircle className="h-3 w-3" />
         Vencida ({new Date(validUntil).toLocaleDateString("es-MX")})
       </span>
     );
   }
+
   if (days <= 30) {
     return (
-      <span className={cn("text-xs flex items-center gap-1", toneClass("warning", "text"))}>
-        <Clock className="w-3 h-3" />
+      <span className={cn("flex items-center gap-1 text-xs", toneClass("warning", "text"))}>
+        <Clock className="h-3 w-3" />
         {new Date(validUntil).toLocaleDateString("es-MX")} ({days}d)
       </span>
     );
   }
+
   return (
-    <span className={cn("text-xs flex items-center gap-1", toneClass("success", "text"))}>
-      <CheckCircle2 className="w-3 h-3" />
+    <span className={cn("flex items-center gap-1 text-xs", toneClass("success", "text"))}>
+      <CheckCircle2 className="h-3 w-3" />
       {new Date(validUntil).toLocaleDateString("es-MX")}
     </span>
   );
 }
 
 export function AdminExportacionBovinoDetailContent({ exportId, animal }: Readonly<Props>) {
-  const latestTb = animal.tests.find((t) => t.testTypeKey === "tb") ?? null;
-  const latestBr = animal.tests.find((t) => t.testTypeKey === "br") ?? null;
-
-  const ageText = animal.birthDate
-    ? (() => {
-        const months = Math.floor(
-          (Date.now() - new Date(animal.birthDate).getTime()) / (30.44 * 86400000)
-        );
-        return months >= 12 ? `${Math.floor(months / 12)} año(s)` : `${months} mes(es)`;
-      })()
-    : null;
+  const latestTb = animal.tests.find((test) => test.testTypeKey === "tb") ?? null;
+  const latestBr = animal.tests.find((test) => test.testTypeKey === "br") ?? null;
 
   return (
     <div className="flex flex-col gap-0">
-      <div className="flex items-center gap-4 px-6 py-4 border-b border-border">
+      <div className="flex items-center gap-4 border-b border-border px-6 py-4">
         <Link href={`/admin/exports/${exportId}`}>
           <Button variant="ghost" size="sm" className="gap-1">
-            <ArrowLeft className="w-4 h-4" />
-            Exportación
+            <ArrowLeft className="h-4 w-4" />
+            Exportacion
           </Button>
         </Link>
         <div>
           <h1 className="text-lg font-semibold">
-            Bovino — {animal.siniigaTag}
+            {animal.name ? `${animal.name} · ${animal.siniigaTag}` : `Bovino · ${animal.siniigaTag}`}
           </h1>
-          {animal.uppName && (
-            <p className="text-sm text-muted-foreground">{animal.uppName}</p>
-          )}
+          <p className="text-sm text-muted-foreground">
+            {animal.uppName ?? "-"}
+            {animal.uppCode ? ` (${animal.uppCode})` : ""}
+          </p>
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          {animal.currentCollarId ? (
+            <Badge variant="secondary" className="font-mono text-xs">
+              {animal.currentCollarId}
+            </Badge>
+          ) : null}
           <Badge variant={toneToBadgeVariant[animal.status === "active" ? "success" : "neutral"]}>
             {animal.status === "active" ? "Activo" : "Inactivo"}
           </Badge>
         </div>
       </div>
 
-      <div className="px-6 py-6 space-y-6">
-        {/* Datos generales */}
+      <div className="space-y-6 px-6 py-6">
         <DetailInfoGrid
           columns={3}
           items={[
             { label: "Arete SINIIGA", icon: Tag, value: animal.siniigaTag },
-            {
-              label: "Sexo",
-              icon: Tag,
-              value: sexLabel(animal.sex),
-            },
-            { label: "Edad", icon: Calendar, value: ageText ?? "—" },
+            { label: "Nombre", icon: Tag, value: animal.name ?? "-" },
+            { label: "Sexo", icon: Tag, value: sexLabel(animal.sex) },
             {
               label: "Fecha de nacimiento",
               icon: Calendar,
-              value: animal.birthDate
-                ? new Date(animal.birthDate).toLocaleDateString("es-MX")
-                : null,
+              value: animal.birthDate ? new Date(animal.birthDate).toLocaleDateString("es-MX") : "-",
             },
-            { label: "UPP", icon: Activity, value: animal.uppName ?? "—" },
+            { label: "Raza", icon: Tag, value: animal.breed ?? "-" },
+            { label: "Edad", icon: Calendar, value: animal.ageYears != null ? `${animal.ageYears} ano(s)` : "-" },
+            {
+              label: "Peso",
+              icon: Activity,
+              value: animal.weightKg != null ? `${animal.weightKg.toFixed(1)} kg` : "-",
+            },
+            { label: "Estado de salud", icon: ShieldPlus, value: healthStatusLabel(animal.healthStatus) },
+            {
+              label: "Ultima vacuna",
+              icon: Syringe,
+              value: animal.lastVaccineAt ? new Date(animal.lastVaccineAt).toLocaleString("es-MX") : "-",
+            },
+            { label: "UPP", icon: Activity, value: animal.uppName ?? "-" },
+            { label: "Clave UPP", icon: Tag, value: animal.uppCode ?? "-" },
             {
               label: "Madre (ID)",
               icon: Tag,
-              value: animal.motherAnimalId
-                ? <span className="font-mono text-xs">{animal.motherAnimalId.slice(0, 8)}...</span>
-                : null,
+              value: animal.motherAnimalId ? (
+                <span className="font-mono text-xs">{animal.motherAnimalId}</span>
+              ) : (
+                "-"
+              ),
+            },
+            { label: "Collar actual", icon: Tag, value: animal.currentCollarId ?? "-" },
+            { label: "Estado collar", icon: Activity, value: animal.currentCollarStatus ?? "-" },
+            {
+              label: "Vinculado desde",
+              icon: Calendar,
+              value: animal.currentCollarLinkedAt
+                ? new Date(animal.currentCollarLinkedAt).toLocaleString("es-MX")
+                : "-",
             },
           ]}
         />
 
-        {/* Resumen sanitario */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Activity className={cn("w-4 h-4", toneClass("info", "icon"))} />
-                Tuberculosis (TB) — última prueba
+              <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                <Activity className={cn("h-4 w-4", toneClass("info", "icon"))} />
+                Tuberculosis (TB)
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -173,20 +205,16 @@ export function AdminExportacionBovinoDetailContent({ exportId, animal }: Readon
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">Fecha</span>
-                    <span className="text-xs">
-                      {new Date(latestTb.sampleDate).toLocaleDateString("es-MX")}
-                    </span>
+                    <span className="text-xs">{new Date(latestTb.sampleDate).toLocaleDateString("es-MX")}</span>
                   </div>
-                  {latestTb.mvzFullName && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">MVZ</span>
-                      <span className="text-xs">{latestTb.mvzFullName}</span>
-                    </div>
-                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">MVZ</span>
+                    <span className="text-xs">{latestTb.mvzFullName ?? "-"}</span>
+                  </div>
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <AlertTriangle className={cn("w-4 h-4", toneClass("warning", "icon"))} />
+                <p className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <AlertTriangle className={cn("h-4 w-4", toneClass("warning", "icon"))} />
                   Sin pruebas de tuberculosis
                 </p>
               )}
@@ -195,9 +223,9 @@ export function AdminExportacionBovinoDetailContent({ exportId, animal }: Readon
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Activity className={cn("w-4 h-4", toneClass("accent", "icon"))} />
-                Brucelosis (BR) — última prueba
+              <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                <Activity className={cn("h-4 w-4", toneClass("accent", "icon"))} />
+                Brucelosis (BR)
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -213,20 +241,16 @@ export function AdminExportacionBovinoDetailContent({ exportId, animal }: Readon
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">Fecha</span>
-                    <span className="text-xs">
-                      {new Date(latestBr.sampleDate).toLocaleDateString("es-MX")}
-                    </span>
+                    <span className="text-xs">{new Date(latestBr.sampleDate).toLocaleDateString("es-MX")}</span>
                   </div>
-                  {latestBr.mvzFullName && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">MVZ</span>
-                      <span className="text-xs">{latestBr.mvzFullName}</span>
-                    </div>
-                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">MVZ</span>
+                    <span className="text-xs">{latestBr.mvzFullName ?? "-"}</span>
+                  </div>
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <AlertTriangle className={cn("w-4 h-4", toneClass("warning", "icon"))} />
+                <p className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <AlertTriangle className={cn("h-4 w-4", toneClass("warning", "icon"))} />
                   Sin pruebas de brucelosis
                 </p>
               )}
@@ -234,16 +258,13 @@ export function AdminExportacionBovinoDetailContent({ exportId, animal }: Readon
           </Card>
         </div>
 
-        {/* Historial completo de pruebas */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium">
-              Historial de pruebas ({animal.tests.length})
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Historial de pruebas ({animal.tests.length})</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             {animal.tests.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4">Sin pruebas registradas.</p>
+              <p className="py-4 text-sm text-muted-foreground">Sin pruebas registradas.</p>
             ) : (
               <Table>
                 <TableHeader>
@@ -256,25 +277,23 @@ export function AdminExportacionBovinoDetailContent({ exportId, animal }: Readon
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {animal.tests.map((t) => (
-                    <TableRow key={t.id}>
+                  {animal.tests.map((test) => (
+                    <TableRow key={test.id}>
                       <TableCell>
                         <Badge variant="info" className="text-xs uppercase">
-                          {t.testTypeKey}
+                          {test.testTypeKey}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm">
-                        {new Date(t.sampleDate).toLocaleDateString("es-MX")}
+                        {new Date(test.sampleDate).toLocaleDateString("es-MX")}
                       </TableCell>
                       <TableCell>
-                        <ResultBadge result={t.result} />
+                        <ResultBadge result={test.result} />
                       </TableCell>
                       <TableCell>
-                        <TestValidityChip validUntil={t.validUntil} />
+                        <TestValidityChip validUntil={test.validUntil} />
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {t.mvzFullName ?? "—"}
-                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{test.mvzFullName ?? "-"}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -282,8 +301,81 @@ export function AdminExportacionBovinoDetailContent({ exportId, animal }: Readon
             )}
           </CardContent>
         </Card>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Vacunaciones ({animal.vaccinations.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {animal.vaccinations.length === 0 ? (
+                <p className="py-4 text-sm text-muted-foreground">Sin vacunaciones registradas.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Vacuna</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Aplicada</TableHead>
+                      <TableHead>MVZ</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {animal.vaccinations.map((vaccination) => (
+                      <TableRow key={vaccination.id}>
+                        <TableCell className="font-medium">{vaccination.vaccineName}</TableCell>
+                        <TableCell>{vaccination.status}</TableCell>
+                        <TableCell>
+                          {vaccination.appliedAt
+                            ? new Date(vaccination.appliedAt).toLocaleDateString("es-MX")
+                            : "-"}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {vaccination.mvzFullName ?? "-"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Incidencias ({animal.incidents.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {animal.incidents.length === 0 ? (
+                <p className="py-4 text-sm text-muted-foreground">Sin incidencias registradas.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Detectada</TableHead>
+                      <TableHead>MVZ</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {animal.incidents.map((incident) => (
+                      <TableRow key={incident.id}>
+                        <TableCell className="font-medium">{incident.incidentType}</TableCell>
+                        <TableCell>{incident.status}</TableCell>
+                        <TableCell>{new Date(incident.detectedAt).toLocaleDateString("es-MX")}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {incident.mvzFullName ?? "-"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
 }
-

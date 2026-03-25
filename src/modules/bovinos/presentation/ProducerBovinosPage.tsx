@@ -35,8 +35,15 @@ export default function ProducerBovinosPage({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [uppId, setUppId] = useState("");
   const [siniigaTag, setSiniigaTag] = useState("");
+  const [name, setName] = useState("");
+  const [breed, setBreed] = useState("");
   const [sex, setSex] = useState<"M" | "F">("M");
   const [birthDate, setBirthDate] = useState("");
+  const [ageYears, setAgeYears] = useState("");
+  const [weightKg, setWeightKg] = useState("");
+  const [healthStatus, setHealthStatus] = useState<"" | "healthy" | "observation" | "quarantine">("");
+  const [lastVaccineAt, setLastVaccineAt] = useState("");
+  const [motherAnimalId, setMotherAnimalId] = useState("");
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -78,8 +85,15 @@ export default function ProducerBovinosPage({
         body: JSON.stringify({
           uppId,
           siniigaTag,
+          name: name || undefined,
+          breed: breed || undefined,
           sex,
           birthDate: birthDate || undefined,
+          ageYears: ageYears !== "" ? Number(ageYears) : undefined,
+          weightKg: weightKg !== "" ? Number(weightKg) : undefined,
+          healthStatus: healthStatus || undefined,
+          lastVaccineAt: lastVaccineAt ? new Date(lastVaccineAt).toISOString() : undefined,
+          motherAnimalId: motherAnimalId || undefined,
         }),
       });
 
@@ -90,7 +104,14 @@ export default function ProducerBovinosPage({
       }
 
       setSiniigaTag("");
+      setName("");
+      setBreed("");
       setBirthDate("");
+      setAgeYears("");
+      setWeightKg("");
+      setHealthStatus("");
+      setLastVaccineAt("");
+      setMotherAnimalId("");
       setDialogOpen(false);
       await reload();
     } finally {
@@ -146,6 +167,24 @@ export default function ProducerBovinosPage({
                 />
               </div>
               <div className="space-y-1">
+                <Label htmlFor="name">Nombre</Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Opcional"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="breed">Raza</Label>
+                <Input
+                  id="breed"
+                  value={breed}
+                  onChange={(event) => setBreed(event.target.value)}
+                  placeholder="Opcional"
+                />
+              </div>
+              <div className="space-y-1">
                 <Label htmlFor="sex">Sexo</Label>
                 <select
                   id="sex"
@@ -164,6 +203,68 @@ export default function ProducerBovinosPage({
                   type="date"
                   value={birthDate}
                   onChange={(event) => setBirthDate(event.target.value)}
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="ageYears">Edad (años)</Label>
+                  <Input
+                    id="ageYears"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={ageYears}
+                    onChange={(event) => setAgeYears(event.target.value)}
+                    placeholder="Opcional"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="weightKg">Peso (kg)</Label>
+                  <Input
+                    id="weightKg"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={weightKg}
+                    onChange={(event) => setWeightKg(event.target.value)}
+                    placeholder="Opcional"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="healthStatus">Estado de salud</Label>
+                <select
+                  id="healthStatus"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  value={healthStatus}
+                  onChange={(event) =>
+                    setHealthStatus(
+                      event.target.value as "" | "healthy" | "observation" | "quarantine"
+                    )
+                  }
+                >
+                  <option value="">Sin definir</option>
+                  <option value="healthy">Sano</option>
+                  <option value="observation">Observación</option>
+                  <option value="quarantine">Cuarentena</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="lastVaccineAt">Última vacuna</Label>
+                <Input
+                  id="lastVaccineAt"
+                  type="datetime-local"
+                  value={lastVaccineAt}
+                  onChange={(event) => setLastVaccineAt(event.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="motherAnimalId">ID de la madre</Label>
+                <Input
+                  id="motherAnimalId"
+                  value={motherAnimalId}
+                  onChange={(event) => setMotherAnimalId(event.target.value)}
+                  placeholder="Opcional"
                 />
               </div>
               {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
@@ -191,6 +292,7 @@ export default function ProducerBovinosPage({
           ) : (
             <BovinoList
               bovinos={bovinos}
+              showUpp={false}
               getDetailHref={(bovino) => `/producer/projects/${bovino.upp_id}/animales/${bovino.id}`}
               detailHrefBase={
                 selectedUppId

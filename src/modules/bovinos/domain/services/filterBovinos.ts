@@ -9,6 +9,9 @@ export function filterBovinos(
     if (search) {
       const match =
         b.siniiga_tag.toLowerCase().includes(search) ||
+        (b.name ?? "").toLowerCase().includes(search) ||
+        (b.breed ?? "").toLowerCase().includes(search) ||
+        (b.current_collar_id ?? "").toLowerCase().includes(search) ||
         b.upp_name.toLowerCase().includes(search) ||
         (b.upp_code ?? "").toLowerCase().includes(search);
       if (!match) return false;
