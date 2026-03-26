@@ -1,6 +1,5 @@
 "use client";
 
-import { Building2 } from "lucide-react";
 import {
   MVZ_SETTINGS_NAV_PERMISSIONS,
   PRODUCER_SETTINGS_NAV_PERMISSIONS,
@@ -34,7 +33,6 @@ export function TenantWorkspaceShell({ children }: { children: React.ReactNode }
 
   return (
     <TenantAppShell
-      brandIcon={Building2}
       brandSubtitle={workspace.panel === "producer" ? "Operacion Productor" : "Operacion MVZ"}
       navigation={workspace.navigation}
       breadcrumbs={workspace.breadcrumbs}

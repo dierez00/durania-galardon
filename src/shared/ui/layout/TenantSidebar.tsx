@@ -2,19 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ComponentType } from "react";
+import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import type { ResolvedNavItem } from "@/modules/workspace/domain/types";
+import { ThemeLogo } from "@/shared/ui/branding/ThemeLogo";
 
 interface TenantSidebarProps {
-  brandIcon: ComponentType<{ className?: string }>;
   brandSubtitle: string;
   navigation: ResolvedNavItem[];
 }
 
 export function TenantSidebar({
-  brandIcon: BrandIcon,
   brandSubtitle,
   navigation,
 }: TenantSidebarProps) {
@@ -30,9 +29,7 @@ export function TenantSidebar({
     >
       <div className="border-b border-sidebar-border px-4 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sidebar-primary">
-            <BrandIcon className="h-5 w-5 text-sidebar-primary-foreground" />
-          </div>
+          <ThemeLogo className="h-10 w-10 shrink-0" alt="Logo O.C.H.O.A" />
           {!collapsed ? (
             <p className="truncate text-sm font-medium text-sidebar-foreground/80">{brandSubtitle}</p>
           ) : null}

@@ -119,8 +119,7 @@ export default function AppSidebar() {
   return (
     <SidebarShell
       navigation={navigation}
-      brandIcon={Shield}
-      brandTitle="SIINIGA"
+      brandTitle="O.C.H.O.A"
       brandSubtitle="Control Ganadero Estatal"
     />
   );

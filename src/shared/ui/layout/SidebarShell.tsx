@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, type ComponentType } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
+import { ThemeLogo } from "@/shared/ui/branding/ThemeLogo";
 
 export interface SidebarNavigationItem {
   name: string;
@@ -15,14 +16,12 @@ export interface SidebarNavigationItem {
 
 interface SidebarShellProps {
   navigation: SidebarNavigationItem[];
-  brandIcon: ComponentType<{ className?: string }>;
   brandTitle: string;
   brandSubtitle?: string;
 }
 
 export function SidebarShell({
   navigation,
-  brandIcon: BrandIcon,
   brandTitle,
   brandSubtitle,
 }: SidebarShellProps) {
@@ -37,9 +36,7 @@ export function SidebarShell({
       )}
     >
       <div className="flex h-16 items-center border-b border-sidebar-border px-4 shrink-0">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary shrink-0">
-          <BrandIcon className="h-5 w-5 text-sidebar-primary-foreground" />
-        </div>
+        <ThemeLogo className="h-9 w-9 shrink-0" alt="Logo O.C.H.O.A" />
         {!collapsed ? (
           <div className="ml-3 overflow-hidden">
             <h1 className="tracking-tight text-base font-bold text-sidebar-foreground">{brandTitle}</h1>
