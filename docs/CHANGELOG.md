@@ -9,6 +9,7 @@ Source of Truth: Historical log of documentation-only changes. Current operation
 
 ### Added
 
+- `src/modules/producer/dashboard/*`: dashboard productor alineado al patron MVZ con accesos rapidos por permisos y dos bloques de analitica (tendencia de solicitudes + estado documental vigente).
 - `docs/reference/modules/bovinos.md`: referencia tecnica actualizada del modulo compartido de animales, incluyendo perfil ampliado, snapshot de collar y acciones rapidas por panel.
 - `docs/data/database.md`: documenta la migracion 010 sobre `animals`, el flujo de staging/backfill y la extension de `v_animals_sanitary`.
 - `docs/data/database.md`: flujo SQL de alta de `mvz_internal` desde productor y sincronización a `mvz_profiles` + `mvz_upp_assignments`.

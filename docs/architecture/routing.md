@@ -92,6 +92,11 @@ Estas rutas se mantienen como shims y resuelven al proyecto activo cuando existe
 
 Si no hay `selectedUppId` persistido, redirigen a `/producer`.
 
+Comportamiento activo del dashboard productor:
+- `/producer` y `/producer/metrics` muestran KPIs de organizacion con accesos rapidos por permisos.
+- Si existe contexto de proyecto (`uppId`), los accesos rapidos del dashboard priorizan rutas de `/producer/projects/[uppId]/*`.
+- El dashboard incluye analitica de tendencia de solicitudes y estado documental vigente, reutilizando el mismo endpoint `GET /api/producer/dashboard` con o sin `?uppId=`.
+
 ### MVZ
 
 Estas rutas se mantienen, pero redirigen a la jerarquia nueva:

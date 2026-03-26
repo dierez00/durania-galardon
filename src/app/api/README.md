@@ -83,6 +83,10 @@ Contrato operativo de `admin/producers/:id/documents`:
 - `GET|POST|PATCH /api/producer/employees`
 - `POST /api/producer/employees/resend-invite`
 
+Contrato operativo de `producer/dashboard`:
+- `GET /api/producer/dashboard`: devuelve KPIs globales del tenant productor, acciones rapidas disponibles por permisos y series analiticas para charts.
+- `GET /api/producer/dashboard?uppId=...`: devuelve el mismo contrato filtrado al rancho/UPP activo (cuando aplica contexto de proyecto).
+
 Contrato operativo de `producer/employees`:
 - soporta altas y ediciones de `employee`, `producer_viewer` y `mvz_internal`
 - cuando el rol es `mvz_internal`, tambien espera `fullName`, `licenseNumber` y sincroniza ranchos a `mvz_upp_assignments`
