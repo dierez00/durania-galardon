@@ -59,3 +59,22 @@ export class AdminExportacionesApiRepository implements AdminExportacionesReposi
     };
   }
 }
+
+export async function deleteAdminExportacion(exportId: string): Promise<void> {
+  const token = await getAccessToken();
+  if (!token) throw new Error("No hay sesion activa.");
+
+  const resp = await fetch(`${BASE_URL}/${exportId}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+
+  const body = (await resp.json()) as {
+    ok?: boolean;
+    error?: { message?: string };
+  };
+
+  if (!resp.ok || !body.ok) {
+    throw new Error(body.error?.message ?? "No fue posible eliminar la exportacion.");
+  }
+}

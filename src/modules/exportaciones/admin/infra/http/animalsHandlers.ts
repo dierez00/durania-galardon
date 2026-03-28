@@ -22,6 +22,7 @@ export async function GET(
     .select("metrics_json")
     .eq("id", id)
     .eq("tenant_id", tenantId)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (exportResult.error) {

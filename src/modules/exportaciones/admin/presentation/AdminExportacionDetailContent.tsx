@@ -1,30 +1,36 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  FileText,
-  Tag,
-  Calendar,
-  CheckSquare,
   AlertTriangle,
   Beef,
+  Calendar,
+  CheckSquare,
+  FileText,
   GitBranch,
   ShieldCheck,
+  Tag,
+  UserRound,
 } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Alert, AlertDescription } from "@/shared/ui/alert";
 import {
-  Card, CardContent, CardHeader, CardTitle,
-} from "@/shared/ui/card";
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  DetailEmptyState,
+  DetailHeader,
+  DetailInfoGrid,
+  DetailSidebarSection,
+  DetailTabBar,
+  DetailWorkspace,
+} from "@/shared/ui";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/shared/ui/table";
 import { Badge } from "@/shared/ui/badge";
-import { DetailHeader } from "@/shared/ui/detail/DetailHeader";
-import { DetailTabBar } from "@/shared/ui/detail/DetailTabBar";
-import { DetailInfoGrid } from "@/shared/ui/detail/DetailInfoGrid";
-import { DetailEmptyState } from "@/shared/ui/detail/DetailEmptyState";
 import { AdminExportacionEstadoBadge } from "./AdminExportacionEstadoBadge";
 import { AdminExportacionProcesoTimeline } from "./AdminExportacionProcesoTimeline";
 import { toneToBadgeVariant, type SemanticTone } from "@/shared/ui/theme";
@@ -33,9 +39,10 @@ import type { AdminExportacionAnimal } from "@/modules/exportaciones/admin/domai
 import type { UpdateAdminExportacionStatusDTO } from "@/modules/exportaciones/admin/application/dto/UpdateAdminExportacionStatusDTO";
 import type { AdminExportacionStatus } from "@/modules/exportaciones/admin/domain/entities/AdminExportacionEntity";
 import type { ExportacionDetailTab } from "./hooks/useAdminExportacionDetail";
+import { cn } from "@/shared/lib/utils";
 
 const TABS = [
-  { key: "info", label: "Información", icon: FileText },
+  { key: "info", label: "Informacion", icon: FileText },
   { key: "animales", label: "Animales", icon: Beef },
   { key: "proceso", label: "Proceso", icon: GitBranch },
 ];
@@ -59,6 +66,7 @@ interface Props {
   isUpdatingStatus: boolean;
   updateError: string | null;
   onUpdateStatus: (dto: UpdateAdminExportacionStatusDTO) => void;
+  focusStatus?: boolean;
 }
 
 function sexLabel(sex: string): string {
@@ -76,12 +84,12 @@ function healthStatusLabel(status: string | null): string {
 }
 
 function Check({ value }: Readonly<{ value: boolean | null | undefined }>) {
-  if (value === true) return <span className="text-success font-medium">Sí</span>;
-  if (value === false) return <span className="text-error font-medium">No</span>;
-  return <span className="text-muted-foreground">—</span>;
+  if (value === true) return <span className="font-medium text-success">Si</span>;
+  if (value === false) return <span className="font-medium text-error">No</span>;
+  return <span className="text-muted-foreground">-</span>;
 }
 
-function StatusActions({
+function StatusActionsPanel({
   currentStatus,
   isUpdating,
   onUpdate,
@@ -93,87 +101,80 @@ function StatusActions({
   const [blockedReason, setBlockedReason] = useState("");
   const [showBlockInput, setShowBlockInput] = useState(false);
 
-  const canApprove =
-    currentStatus === "mvz_validated" || currentStatus === "requested";
-  const canBlock =
-    currentStatus !== "final_approved" && currentStatus !== "blocked" && currentStatus !== "rejected";
+  const canApprove = currentStatus === "mvz_validated" || currentStatus === "requested";
+  const canBlock = currentStatus !== "final_approved" && currentStatus !== "blocked" && currentStatus !== "rejected";
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4" /> Acciones de estado
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {canApprove && (
-          <Button
-            size="sm"
-            className="w-full"
-            disabled={isUpdating}
-            onClick={() => onUpdate({ status: "final_approved" })}
-          >
-            Aprobar exportación
-          </Button>
-        )}
-        {currentStatus === "requested" && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="w-full"
-            disabled={isUpdating}
-            onClick={() => onUpdate({ status: "mvz_validated" })}
-          >
-            Marcar como validada MVZ
-          </Button>
-        )}
-        {canBlock && !showBlockInput && (
-          <Button
-            size="sm"
-            variant="destructive"
-            className="w-full"
-            disabled={isUpdating}
-            onClick={() => setShowBlockInput(true)}
-          >
-            Bloquear exportación
-          </Button>
-        )}
-        {showBlockInput && (
-          <div className="space-y-2">
-            <textarea
-              className="w-full text-sm border border-border rounded-md p-2 resize-none min-h-20"
-              placeholder="Motivo de bloqueo..."
-              value={blockedReason}
-              onChange={(e) => setBlockedReason(e.target.value)}
-            />
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="destructive"
-                disabled={!blockedReason.trim() || isUpdating}
-                onClick={() => {
-                  onUpdate({ status: "blocked", blockedReason: blockedReason.trim() });
-                  setShowBlockInput(false);
-                  setBlockedReason("");
-                }}
-              >
-                Confirmar bloqueo
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  setShowBlockInput(false);
-                  setBlockedReason("");
-                }}
-              >
-                Cancelar
-              </Button>
-            </div>
+    <div className="space-y-2">
+      {canApprove && (
+        <Button
+          type="button"
+          className="w-full justify-start"
+          disabled={isUpdating}
+          onClick={() => onUpdate({ status: "final_approved" })}
+        >
+          Aprobar exportacion
+        </Button>
+      )}
+      {currentStatus === "requested" && (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full justify-start"
+          disabled={isUpdating}
+          onClick={() => onUpdate({ status: "mvz_validated" })}
+        >
+          Marcar validada por MVZ
+        </Button>
+      )}
+      {canBlock && !showBlockInput && (
+        <Button
+          type="button"
+          variant="destructive"
+          className="w-full justify-start"
+          disabled={isUpdating}
+          onClick={() => setShowBlockInput(true)}
+        >
+          Bloquear exportacion
+        </Button>
+      )}
+      {showBlockInput ? (
+        <div className="space-y-2">
+          <textarea
+            className="min-h-24 w-full resize-none rounded-md border border-border p-2 text-sm"
+            placeholder="Motivo de bloqueo..."
+            value={blockedReason}
+            onChange={(event) => setBlockedReason(event.target.value)}
+          />
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={!blockedReason.trim() || isUpdating}
+              onClick={() => {
+                onUpdate({ status: "blocked", blockedReason: blockedReason.trim() });
+                setShowBlockInput(false);
+                setBlockedReason("");
+              }}
+            >
+              Confirmar
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setShowBlockInput(false);
+                setBlockedReason("");
+              }}
+            >
+              Cancelar
+            </Button>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -187,15 +188,15 @@ function AnimalesTabContent({
   onNavigate: (id: string) => void;
 }>) {
   if (loading) {
-    return <p className="text-sm text-muted-foreground py-4">Cargando animales...</p>;
+    return <p className="py-4 text-sm text-muted-foreground">Cargando animales...</p>;
   }
   if (animals.length === 0) {
     return (
-        <DetailEmptyState
-          icon={Beef}
-          message="Sin animales registrados"
-          description="No hay animales asociados a esta exportación."
-        />
+      <DetailEmptyState
+        icon={Beef}
+        message="Sin animales registrados"
+        description="No hay animales asociados a esta exportacion."
+      />
     );
   }
   return (
@@ -209,43 +210,43 @@ function AnimalesTabContent({
           <TableHead>Collar</TableHead>
           <TableHead>Estado</TableHead>
           <TableHead>Alerta sanitaria</TableHead>
-          <TableHead>Últ. TB</TableHead>
-          <TableHead>Últ. BR</TableHead>
-          <TableHead></TableHead>
+          <TableHead>Ult. TB</TableHead>
+          <TableHead>Ult. BR</TableHead>
+          <TableHead />
         </TableRow>
       </TableHeader>
       <TableBody>
-        {animals.map((a) => {
-          const alertConfig = ALERT_BADGE[a.sanitaryAlert] ?? ALERT_BADGE["sin_pruebas"];
+        {animals.map((animal) => {
+          const alertConfig = ALERT_BADGE[animal.sanitaryAlert] ?? ALERT_BADGE.sin_pruebas;
           return (
-            <TableRow key={a.id}>
-              <TableCell className="font-mono text-xs">{a.siniigaTag}</TableCell>
+            <TableRow key={animal.id}>
+              <TableCell className="font-mono text-xs">{animal.siniigaTag}</TableCell>
               <TableCell className="text-sm">
-                <div className="font-medium">{a.name ?? "Sin nombre"}</div>
+                <div className="font-medium">{animal.name ?? "Sin nombre"}</div>
                 <div className="text-xs text-muted-foreground">
-                  {[a.breed, a.ageYears != null ? `${a.ageYears} ano(s)` : null]
+                  {[animal.breed, animal.ageYears != null ? `${animal.ageYears} ano(s)` : null]
                     .filter(Boolean)
                     .join(" · ") || "Sin perfil ampliado"}
                 </div>
               </TableCell>
-              <TableCell>{sexLabel(a.sex)}</TableCell>
+              <TableCell>{sexLabel(animal.sex)}</TableCell>
               <TableCell className="text-sm">
-                <div>{healthStatusLabel(a.healthStatus)}</div>
+                <div>{healthStatusLabel(animal.healthStatus)}</div>
                 <div className="text-xs text-muted-foreground">
-                  {a.weightKg != null ? `${a.weightKg.toFixed(1)} kg` : "Peso sin registro"}
+                  {animal.weightKg != null ? `${animal.weightKg.toFixed(1)} kg` : "Peso sin registro"}
                 </div>
               </TableCell>
               <TableCell className="text-sm">
-                <div className="font-mono">{a.currentCollarId ?? "Sin collar"}</div>
+                <div className="font-mono">{animal.currentCollarId ?? "Sin collar"}</div>
                 <div className="text-xs text-muted-foreground">
-                  {a.currentCollarLinkedAt
-                    ? new Date(a.currentCollarLinkedAt).toLocaleDateString("es-MX")
+                  {animal.currentCollarLinkedAt
+                    ? new Date(animal.currentCollarLinkedAt).toLocaleDateString("es-MX")
                     : "Sin vinculo activo"}
                 </div>
               </TableCell>
               <TableCell>
-                <Badge variant={toneToBadgeVariant[a.status === "active" ? "success" : "neutral"]} className="text-xs">
-                  {a.status === "active" ? "Activo" : "Inactivo"}
+                <Badge variant={toneToBadgeVariant[animal.status === "active" ? "success" : "neutral"]} className="text-xs">
+                  {animal.status === "active" ? "Activo" : "Inactivo"}
                 </Badge>
               </TableCell>
               <TableCell>
@@ -254,22 +255,13 @@ function AnimalesTabContent({
                 </Badge>
               </TableCell>
               <TableCell className="text-xs text-muted-foreground">
-                {a.tbLastDate
-                  ? new Date(a.tbLastDate).toLocaleDateString("es-MX")
-                  : "—"}
+                {animal.tbLastDate ? new Date(animal.tbLastDate).toLocaleDateString("es-MX") : "-"}
               </TableCell>
               <TableCell className="text-xs text-muted-foreground">
-                {a.brLastDate
-                  ? new Date(a.brLastDate).toLocaleDateString("es-MX")
-                  : "—"}
+                {animal.brLastDate ? new Date(animal.brLastDate).toLocaleDateString("es-MX") : "-"}
               </TableCell>
               <TableCell>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-xs h-7"
-                  onClick={() => onNavigate(a.id)}
-                >
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => onNavigate(animal.id)}>
                   Ver detalle
                 </Button>
               </TableCell>
@@ -291,135 +283,155 @@ export function AdminExportacionDetailContent({
   isUpdatingStatus,
   updateError,
   onUpdateStatus,
+  focusStatus = false,
 }: Readonly<Props>) {
   const router = useRouter();
 
+  const mainContent =
+    activeTab === "animales" ? (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Animales en exportacion ({detail.totalAnimals})</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <AnimalesTabContent
+            loading={loadingAnimals}
+            animals={animals}
+            onNavigate={(animalId) => router.push(`/admin/exports/${exportId}/animals/${animalId}`)}
+          />
+        </CardContent>
+      </Card>
+    ) : activeTab === "proceso" ? (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Proceso de exportacion</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AdminExportacionProcesoTimeline status={detail.status} blockedReason={detail.blockedReason} />
+        </CardContent>
+      </Card>
+    ) : (
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Resumen operativo</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DetailInfoGrid
+              columns={3}
+              items={[
+                { label: "Estado", icon: Tag, value: <AdminExportacionEstadoBadge status={detail.status} /> },
+                { label: "Regla 60", icon: CheckSquare, value: <Check value={detail.complianceRule60} /> },
+                { label: "TB / Brucelosis", icon: ShieldCheck, value: <Check value={detail.tbBrValidated} /> },
+                { label: "Arete azul", icon: Tag, value: <Check value={detail.blueTagAssigned} /> },
+                {
+                  label: "Mes de exportacion",
+                  icon: Calendar,
+                  value: detail.monthlyBucket
+                    ? new Date(detail.monthlyBucket).toLocaleDateString("es-MX", { year: "numeric", month: "long" })
+                    : "Sin definir",
+                },
+                { label: "Total animales", icon: Beef, value: String(detail.totalAnimals) },
+                { label: "UPP", icon: FileText, value: detail.uppName ?? detail.uppId ?? "-" },
+                { label: "Productor", icon: UserRound, value: detail.producerName ?? "-" },
+                { label: "Creada", icon: Calendar, value: new Date(detail.createdAt).toLocaleDateString("es-MX") },
+                ...(detail.blockedReason
+                  ? [{ label: "Motivo de bloqueo", icon: AlertTriangle, value: detail.blockedReason }]
+                  : []),
+              ]}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+
   return (
-    <div className="flex flex-col gap-0">
+    <div className="space-y-6">
       <DetailHeader
-        title={`Exportación — ${detail.uppCode ?? detail.uppId ?? exportId.slice(0, 8)}`}
+        title={`Exportacion ${detail.uppCode ?? detail.uppId ?? exportId.slice(0, 8)}`}
         subtitle={detail.producerName ?? undefined}
         backHref="/admin/exports"
         backLabel="Exportaciones"
       />
 
-      <div className="px-6 py-4">
-        <DetailTabBar
-          tabs={TABS}
-          active={activeTab}
-          onChange={(k) => onTabChange(k as ExportacionDetailTab)}
-        />
-      </div>
+      {updateError ? (
+        <Alert variant="error">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <AlertDescription>{updateError}</AlertDescription>
+        </Alert>
+      ) : null}
 
-      <div className="px-6 pb-8 space-y-4">
-        {updateError && (
-          <Alert variant="error">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            <AlertDescription>{updateError}</AlertDescription>
-          </Alert>
-        )}
-
-        {activeTab === "info" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 space-y-4">
-              <DetailInfoGrid
-                columns={3}
-                items={[
-                  {
-                    label: "Estado",
-                    icon: Tag,
-                    value: <AdminExportacionEstadoBadge status={detail.status} />,
-                  },
-                  {
-                    label: "Regla 60%",
-                    icon: CheckSquare,
-                    value: <Check value={detail.complianceRule60} />,
-                  },
-                  {
-                    label: "TB / Brucelosis",
-                    icon: CheckSquare,
-                    value: <Check value={detail.tbBrValidated} />,
-                  },
-                  {
-                    label: "Arete azul",
-                    icon: Tag,
-                    value: <Check value={detail.blueTagAssigned} />,
-                  },
-                  {
-                    label: "Mes de exportación",
-                    icon: Calendar,
-                    value: detail.monthlyBucket
-                      ? new Date(detail.monthlyBucket).toLocaleDateString("es-MX", { year: "numeric", month: "long" })
-                      : null,
-                  },
-                  {
-                    label: "Total animales",
-                    icon: Beef,
-                    value: String(detail.totalAnimals),
-                  },
-                  {
-                    label: "UPP",
-                    icon: FileText,
-                    value: detail.uppName ?? detail.uppId ?? "—",
-                  },
-                  {
-                    label: "Productor",
-                    icon: FileText,
-                    value: detail.producerName ?? "—",
-                  },
-                  {
-                    label: "Creada",
-                    icon: Calendar,
-                    value: new Date(detail.createdAt).toLocaleDateString("es-MX"),
-                  },
-                  ...(detail.blockedReason
-                    ? [{ label: "Motivo bloqueo", icon: AlertTriangle, value: detail.blockedReason }]
-                    : []),
-                ]}
-              />
-            </div>
-            <div>
-              <StatusActions
-                currentStatus={detail.status}
-                isUpdating={isUpdatingStatus}
-                onUpdate={onUpdateStatus}
-              />
-            </div>
+      <DetailWorkspace
+        summary={
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Productor</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1 text-sm">
+                <p className="font-medium">{detail.producerName ?? "Sin productor"}</p>
+                <p className="text-muted-foreground">{detail.uppName ?? detail.uppId ?? "Sin UPP"}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Cumplimiento</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <p>Regla 60: <Check value={detail.complianceRule60} /></p>
+                <p>TB/BR: <Check value={detail.tbBrValidated} /></p>
+                <p>Arete azul: <Check value={detail.blueTagAssigned} /></p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Estado</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <AdminExportacionEstadoBadge status={detail.status} />
+                <p className="text-muted-foreground">Animales: {detail.totalAnimals}</p>
+              </CardContent>
+            </Card>
           </div>
-        )}
+        }
+        tabs={<DetailTabBar tabs={TABS} active={activeTab} onChange={(key) => onTabChange(key as ExportacionDetailTab)} />}
+        main={mainContent}
+        sidebar={
+          <>
+            <DetailSidebarSection
+              title="Acciones Rapidas"
+              className={cn(focusStatus && "ring-2 ring-primary/25 ring-offset-2 ring-offset-background")}
+              contentClassName="space-y-3"
+            >
+              <StatusActionsPanel currentStatus={detail.status} isUpdating={isUpdatingStatus} onUpdate={onUpdateStatus} />
+              <Button type="button" variant={activeTab === "info" ? "secondary" : "outline"} className="w-full justify-start" onClick={() => onTabChange("info")}>
+                Ver resumen
+              </Button>
+              <Button type="button" variant={activeTab === "animales" ? "secondary" : "outline"} className="w-full justify-start" onClick={() => onTabChange("animales")}>
+                Revisar animales
+              </Button>
+              <Button type="button" variant={activeTab === "proceso" ? "secondary" : "outline"} className="w-full justify-start" onClick={() => onTabChange("proceso")}>
+                Ver proceso
+              </Button>
+            </DetailSidebarSection>
 
-        {activeTab === "animales" && (
-          <Card>
-            <CardHeader>
-                <CardTitle className="text-sm font-medium">
-                Animales en exportación ({detail.totalAnimals})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <AnimalesTabContent
-                loading={loadingAnimals}
-                animals={animals}
-                onNavigate={(id) => router.push(`/admin/exports/${exportId}/animals/${id}`)}
-              />
-            </CardContent>
-          </Card>
-        )}
-
-        {activeTab === "proceso" && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Proceso de exportación</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <AdminExportacionProcesoTimeline
-                status={detail.status}
-                blockedReason={detail.blockedReason}
-              />
-            </CardContent>
-          </Card>
-        )}
-      </div>
+            <DetailSidebarSection title="Informacion" contentClassName="space-y-3 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">Creada</p>
+                <p>{new Date(detail.createdAt).toLocaleString("es-MX")}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Actualizada</p>
+                <p>{detail.updatedAt ? new Date(detail.updatedAt).toLocaleString("es-MX") : "Sin cambios"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">ID</p>
+                <p className="break-all font-mono text-xs">{detail.id}</p>
+              </div>
+            </DetailSidebarSection>
+          </>
+        }
+      />
     </div>
   );
 }
-
