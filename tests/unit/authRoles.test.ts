@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  ADMIN_SETTINGS_NAV_PERMISSIONS,
   deriveCompatibleRole,
   isAppRole,
   isPermissionKey,
@@ -39,6 +40,9 @@ describe("shared auth role helpers", () => {
     expect(isPermissionKey("producer.roles.write")).toBe(true);
     expect(isPermissionKey("mvz.roles.write")).toBe(true);
     expect(isPermissionKey("producer.tenant.read")).toBe(true);
+    expect(isPermissionKey("admin.tenant.read")).toBe(true);
+    expect(isPermissionKey("admin.employees.write")).toBe(true);
+    expect(isPermissionKey("admin.roles.write")).toBe(true);
     expect(isPermissionKey("admin.superpower")).toBe(false);
   });
 
@@ -67,6 +71,20 @@ describe("shared auth role helpers", () => {
   it("resolves panel home paths from permissions", () => {
     expect(
       resolvePanelHomePath({
+        panelType: "government",
+        permissions: ["admin.roles.read"],
+      })
+    ).toBe("/admin/settings");
+
+    expect(
+      resolvePanelHomePath({
+        panelType: "government",
+        permissions: [],
+      })
+    ).toBe("/admin/profile");
+
+    expect(
+      resolvePanelHomePath({
         panelType: "producer",
         permissions: ["producer.roles.read"],
       })
@@ -89,6 +107,14 @@ describe("shared auth role helpers", () => {
   });
 
   it("keeps settings navigation permissions aligned with tab access", () => {
+    expect(ADMIN_SETTINGS_NAV_PERMISSIONS).toEqual(
+      expect.arrayContaining([
+        "admin.tenant.write",
+        "admin.audit.read",
+        "admin.employees.write",
+        "admin.roles.write",
+      ])
+    );
     expect(PRODUCER_SETTINGS_NAV_PERMISSIONS).toEqual(
       expect.arrayContaining(["producer.tenant.write", "producer.employees.write", "producer.roles.write"])
     );

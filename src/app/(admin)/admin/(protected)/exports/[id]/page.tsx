@@ -1,8 +1,17 @@
-﻿"use client";
+"use client";
 
 import { use } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAdminExportacionDetail } from "@/modules/exportaciones/admin/presentation/hooks/useAdminExportacionDetail";
 import { AdminExportacionDetailContent } from "@/modules/exportaciones/admin/presentation/AdminExportacionDetailContent";
+
+function resolveTab(value: string | null) {
+  if (value === "animales" || value === "proceso") {
+    return value;
+  }
+
+  return "info";
+}
 
 export default function AdminExportacionDetailPage({
   params,
@@ -10,6 +19,9 @@ export default function AdminExportacionDetailPage({
   params: Promise<{ id: string }>;
 }>) {
   const { id } = use(params);
+  const searchParams = useSearchParams();
+  const focusStatus = searchParams.get("focus") === "status";
+  const initialTab = resolveTab(searchParams.get("tab"));
   const {
     detail,
     loadingDetail,
@@ -21,20 +33,20 @@ export default function AdminExportacionDetailPage({
     isUpdatingStatus,
     updateError,
     updateStatus,
-  } = useAdminExportacionDetail(id);
+  } = useAdminExportacionDetail(id, { initialTab });
 
   if (loadingDetail) {
     return (
-      <div className="flex items-center justify-center h-64 text-sm text-muted-foreground">
-        Cargando exportación...
+      <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+        Cargando exportacion...
       </div>
     );
   }
 
   if (errorDetail || !detail) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-2">
-        <p className="text-sm text-destructive">{errorDetail || "Exportación no encontrada."}</p>
+      <div className="flex h-64 flex-col items-center justify-center gap-2">
+        <p className="text-sm text-destructive">{errorDetail || "Exportacion no encontrada."}</p>
       </div>
     );
   }
@@ -50,7 +62,7 @@ export default function AdminExportacionDetailPage({
       isUpdatingStatus={isUpdatingStatus}
       updateError={updateError}
       onUpdateStatus={updateStatus}
+      focusStatus={focusStatus}
     />
   );
 }
-

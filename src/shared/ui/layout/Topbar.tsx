@@ -1,29 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { User, LogOut, ChevronDown } from "lucide-react";
-import { Badge } from "@/shared/ui/badge";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/shared/ui/dropdown-menu";
+  PROFILE_DISPLAY_NAME_UPDATED_EVENT,
+  type ProfileDisplayNameUpdatedDetail,
+} from "@/shared/lib/profile-events";
+import { ProfileMenu } from "@/shared/ui/layout/ProfileMenu";
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase-browser";
+import { ADMIN_SETTINGS_NAV_PERMISSIONS, type PermissionKey } from "@/shared/lib/auth";
 
 interface UserInfo {
   displayName: string;
   email: string;
   roleLabel: string;
+  canAccessPanelSettings: boolean;
 }
 
 export default function Topbar() {
-  const router = useRouter();
   const [userInfo, setUserInfo] = useState<UserInfo>({
     displayName: "",
     email: "",
     roleLabel: "",
+    canAccessPanelSettings: false,
   });
 
   useEffect(() => {
@@ -40,10 +38,17 @@ export default function Topbar() {
         });
         const body = await res.json();
         if (res.ok && body.ok && body.data) {
+          const permissions = Array.isArray(body.data.permissions)
+            ? (body.data.permissions as PermissionKey[])
+            : [];
+
           setUserInfo({
             displayName: body.data.user?.displayName ?? sessionEmail,
             email: sessionEmail,
             roleLabel: body.data.user?.roleName ?? "",
+            canAccessPanelSettings: ADMIN_SETTINGS_NAV_PERMISSIONS.some((permission) =>
+              permissions.includes(permission)
+            ),
           });
           return;
         }
@@ -51,65 +56,50 @@ export default function Topbar() {
         // fallback
       }
 
-      setUserInfo({ displayName: sessionEmail, email: sessionEmail, roleLabel: "" });
+      setUserInfo({
+        displayName: sessionEmail,
+        email: sessionEmail,
+        roleLabel: "",
+        canAccessPanelSettings: false,
+      });
     };
 
     void run();
+
+    const handleDisplayNameUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<ProfileDisplayNameUpdatedDetail>;
+      const nextDisplayName = customEvent.detail?.displayName?.trim();
+      if (!nextDisplayName) {
+        return;
+      }
+
+      setUserInfo((current) => ({
+        ...current,
+        displayName: nextDisplayName,
+      }));
+    };
+
+    window.addEventListener(PROFILE_DISPLAY_NAME_UPDATED_EVENT, handleDisplayNameUpdated);
+
+    return () => {
+      window.removeEventListener(PROFILE_DISPLAY_NAME_UPDATED_EVENT, handleDisplayNameUpdated);
+    };
   }, []);
 
   return (
-    <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6 sticky top-0 z-30">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/95 px-6 backdrop-blur">
       <div className="flex items-center gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">
-          Panel Administrativo
-        </h2>
+        <h2 className="text-sm font-medium text-muted-foreground">Panel Administrativo</h2>
       </div>
 
-      <div className="flex items-center gap-3">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-accent transition-colors">
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="w-4 h-4 text-primary" />
-              </div>
-              <div className="text-left hidden sm:block">
-                <p className="text-sm font-medium leading-none">
-                  {userInfo.displayName || "..."}
-                </p>
-                {userInfo.roleLabel ? (
-                  <p className="text-xs text-muted-foreground mt-0.5">{userInfo.roleLabel}</p>
-                ) : null}
-              </div>
-              <ChevronDown className="w-4 h-4 text-muted-foreground hidden sm:block" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <div className="px-3 py-2">
-              <p className="text-sm font-medium">{userInfo.displayName}</p>
-              <p className="text-xs text-muted-foreground">{userInfo.email}</p>
-              {userInfo.roleLabel ? (
-                <Badge variant="secondary" className="mt-1.5 text-[10px]">
-                  {userInfo.roleLabel}
-                </Badge>
-              ) : null}
-            </div>
-            <DropdownMenuSeparator />
-            <button
-              type="button"
-              className="w-full flex items-center px-3 py-2 text-sm text-destructive hover:bg-accent rounded-sm"
-              onClick={async () => {
-                const supabase = getSupabaseBrowserClient();
-                await supabase.auth.signOut();
-                await fetch("/api/auth/logout", { method: "POST" });
-                router.push("/login");
-              }}
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Cerrar Sesion
-            </button>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      <ProfileMenu
+        displayName={userInfo.displayName || "Usuario"}
+        email={userInfo.email}
+        roleLabel={userInfo.roleLabel}
+        profileHref="/admin/profile"
+        canAccessPanelSettings={userInfo.canAccessPanelSettings}
+        settingsHref="/admin/settings"
+      />
     </header>
   );
 }

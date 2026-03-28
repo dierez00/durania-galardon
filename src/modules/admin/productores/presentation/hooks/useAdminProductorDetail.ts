@@ -25,6 +25,11 @@ import type {
 } from "@/modules/admin/productores/domain/entities/AdminProductorDetailEntity";
 
 export type ProductorDetailTab = "info" | "upps" | "documentos" | "visitas";
+export type ProductorDetailViewTab = "overview" | ProductorDetailTab;
+
+interface UseAdminProductorDetailOptions {
+  initialTab?: ProductorDetailViewTab;
+}
 
 function nextDocumentCandidate(
   documents: AdminProductorDocument[],
@@ -45,7 +50,7 @@ function nextDocumentCandidate(
   return sorted[0] ?? null;
 }
 
-export function useAdminProductorDetail(id: string) {
+export function useAdminProductorDetail(id: string, options: UseAdminProductorDetailOptions = {}) {
   const router = useRouter();
 
   // ── Detail ──────────────────────────────────────────────────────────────────
@@ -85,7 +90,7 @@ export function useAdminProductorDetail(id: string) {
   const [loadingVisits, setLoadingVisits] = useState(false);
 
   // ── Active Tab ──────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<ProductorDetailTab>("info");
+  const [activeTab, setActiveTab] = useState<ProductorDetailViewTab>(options.initialTab ?? "overview");
 
   // ── Status actions ──────────────────────────────────────────────────────────
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
@@ -267,7 +272,7 @@ export function useAdminProductorDetail(id: string) {
 
   // ── Tab change handler ───────────────────────────────────────────────────────
   const handleTabChange = useCallback(
-    (tab: ProductorDetailTab) => {
+    (tab: ProductorDetailViewTab) => {
       setActiveTab(tab);
       if (tab === "upps") loadUpps();
       else if (tab === "documentos") loadDocuments();
@@ -350,6 +355,10 @@ export function useAdminProductorDetail(id: string) {
   useEffect(() => {
     void loadDetail();
   }, [loadDetail]);
+
+  useEffect(() => {
+    handleTabChange(options.initialTab ?? "overview");
+  }, [handleTabChange, options.initialTab]);
 
   return {
     detail,

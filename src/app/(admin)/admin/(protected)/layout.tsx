@@ -1,18 +1,24 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import AppSidebar from "@app/_components/AppSidebar";
 import Topbar from "@/shared/ui/layout/Topbar";
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase-browser";
 import { resolveClientRole } from "@/shared/lib/auth-client";
-import { redirectPathForRole } from "@/shared/lib/auth";
+import {
+  redirectPathForRole,
+  resolveAdminPermissions,
+  resolvePanelHomePath,
+  type PermissionKey,
+} from "@/shared/lib/auth";
 
 export default function AdminProtectedLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const pathname = usePathname();
   const router = useRouter();
   const [ready, setReady] = useState(false);
 
@@ -38,11 +44,31 @@ export default function AdminProtectedLayout({
         return;
       }
 
+      const permissions: PermissionKey[] = roleResult.permissions ?? [];
+      const requiredPermissions = resolveAdminPermissions(pathname);
+      const panelHomePath = resolvePanelHomePath({
+        panelType: "government",
+        permissions,
+      });
+
+      if (
+        requiredPermissions.length > 0 &&
+        !requiredPermissions.some((permission) => permissions.includes(permission))
+      ) {
+        if (pathname !== panelHomePath) {
+          router.replace(panelHomePath);
+          return;
+        }
+
+        router.replace("/admin/profile");
+        return;
+      }
+
       setReady(true);
     };
 
     void run();
-  }, [router]);
+  }, [pathname, router]);
 
   if (!ready) {
     return (

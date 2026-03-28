@@ -1,10 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ArrowUpDown, ArrowUp, ArrowDown, Eye } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { ArrowUpDown, ArrowUp, ArrowDown, Edit3, Eye, RefreshCw } from "lucide-react";
 import { Card, CardContent } from "@/shared/ui/card";
-import { Button } from "@/shared/ui/button";
+import { TableRowActions } from "@/shared/ui/table-row-actions";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/shared/ui/table";
@@ -20,6 +19,10 @@ interface Props {
   productores: AdminProductor[];
   sort: AdminProductoresSortState;
   onSortChange: (sort: AdminProductoresSortState) => void;
+  onEdit?: (productorId: string) => void;
+  onViewMore?: (productorId: string) => void;
+  onToggleStatus?: (productor: AdminProductor) => void;
+  isStatusActionDisabled?: (productor: AdminProductor) => boolean;
 }
 
 interface SortableHeadProps {
@@ -60,8 +63,15 @@ function SortableHead({ field, sort, onSortChange, children, className }: Readon
   );
 }
 
-export function AdminProductoresList({ productores, sort, onSortChange }: Readonly<Props>) {
-  const router = useRouter();
+export function AdminProductoresList({
+  productores,
+  sort,
+  onSortChange,
+  onEdit,
+  onViewMore,
+  onToggleStatus,
+  isStatusActionDisabled,
+}: Readonly<Props>) {
   return (
     <Card>
       <CardContent className="pt-0">
@@ -108,14 +118,31 @@ export function AdminProductoresList({ productores, sort, onSortChange }: Readon
                     {new Date(p.created_at).toLocaleDateString("es-MX")}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => router.push(`/admin/producers/${p.id}`)}
-                      title="Ver detalle"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
+                    <TableRowActions
+                      items={[
+                        {
+                          key: "edit",
+                          label: "Editar",
+                          icon: Edit3,
+                          onSelect: () => onEdit?.(p.id),
+                          disabled: !onEdit,
+                        },
+                        {
+                          key: "status",
+                          label: p.status === "active" ? "Desactivar" : "Activar",
+                          icon: RefreshCw,
+                          onSelect: () => onToggleStatus?.(p),
+                          disabled: !onToggleStatus || isStatusActionDisabled?.(p),
+                        },
+                        {
+                          key: "view",
+                          label: "Ver mas",
+                          icon: Eye,
+                          onSelect: () => onViewMore?.(p.id),
+                          disabled: !onViewMore,
+                        },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))

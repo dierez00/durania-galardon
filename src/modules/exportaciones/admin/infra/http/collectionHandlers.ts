@@ -59,7 +59,8 @@ export async function GET(request: Request) {
     .select(
       "id,producer_id,upp_id,status,compliance_60_rule,tb_br_validated,blue_tag_assigned,monthly_bucket,metrics_json,blocked_reason,created_at,updated_at,producers(full_name),upps(upp_code,name)",
       { count: "exact" }
-    );
+    )
+    .is("deleted_at", null);
 
   if (statusFilter) query = query.eq("status", statusFilter);
   if (dateFrom) query = query.gte("created_at", dateFrom);
@@ -233,6 +234,7 @@ export async function PATCH(request: Request) {
     .update(updatePayload)
     .eq("tenant_id", auth.context.user.tenantId)
     .eq("id", id)
+    .is("deleted_at", null)
     .select(
       "id,producer_id,upp_id,status,compliance_60_rule,tb_br_validated,blue_tag_assigned,monthly_bucket,metrics_json,blocked_reason,created_at,updated_at"
     )

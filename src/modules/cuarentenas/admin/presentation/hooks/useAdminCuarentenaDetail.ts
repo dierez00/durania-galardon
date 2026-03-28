@@ -10,11 +10,15 @@ import type { AdminCuarentenaDetallada } from "@/modules/cuarentenas/admin/domai
 
 export type DetailTab = "resumen" | "upp" | "mapa" | "historial";
 
-export function useAdminCuarentenaDetail(id: string) {
+interface UseAdminCuarentenaDetailOptions {
+  initialTab?: DetailTab;
+}
+
+export function useAdminCuarentenaDetail(id: string, options: UseAdminCuarentenaDetailOptions = {}) {
   const [quarantine, setQuarantine] = useState<AdminCuarentenaDetallada | null>(null);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState("");
-  const [activeTab, setActiveTab]   = useState<DetailTab>("resumen");
+  const [activeTab, setActiveTab]   = useState<DetailTab>(options.initialTab ?? "resumen");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -34,6 +38,10 @@ export function useAdminCuarentenaDetail(id: string) {
   }, [id]);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    setActiveTab(options.initialTab ?? "resumen");
+  }, [options.initialTab]);
 
   // â”€â”€ Cambio de estado â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [statusSaving, setStatusSaving] = useState(false);

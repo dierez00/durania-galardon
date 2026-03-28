@@ -21,6 +21,12 @@ export const ROLE_LABELS: Record<AppRole, string> = {
 
 export const PERMISSION_KEYS = [
   "admin.dashboard.read",
+  "admin.tenant.read",
+  "admin.tenant.write",
+  "admin.employees.read",
+  "admin.employees.write",
+  "admin.roles.read",
+  "admin.roles.write",
   "admin.users.read",
   "admin.users.create",
   "admin.users.update",
@@ -127,7 +133,9 @@ export interface OfflineSyncItem {
   capturedLng?: number;
 }
 
-const ADMIN_PERMISSION_SET = [...ALL_PERMISSION_KEYS] as PermissionKey[];
+const ADMIN_PERMISSION_SET = PERMISSION_KEYS.filter((permission) =>
+  permission.startsWith("admin.")
+) as PermissionKey[];
 const MVZ_GOVERNMENT_PERMISSION_SET: PermissionKey[] = [
   "mvz.dashboard.read",
   "mvz.assignments.read",
@@ -355,8 +363,60 @@ export const MVZ_SETTINGS_NAV_PERMISSIONS: PermissionKey[] = [
   "mvz.assignments.read",
 ];
 
-function hasAnyPermission(permissions: PermissionKey[], expected: PermissionKey[]) {
+export const ADMIN_SETTINGS_NAV_PERMISSIONS: PermissionKey[] = [
+  "admin.tenant.read",
+  "admin.tenant.write",
+  "admin.audit.read",
+  "admin.employees.read",
+  "admin.employees.write",
+  "admin.roles.read",
+  "admin.roles.write",
+];
+
+export function hasAnyPermission(permissions: PermissionKey[], expected: PermissionKey[]) {
   return expected.some((permission) => permissions.includes(permission));
+}
+
+export function resolveAdminPermissions(pathname: string): PermissionKey[] {
+  const segments = pathname.split("/").filter(Boolean);
+
+  if (segments[0] !== "admin") {
+    return [];
+  }
+
+  if (segments.length === 1) {
+    return ["admin.dashboard.read"];
+  }
+
+  if (segments[1] === "profile") {
+    return [];
+  }
+
+  if (segments[1] === "settings" || segments[1] === "audit" || segments[1] === "normative") {
+    return [...ADMIN_SETTINGS_NAV_PERMISSIONS];
+  }
+
+  if (segments[1] === "producers") {
+    return ["admin.producers.read"];
+  }
+
+  if (segments[1] === "mvz") {
+    return ["admin.mvz.read"];
+  }
+
+  if (segments[1] === "quarantines") {
+    return ["admin.quarantines.read"];
+  }
+
+  if (segments[1] === "exports") {
+    return ["admin.exports.read"];
+  }
+
+  if (segments[1] === "appointments") {
+    return ["admin.appointments.read"];
+  }
+
+  return [];
 }
 
 export function resolvePanelHomePath(options: {
@@ -367,7 +427,35 @@ export function resolvePanelHomePath(options: {
   const { panelType, permissions, isMvzInternal = false } = options;
 
   if (panelType === "government") {
-    return "/admin";
+    if (hasAnyPermission(permissions, ["admin.dashboard.read"])) {
+      return "/admin";
+    }
+
+    if (hasAnyPermission(permissions, ["admin.producers.read"])) {
+      return "/admin/producers";
+    }
+
+    if (hasAnyPermission(permissions, ["admin.mvz.read"])) {
+      return "/admin/mvz";
+    }
+
+    if (hasAnyPermission(permissions, ["admin.quarantines.read"])) {
+      return "/admin/quarantines";
+    }
+
+    if (hasAnyPermission(permissions, ["admin.exports.read"])) {
+      return "/admin/exports";
+    }
+
+    if (hasAnyPermission(permissions, ["admin.appointments.read"])) {
+      return "/admin/appointments";
+    }
+
+    if (hasAnyPermission(permissions, ADMIN_SETTINGS_NAV_PERMISSIONS)) {
+      return "/admin/settings";
+    }
+
+    return "/admin/profile";
   }
 
   if (panelType === "producer") {

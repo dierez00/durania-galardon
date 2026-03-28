@@ -1,6 +1,6 @@
 Status: History
 Owner: Engineering
-Last Updated: 2026-03-24
+Last Updated: 2026-03-27
 Source of Truth: Historical log of documentation-only changes. Current operational guidance lives in `docs/README.md` and the linked canonical docs.
 
 # Docs Changelog
@@ -9,6 +9,7 @@ Source of Truth: Historical log of documentation-only changes. Current operation
 
 ### Added
 
+- `src/app/api/README.md`: ownership y contratos nuevos para `admin/profile`, `admin/settings`, `admin/dashboard` enriquecido y `admin/appointments/:id`.
 - `src/modules/producer/dashboard/*`: dashboard productor alineado al patron MVZ con accesos rapidos por permisos y dos bloques de analitica (tendencia de solicitudes + estado documental vigente).
 - `docs/reference/modules/bovinos.md`: referencia tecnica actualizada del modulo compartido de animales, incluyendo perfil ampliado, snapshot de collar y acciones rapidas por panel.
 - `docs/data/database.md`: documenta la migracion 010 sobre `animals`, el flujo de staging/backfill y la extension de `v_animals_sanitary`.
@@ -29,6 +30,10 @@ Source of Truth: Historical log of documentation-only changes. Current operation
 
 ### Changed
 
+- `docs/architecture/auth-admin.md`, `docs/architecture/routing.md`, `docs/architecture/tenant-iam.md`, `docs/architecture/overview.md`, `docs/data/database.md` y `src/app/api/README.md`: sincronizan el nuevo panel admin `Configuracion` por tabs (`Resumen`, `Auditoria`, `Empleados`, `Roles`), los permisos `admin.tenant.*`, `admin.employees.*`, `admin.roles.*`, los redirects legacy de `/admin/audit` y `/admin/normative`, y el soft delete de exportaciones con `deleted_at` / `deleted_by_user_id`.
+- `docs/architecture/overview.md`: registra `src/modules/admin/profile`, `src/modules/admin/settings`, la shell compartida de detalle admin y el dropdown canonico de acciones por fila.
+- `docs/architecture/routing.md`: actualiza el mapa admin con `/admin/profile`, `/admin/settings`, detalles por entidad y deep-links `tab`, `mode` y `focus=status`.
+- `docs/architecture/auth-admin.md`: documenta el split self-service de `tenant_admin` entre `Mi perfil` y `Configuracion del panel`, junto con los endpoints `GET|PATCH /api/admin/profile` y `GET|PATCH /api/admin/settings`.
 - `CHANGELOG.md`: registra la migracion `migration_010_animals_backfill_and_collar_link.sql` y los cambios visibles en tablas y fichas de animales para productor y MVZ.
 - `docs/architecture/auth-admin.md`: documenta que `mvz_government` ya no administra personal/roles desde el panel MVZ, que `mvz_internal` puede vivir en un tenant `producer` y que `producer/employees` crea ficha profesional MVZ.
 - `docs/architecture/tenant-iam.md`: actualiza los roles base de productor para incluir `mvz_internal`, aclara el alta externa del personal MVZ y registra `migration_008_allow_multiple_mvz_profiles_per_tenant.sql`.
