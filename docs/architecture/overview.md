@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-23
+Last Updated: 2026-03-27
 Source of Truth: Active architecture, ownership rules, and layering conventions for the application.
 
 # Arquitectura
@@ -23,7 +23,9 @@ src/
       dashboard/
       mvz/
       normativa/
+      profile/
       productores/
+      settings/
     producer/
       dashboard/
       documents/
@@ -74,6 +76,8 @@ sql/
 - `src/app/globals.css` define los tokens globales de color para `light`, `dark` y `classic-dark`.
 - `src/shared/ui/theme/*` expone helpers tipados para tonos semanticos (`brand`, `secondary`, `accent`, `neutral`, `info`, `success`, `warning`, `error`).
 - `src/shared/ui/*` consume tokens semanticos; los modulos deben mapear estados de dominio a tonos y no crear clases de color locales.
+- `src/shared/ui/detail/*` concentra la shell de detalle compartida para paneles administrativos (`DetailHeader`, `DetailTabBar`, `DetailWorkspace`, `DetailSidebarSection`).
+- `src/shared/ui/table-row-actions.tsx` normaliza menus de acciones por fila para tablas operativas.
 - `scripts/check-ui-colors.mjs` protege el repo contra hex, `rgb/hsl` y paletas Tailwind fuera de la capa canonica.
 - Ver `docs/architecture/ui-color-system.md` para reglas de consumo y enforcement.
 
@@ -83,6 +87,10 @@ La normalizacion pendiente quedo cerrada en estas familias:
 
 - `src/app/api/admin/producers/*` -> `src/modules/admin/productores/infra/http`
 - `src/app/api/admin/mvz/*` -> `src/modules/admin/mvz/infra/http`
+- `src/app/api/admin/profile/*` -> `src/modules/admin/profile/infra/http`
+- `src/app/api/admin/settings/*` -> `src/modules/admin/settings/infra/http`
+- `src/app/api/admin/roles/*` -> `src/modules/admin/settings/infra/http`
+- `src/app/api/admin/employees/*` -> `src/modules/admin/empleados/infra/http`
 - `src/app/api/producer/bovinos/*` -> `src/modules/bovinos/infra/http`
 - `src/app/api/producer/documents/*` -> `src/modules/producer/documents/infra/http`
 - `src/app/api/producer/upp-documents/*` -> `src/modules/producer/documents/infra/http`
@@ -90,7 +98,8 @@ La normalizacion pendiente quedo cerrada en estas familias:
 - `src/app/api/producer/roles/*` -> `src/modules/producer/settings/infra/http`
 - `src/app/api/producer/settings/ranchos/*` -> `src/modules/producer/settings/infra/http`
 - `src/app/api/producer/upp/*` -> `src/modules/producer/ranchos/infra/http`
-- `src/app/api/admin/appointments` y `src/app/api/public/appointments` -> `src/modules/admin/citas/infra/http`
+- `src/app/api/admin/appointments` y `src/app/api/admin/appointments/[id]` -> `src/modules/admin/citas/infra/http`
+- `src/app/api/public/appointments` -> `src/modules/admin/citas/infra/http`
 - `src/app/api/admin/audit` -> `src/modules/admin/auditoria/infra/http`
 - `src/app/api/mvz/assignments` -> `src/modules/ranchos/infra/http`
 - `src/app/api/mvz/profile/*` -> `src/modules/mvz/profile/infra/http`
@@ -107,7 +116,7 @@ Tambien quedaron consolidados estos owners transversales:
 ## Owners activos
 
 - `src/modules/admin`
-  - `auditoria`, `citas`, `dashboard`, `mvz`, `normativa`, `productores`
+  - `auditoria`, `citas`, `dashboard`, `mvz`, `normativa`, `productores`, `profile`, `settings`
 - `src/modules/producer`
   - `dashboard`, `documents`, `empleados`, `movilizacion`, `profile`, `productores`, `ranchos`, `settings`
 - `src/modules/mvz`

@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-24
+Last Updated: 2026-03-27
 Source of Truth: Canonical tenant IAM entities, permissions, and MVZ ranch-scope rules.
 
 # Tenant IAM
@@ -28,6 +28,12 @@ Este documento describe la capa IAM por tenant y su extension para el flujo MVZ 
 
 ## Permisos de configuracion y perfil
 
+- `admin.tenant.read`
+- `admin.tenant.write`
+- `admin.employees.read`
+- `admin.employees.write`
+- `admin.roles.read`
+- `admin.roles.write`
 - `producer.tenant.read`
 - `producer.tenant.write`
 - `producer.profile.read`
@@ -41,6 +47,7 @@ Este documento describe la capa IAM por tenant y su extension para el flujo MVZ 
 
 Nota operativa:
 
+- Las claves `admin.users.*` siguen existiendo por compatibilidad, pero la navegacion de `Configuracion` en admin ahora depende de `admin.tenant.*`, `admin.audit.read`, `admin.employees.*` y `admin.roles.*`.
 - Las claves `mvz.members.*` y `mvz.roles.*` siguen existiendo por compatibilidad, pero la gestion de personas y roles ya no se realiza dentro del panel MVZ.
 
 ## Roles base y roles custom
@@ -49,6 +56,7 @@ Nota operativa:
   - `government` -> `tenant_admin`
   - `producer` -> `producer`, `employee`, `mvz_internal`, `producer_viewer`
   - `mvz` -> `mvz_government`, `mvz_internal`
+- En panel `admin`, el unico rol base visible y asignable por defecto es `tenant_admin`.
 - Los roles base son visibles, asignables y clonables, pero sus permisos no se editan desde UI.
 - Los roles custom usan `is_system = false` y una `key` interna `custom_<slug>`.
 - La UI opera con un rol principal por membresia, aunque `tenant_user_roles` soporte multiples filas.
@@ -76,6 +84,10 @@ Nota operativa:
   - `GET|PATCH /api/producer/profile`
   - `GET|PATCH /api/mvz/profile`
 - Panel settings:
+  - `GET|PATCH /api/admin/settings`
+  - `GET|POST|PATCH /api/admin/employees`
+  - `POST /api/admin/employees/resend-invite`
+  - `GET|POST|PATCH|DELETE /api/admin/roles`
   - `GET|PATCH /api/producer/settings`
   - `GET /api/producer/settings/ranchos`
   - `GET|POST|PATCH /api/producer/employees`
@@ -95,7 +107,9 @@ Nota operativa:
 - `Mi perfil` y `Configuracion del panel` son superficies distintas:
   - `Mi perfil` usa datos de cuenta y ficha del usuario autenticado.
   - `Configuracion del panel` usa datos operativos del tenant.
+- En admin, `Configuracion` agrupa tabs `Resumen`, `Auditoria`, `Empleados` y `Roles`, cada uno visible por permisos del modulo correspondiente.
 - `employee`, `producer_viewer` y `mvz_internal` mantienen acceso a `Mi perfil`, pero no a settings del panel salvo permiso explicito.
+- En gobierno, el home del panel se resuelve por el primer permiso disponible en este orden: dashboard, producers, mvz, quarantines, exports, appointments, settings, profile.
 - `mvz_internal` conserva semantica especial de entrada por rancho: nunca recibe vista global de settings o metricas.
 - `mvz_government` tampoco administra altas ni roles desde su panel; gobierno da de alta a `mvz_government` y cada productor da de alta a `mvz_internal`.
 - Cuando un productor asigna el rol `mvz_internal`, debe existir una ficha profesional en `mvz_profiles` y una sincronizacion activa de ranchos en `mvz_upp_assignments`.

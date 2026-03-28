@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-24
+Last Updated: 2026-03-27
 Source of Truth: Active route map, legacy redirects, and guard expectations for the current application.
 
 # Rutas y guards
@@ -17,15 +17,24 @@ Source of Truth: Active route map, legacy redirects, and guard expectations for 
 
 - `tenant_admin`
   - `/admin`
+  - `/admin/profile`
+  - `/admin/settings?tab=overview|audit|employees|roles`
   - `/admin/producers`
   - `/admin/producers/new`
+  - `/admin/producers/[id]`
   - `/admin/mvz`
   - `/admin/mvz/new`
+  - `/admin/mvz/[id]`
   - `/admin/quarantines`
+  - `/admin/quarantines/[id]`
   - `/admin/exports`
-  - `/admin/normative`
-  - `/admin/audit`
+  - `/admin/exports/[id]`
   - `/admin/appointments`
+  - `/admin/appointments/[id]`
+
+Rutas legacy admin:
+- `/admin/audit` -> `/admin/settings?tab=audit`
+- `/admin/normative` -> `/admin/settings?tab=overview`
 
 - `producer`, `employee` y `producer_viewer`
   - Organizacion
@@ -115,6 +124,21 @@ Regla especial `mvz_internal`:
 - `/mvz/settings`, `/mvz/metrics` y `/mvz/dashboard` se bloquean y redirigen a `/mvz`
 - si el rol `mvz_internal` vive dentro de un tenant `producer`, la app igual resuelve `panelType = mvz` y mantiene este mismo comportamiento
 
+## Shell admin
+
+- `/admin` muestra un dashboard analitico con KPIs, charts y preview de 5 citas recientes.
+- El sidebar admin muestra `Configuracion` como unica entrada de settings; ya no expone `Normativa` ni `Auditoria` como items top-level.
+- La topbar admin reutiliza `ProfileMenu` y expone:
+  - `Mi perfil` -> `/admin/profile`
+  - `Configuracion del panel` -> `/admin/settings`
+- Las vistas detalle del panel admin usan una shell comun `header + summary cards + tabs + sidebar`.
+- `/admin/settings` se compone por tabs visibles por permisos: `Resumen`, `Auditoria`, `Empleados` y `Roles`.
+- Deep-links activos en detalles admin:
+  - Productores y MVZ: `?tab=overview|info|upps|documentos|visitas` y `?mode=view|edit`
+  - Exportaciones: `?tab=info|animales|proceso` y `?focus=status`
+  - Cuarentenas: `?tab=resumen|upp|mapa|historial` y `?focus=status`
+  - Citas: `?tab=overview|notes` y `?focus=status`
+
 ## Shell tenant
 
 `src/app/(tenant)/layout.tsx` monta un shell comun con dos modos:
@@ -139,6 +163,12 @@ Reglas activas del shell:
 
 ## Guards principales
 
+- `src/app/(admin)/admin/(protected)/layout.tsx`
+  - valida sesion y panel `government`
+  - permite `/admin/profile` sin permisos de settings
+  - resuelve permisos requeridos por segmento (`/admin/exports`, `/admin/settings`, etc.)
+  - redirige al primer home disponible segun permisos en este orden: dashboard, producers, mvz, quarantines, exports, appointments, settings, profile
+  - permite `/admin/settings` con cualquier permiso de tabs admin (`admin.tenant.*`, `admin.audit.read`, `admin.employees.*`, `admin.roles.*`)
 - `src/app/(tenant)/layout.tsx`
   - valida sesion
   - resuelve rol tenant
@@ -156,6 +186,7 @@ Reglas activas del shell:
 ## Split perfil vs panel
 
 - `Configuracion` en sidebar izquierdo queda reservada para datos del tenant/panel.
+- En admin, `Configuracion` centraliza `Resumen`, `Auditoria`, `Empleados` y `Roles`.
 - `Mi perfil` concentra datos de cuenta (`auth.user_metadata.full_name`, `profiles.email`) y ficha de dominio del usuario cuando exista.
 - `employee`, `producer_viewer` y roles custom pueden entrar a `Mi perfil`.
 - El acceso a `settings` ya no depende de un `AppRole` fijo sino de permisos del tenant.

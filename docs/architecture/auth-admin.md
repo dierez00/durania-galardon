@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-24
+Last Updated: 2026-03-27
 Source of Truth: Canonical auth flow, role routing, and tenant-level authorization model.
 
 # Auth y Tenant IAM
@@ -18,6 +18,11 @@ Source of Truth: Canonical auth flow, role routing, and tenant-level authorizati
 - Recovery publico: `/forgot-password`
 - Activacion / nueva contrasena: `/auth/set-password`
 - Admin tenant: `/admin/*`
+- Self-service admin: `/admin/profile` y `/admin/settings`
+- `/admin/settings` habilita tabs por permisos: `overview`, `audit`, `employees`, `roles`
+- Compatibilidad admin:
+  - `/admin/audit` -> `/admin/settings?tab=audit`
+  - `/admin/normative` -> `/admin/settings?tab=overview`
 - Vistas tenant productor: `/producer/*` (`/producer/settings` con cualquier permiso de sus tabs: `producer.tenant.*`, `producer.upp.*`, `producer.employees.*`, `producer.roles.*`)
 - Vistas tenant MVZ:
   - `/mvz`
@@ -38,7 +43,7 @@ Roles soportados:
 
 Redireccion inicial por panel y permisos:
 
-- `tenant_admin` -> `/admin`
+- Panel `government` -> `/admin`, `/admin/producers`, `/admin/mvz`, `/admin/quarantines`, `/admin/exports`, `/admin/appointments`, `/admin/settings` o `/admin/profile` segun el primer permiso disponible
 - Panel `producer` -> `/producer`, `/producer/settings` o `/producer/profile` segun permisos disponibles
 - Panel `mvz` -> `/mvz`, `/mvz/settings` o `/mvz/profile` segun permisos disponibles
 - `mvz_internal` mantiene entrada por `/mvz`, con redirect directo a rancho si solo tiene una asignacion activa
@@ -88,6 +93,11 @@ Redireccion inicial por panel y permisos:
 
 ## Endpoints self-service por panel
 
+- `GET|PATCH /api/admin/profile`
+- `GET|PATCH /api/admin/settings`
+- `GET|POST|PATCH /api/admin/employees`
+- `POST /api/admin/employees/resend-invite`
+- `GET|POST|PATCH|DELETE /api/admin/roles`
 - `GET|PATCH /api/producer/profile`
 - `GET|POST|PATCH /api/producer/employees`
 - `GET|PATCH /api/producer/settings`
@@ -104,6 +114,17 @@ Redireccion inicial por panel y permisos:
 - `GET /api/auth/me` entrega `panelType`, `permissions`, `tenant.name`, `displayName`, `roleKey`, `roleName`, `isSystemRole` e `isMvzInternal` para el shell tenant.
 - `GET /api/auth/invite-context` entrega `panelType`, `tenantId`, `tenantSlug`, `tenantName`, `roleKey`, `roleName` y `assignedUpps[]` para onboarding por invitacion.
 - El nombre visible self-service vive en `auth.user_metadata.full_name` y se sincroniza en topbar al editar `Mi perfil`.
+- `tenant_admin` usa el mismo split UX que productor y MVZ entre `Mi perfil` y `Configuracion del panel`, pero sobre `/admin/profile` y `/admin/settings`.
+- `admin/profile` expone `account` y `membership`, y solo permite editar `displayName`.
+- `admin/settings` expone datos del tenant (`organization`) y un `summary` operativo del panel; solo permite editar `organizationName`.
+- `admin/settings` usa permisos dedicados:
+  - `admin.tenant.read` / `admin.tenant.write`
+  - `admin.employees.read` / `admin.employees.write`
+  - `admin.roles.read` / `admin.roles.write`
+- `admin.users.*` se mantiene por compatibilidad, pero ya no define la navegacion de `Configuracion`.
+- `admin/settings` se compone por tabs (`Resumen`, `Auditoria`, `Empleados`, `Roles`) y cada tab se habilita por permisos del modulo correspondiente.
+- `admin/employees` da de alta por email, asigna `roleId`, permite suspender/reactivar y reenviar onboarding pendiente; la UI excluye al usuario actual de acciones destructivas.
+- `admin/roles` reutiliza el motor de roles tenant con panel `admin`; `tenant_admin` sigue siendo el unico rol base reservado del tenant gobierno.
 - `profiles.email` funciona como espejo denormalizado de `auth.users.email` para lecturas de perfil.
 - Las altas nuevas ya no retornan contrasenas temporales; las cuentas nuevas se activan por invitacion one-time y las cuentas existentes se asignan directo al tenant.
 - `producer/settings` ya no expone ni edita `producers.full_name`; esa ficha se mueve a `producer/profile`.
@@ -120,6 +141,7 @@ Redireccion inicial por panel y permisos:
 - `POST /api/producer/employees/resend-invite` solo se habilita para empleados con onboarding pendiente y reenvia invitacion o recovery hacia `/auth/set-password`.
 - `GET|POST|PATCH /api/mvz/members` y `GET|POST|PATCH|DELETE /api/mvz/roles` responden `403 FORBIDDEN` para reflejar que ese flujo se gestiona fuera del panel MVZ.
 - `producer/roles` expone roles base visibles y roles custom por tenant.
+- `admin/roles` expone `tenant_admin` como rol base visible y roles custom por tenant.
 - La eliminacion de roles tenant en productor se bloquea cuando el rol aun tiene membresias asignadas; primero debe desasignarse de `tenant_user_roles`.
 - Todos los endpoints MVZ de rancho validan:
   - rol MVZ

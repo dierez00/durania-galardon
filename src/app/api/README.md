@@ -13,6 +13,10 @@
 
 - `admin/producers` -> `src/modules/admin/productores`
 - `admin/mvz` -> `src/modules/admin/mvz`
+- `admin/profile` -> `src/modules/admin/profile`
+- `admin/settings` -> `src/modules/admin/settings`
+- `admin/roles` -> `src/modules/admin/settings`
+- `admin/employees` -> `src/modules/admin/empleados`
 - `auth/password/recovery` y `auth/invite-context` -> `src/modules/auth`
 - `admin/appointments` y `public/appointments` -> `src/modules/admin/citas`
 - `admin/audit` -> `src/modules/admin/auditoria`
@@ -50,6 +54,11 @@ Si el modulo aun no expone alias desde `index.ts`, el reexport puede apuntar tem
 ## Admin
 
 - `GET /api/admin/dashboard`
+- `GET|PATCH /api/admin/profile`
+- `GET|PATCH /api/admin/settings`
+- `GET|POST|PATCH /api/admin/employees`
+- `POST /api/admin/employees/resend-invite`
+- `GET|POST|PATCH|DELETE /api/admin/roles`
 - `GET|POST|PATCH /api/admin/producers`
 - `GET|PATCH /api/admin/producers/:id/documents`
 - `POST /api/admin/producers/batch`
@@ -57,9 +66,37 @@ Si el modulo aun no expone alias desde `index.ts`, el reexport puede apuntar tem
 - `POST /api/admin/mvz/batch`
 - `GET|POST|PATCH /api/admin/quarantines`
 - `GET|POST|PATCH /api/admin/exports`
+- `DELETE /api/admin/exports/:id`
 - `GET|POST|PATCH /api/admin/normative`
 - `GET /api/admin/audit`
 - `GET|PATCH /api/admin/appointments`
+- `GET|PATCH /api/admin/appointments/:id`
+
+Contrato operativo de `admin/dashboard`:
+- `GET /api/admin/dashboard`: devuelve `kpis`, `charts.exportsByMonth`, `charts.appointmentsByStatus` y `appointmentsPreview` para el dashboard administrativo.
+
+Contrato operativo de `admin/profile`:
+- `GET /api/admin/profile`: devuelve `account` y `membership` para `tenant_admin`.
+- `PATCH /api/admin/profile`: permite editar solo `displayName`.
+
+Contrato operativo de `admin/settings`:
+- `GET /api/admin/settings`: devuelve `organization` y `summary` operativo del panel admin.
+- `PATCH /api/admin/settings`: permite editar solo `organizationName`.
+- `admin/settings` respeta tabs visibles por permisos: `Resumen`, `Auditoria`, `Empleados`, `Roles`.
+
+Contrato operativo de `admin/employees`:
+- soporta altas por `email` + `roleId`, cambio de rol, suspension/reactivacion y reenvio de onboarding.
+- excluye al usuario actual de acciones destructivas desde la UI.
+
+Contrato operativo de `admin/roles`:
+- reutiliza el motor de roles tenant para panel `admin`.
+- `tenant_admin` permanece como el unico rol base reservado del tenant gobierno.
+
+Contrato operativo de `admin/appointments`:
+- `GET /api/admin/appointments`: listado de citas del tenant admin.
+- `PATCH /api/admin/appointments`: actualiza estado por `id`.
+- `GET /api/admin/appointments/:id`: detalle de una cita para la vista `Ver mas`.
+- `PATCH /api/admin/appointments/:id`: actualiza estado desde la vista detalle.
 
 Contrato operativo de `admin/producers/:id/documents`:
 - `GET /api/admin/producers/:id/documents`: listado unificado de `producer_documents` y `upp_documents` del productor.
