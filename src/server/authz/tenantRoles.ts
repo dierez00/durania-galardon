@@ -9,7 +9,7 @@ import {
   type PermissionKey,
 } from "@/shared/lib/auth";
 
-export type TenantRolePanel = "producer" | "mvz";
+export type TenantRolePanel = "admin" | "producer" | "mvz";
 
 export interface TenantRolePermissionCatalogItem {
   id: string;
@@ -42,8 +42,13 @@ interface TenantRoleRow {
 }
 
 const PANEL_SYSTEM_ROLE_KEYS: Record<TenantRolePanel, string[]> = {
+  admin: ["tenant_admin"],
   producer: ["producer", "employee", "mvz_internal", "producer_viewer"],
   mvz: ["mvz_government", "mvz_internal"],
+};
+
+const ADMIN_SYSTEM_ROLE_PRIORITY: Record<"tenant_admin", number> = {
+  tenant_admin: 10,
 };
 
 const PRODUCER_SYSTEM_ROLE_PRIORITY: Record<
@@ -68,6 +73,10 @@ const PRODUCER_PERMISSION_CATALOG_KEYS = new Set<PermissionKey>([
   ...PRODUCER_MVZ_INTERNAL_PERMISSION_SET,
 ]);
 
+const ADMIN_PERMISSION_CATALOG_KEYS = new Set<PermissionKey>([
+  ...ROLE_DEFAULT_PERMISSIONS.tenant_admin,
+]);
+
 const MVZ_PERMISSION_CATALOG_KEYS = new Set<PermissionKey>([
   ...ROLE_DEFAULT_PERMISSIONS.mvz_government,
   ...ROLE_DEFAULT_PERMISSIONS.mvz_internal,
@@ -78,6 +87,10 @@ export function getVisibleSystemRoleKeys(panel: TenantRolePanel) {
 }
 
 export function getDefaultRoleKeyForPanel(panel: TenantRolePanel) {
+  if (panel === "admin") {
+    return "tenant_admin";
+  }
+
   return panel === "producer" ? "employee" : "mvz_internal";
 }
 
@@ -142,6 +155,53 @@ export async function ensureProducerSystemRoles(tenantId: string) {
     ensureProducerSystemRole(tenantId, "mvz_internal"),
     ensureProducerSystemRole(tenantId, "producer_viewer"),
   ]);
+}
+
+export async function ensureAdminSystemRole(
+  tenantId: string,
+  roleKey: "tenant_admin"
+): Promise<string> {
+  const supabaseAdmin = getSupabaseAdminClient();
+  const existingRole = await supabaseAdmin
+    .from("tenant_roles")
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .eq("key", roleKey)
+    .maybeSingle();
+
+  if (existingRole.error) {
+    throw new Error(existingRole.error.message);
+  }
+
+  let roleId = existingRole.data?.id ?? null;
+
+  if (!roleId) {
+    const createdRole = await supabaseAdmin
+      .from("tenant_roles")
+      .insert({
+        tenant_id: tenantId,
+        key: roleKey,
+        name: ROLE_LABELS[roleKey as AppRole],
+        is_system: true,
+        priority: ADMIN_SYSTEM_ROLE_PRIORITY[roleKey],
+      })
+      .select("id")
+      .single();
+
+    if (createdRole.error || !createdRole.data) {
+      throw new Error(createdRole.error?.message ?? "ADMIN_ROLE_CREATE_FAILED");
+    }
+
+    roleId = createdRole.data.id;
+  }
+
+  await ensureRolePermissionSet(roleId, resolveDefaultPermissionsForTenantRole("government", roleKey));
+
+  return roleId;
+}
+
+export async function ensureAdminSystemRoles(tenantId: string) {
+  await Promise.all([ensureAdminSystemRole(tenantId, "tenant_admin")]);
 }
 
 async function ensureRolePermissionSet(roleId: string, permissionKeys: PermissionKey[]) {
@@ -253,7 +313,9 @@ function buildCustomRoleSlug(name: string) {
 async function resolvePermissionCatalog(panel: TenantRolePanel) {
   const supabaseAdmin = getSupabaseAdminClient();
   const allowedKeys =
-    panel === "producer"
+    panel === "admin"
+      ? Array.from(ADMIN_PERMISSION_CATALOG_KEYS)
+      : panel === "producer"
       ? Array.from(PRODUCER_PERMISSION_CATALOG_KEYS)
       : Array.from(MVZ_PERMISSION_CATALOG_KEYS);
   const permissionsResult = await supabaseAdmin
@@ -271,6 +333,10 @@ async function resolvePermissionCatalog(panel: TenantRolePanel) {
       (permission): permission is { id: string; key: PermissionKey; description: string | null; module: string | null } => {
         if (!isPermissionKey(permission.key)) {
           return false;
+        }
+
+        if (panel === "admin") {
+          return ADMIN_PERMISSION_CATALOG_KEYS.has(permission.key);
         }
 
         return panel === "producer"
@@ -301,7 +367,9 @@ export async function listPermissionCatalogForPanel(
 }
 
 async function resolveVisibleRolesForTenant(tenantId: string, panel: TenantRolePanel) {
-  if (panel === "producer") {
+  if (panel === "admin") {
+    await ensureAdminSystemRoles(tenantId);
+  } else if (panel === "producer") {
     await ensureProducerSystemRoles(tenantId);
   } else {
     await ensureMvzSystemRoles(tenantId);

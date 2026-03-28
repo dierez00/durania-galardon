@@ -11,6 +11,12 @@ import {
   POST as postMvzRoles,
   PATCH as patchMvzRoles,
 } from "../../src/app/api/mvz/roles/route";
+import {
+  DELETE as deleteAdminRoles,
+  GET as getAdminRoles,
+  POST as postAdminRoles,
+  PATCH as patchAdminRoles,
+} from "../../src/app/api/admin/roles/route";
 import { GET as getProducerSettingsRanchos } from "../../src/app/api/producer/settings/ranchos/route";
 
 describe("settings roles routes", () => {
@@ -114,6 +120,62 @@ describe("settings roles routes", () => {
   it("DELETE /api/mvz/roles rejects requests without token", async () => {
     const response = await deleteMvzRoles(
       new Request("http://localhost:3000/api/mvz/roles", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roleId: "role-1" }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("UNAUTHORIZED");
+  });
+
+  it("GET /api/admin/roles rejects requests without token", async () => {
+    const response = await getAdminRoles(
+      new Request("http://localhost:3000/api/admin/roles", { method: "GET" })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("UNAUTHORIZED");
+  });
+
+  it("POST /api/admin/roles rejects requests without token", async () => {
+    const response = await postAdminRoles(
+      new Request("http://localhost:3000/api/admin/roles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Supervisor", permissionKeys: ["admin.roles.read"] }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("UNAUTHORIZED");
+  });
+
+  it("PATCH /api/admin/roles rejects requests without token", async () => {
+    const response = await patchAdminRoles(
+      new Request("http://localhost:3000/api/admin/roles", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roleId: "role-1", name: "Supervisor" }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("UNAUTHORIZED");
+  });
+
+  it("DELETE /api/admin/roles rejects requests without token", async () => {
+    const response = await deleteAdminRoles(
+      new Request("http://localhost:3000/api/admin/roles", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roleId: "role-1" }),
