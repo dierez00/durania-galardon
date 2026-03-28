@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { PaginationControls } from "@/shared/ui/pagination-controls";
@@ -11,9 +12,13 @@ import {
   AdminCuarentenaActivacionForm,
   useAdminCuarentenas,
 } from "@/modules/cuarentenas/admin/presentation";
+import type { AdminCuarentena } from "@/modules/cuarentenas/admin/domain/entities/AdminCuarentenaEntity";
+import { getAccessToken } from "@/shared/lib/auth-session";
 
 export default function AdminQuarantinesPage() {
+  const router = useRouter();
   const [activarOpen, setActivarOpen] = useState(false);
+  const [actionError, setActionError] = useState("");
   const {
     cuarentenas,
     total,
@@ -33,14 +38,58 @@ export default function AdminQuarantinesPage() {
     mapLoading,
   } = useAdminCuarentenas();
 
+  const handleViewMore = useCallback(
+    (quarantineId: string) => {
+      router.push(`/admin/quarantines/${quarantineId}?tab=resumen`);
+    },
+    [router]
+  );
+
+  const handleEdit = useCallback(
+    (quarantineId: string) => {
+      router.push(`/admin/quarantines/${quarantineId}?tab=resumen&focus=status`);
+    },
+    [router]
+  );
+
+  const handleStatusChange = useCallback(
+    async (quarantine: AdminCuarentena) => {
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        setActionError("No existe sesion activa.");
+        return;
+      }
+
+      const nextStatus = quarantine.status === "active" ? "suspended" : "active";
+      setActionError("");
+
+      const response = await fetch(`/api/admin/quarantines/${quarantine.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+
+      const body = await response.json();
+      if (!response.ok || !body.ok) {
+        setActionError(body.error?.message ?? "No fue posible actualizar la cuarentena.");
+        return;
+      }
+
+      await reload();
+    },
+    [reload]
+  );
+
   return (
     <div className="space-y-6">
-      {/* Encabezado */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Cuarentenas Estatales</h1>
           <p className="text-sm text-muted-foreground">
-            Mapa general de geocercas, liberación e historial epidemiológico.
+            Mapa general de geocercas, liberacion e historial epidemiologico.
           </p>
         </div>
         <Button onClick={() => { setActivarOpen(true); }}>
@@ -48,23 +97,19 @@ export default function AdminQuarantinesPage() {
         </Button>
       </div>
 
-      {/* Activación contextual (controlada desde el encabezado) */}
       <AdminCuarentenaActivacionForm
         open={activarOpen}
         onOpenChange={setActivarOpen}
         onSuccess={() => { setActivarOpen(false); void reload(); }}
       />
 
-      {/* Mapa */}
       <AdminCuarentenasMapSection points={mapPoints} loading={mapLoading} />
 
-      {/* Filtros */}
       <AdminCuarentenasFilters
         filters={filters}
         onChange={handleFiltersChange}
       />
 
-      {/* Tabla */}
       <Card>
         <CardHeader>
           <CardTitle>
@@ -77,7 +122,7 @@ export default function AdminQuarantinesPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          {error || actionError ? <p className="text-sm text-destructive">{error || actionError}</p> : null}
 
           {loading ? (
             <p className="py-8 text-center text-sm text-muted-foreground">Cargando...</p>
@@ -86,6 +131,10 @@ export default function AdminQuarantinesPage() {
               cuarentenas={cuarentenas}
               sort={sort}
               onSortChange={handleSortChange}
+              onEdit={handleEdit}
+              onViewMore={handleViewMore}
+              onStatusChange={handleStatusChange}
+              isStatusActionDisabled={(quarantine) => quarantine.status === "released"}
             />
           )}
 
@@ -105,6 +154,3 @@ export default function AdminQuarantinesPage() {
     </div>
   );
 }
-
-
-

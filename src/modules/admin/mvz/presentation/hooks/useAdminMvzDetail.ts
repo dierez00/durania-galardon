@@ -25,8 +25,13 @@ import type {
 
 export type MvzDetailTab = "info" | "upps" | "pruebas" | "visitas";
 export type UppSubTab = "asignados" | "disponibles";
+export type MvzDetailViewTab = "overview" | MvzDetailTab;
 
-export function useAdminMvzDetail(id: string) {
+interface UseAdminMvzDetailOptions {
+  initialTab?: MvzDetailViewTab;
+}
+
+export function useAdminMvzDetail(id: string, options: UseAdminMvzDetailOptions = {}) {
   const router = useRouter();
 
   // ── Detail ──────────────────────────────────────────────────────────────────
@@ -56,7 +61,7 @@ export function useAdminMvzDetail(id: string) {
   const [loadingVisits, setLoadingVisits] = useState(false);
 
   // ── Active Tab ──────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<MvzDetailTab>("info");
+  const [activeTab, setActiveTab] = useState<MvzDetailViewTab>(options.initialTab ?? "overview");
 
   // ── Status actions ──────────────────────────────────────────────────────────
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
@@ -147,7 +152,7 @@ export function useAdminMvzDetail(id: string) {
 
   // ── Tab change handler ───────────────────────────────────────────────────────
   const handleTabChange = useCallback(
-    (tab: MvzDetailTab) => {
+    (tab: MvzDetailViewTab) => {
       setActiveTab(tab);
       if (tab === "upps")         loadUpps();
       else if (tab === "pruebas")  loadTests();
@@ -322,6 +327,10 @@ export function useAdminMvzDetail(id: string) {
   useEffect(() => {
     void loadDetail();
   }, [loadDetail]);
+
+  useEffect(() => {
+    handleTabChange(options.initialTab ?? "overview");
+  }, [handleTabChange, options.initialTab]);
 
   return {
     detail,

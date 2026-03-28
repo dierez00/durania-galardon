@@ -2,16 +2,23 @@
 
 import dynamic from "next/dynamic";
 import type { ComponentType } from "react";
-import { FileText, MapPin, Building2, Clock, AlertTriangle } from "lucide-react";
+import { Building2, Clock, FileText, MapPin, AlertTriangle } from "lucide-react";
 import {
-  DetailHeader,
-  DetailTabBar,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
   DetailEmptyState,
-} from "@/shared/ui/detail";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
-import { Button } from "@/shared/ui/button";
+  DetailHeader,
+  DetailInfoGrid,
+  DetailSidebarSection,
+  DetailTabBar,
+  DetailWorkspace,
+} from "@/shared/ui";
 import { AdminCuarentenaEstadoBadge } from "./AdminCuarentenaEstadoBadge";
 import type { useAdminCuarentenaDetail, DetailTab } from "./hooks/useAdminCuarentenaDetail";
+import { cn } from "@/shared/lib/utils";
 
 interface LeafletMapProps {
   points: { id: string; title: string; status: string; quarantineType: string; lat: number; lng: number; uppName: string | null; producerName: string | null }[];
@@ -19,27 +26,29 @@ interface LeafletMapProps {
 }
 
 const SinglePointMap = dynamic<LeafletMapProps>(
-  () => import("./CuarentenasLeafletMap").then((m) => m.default as ComponentType<LeafletMapProps>),
+  () => import("./CuarentenasLeafletMap").then((module) => module.default as ComponentType<LeafletMapProps>),
   { ssr: false }
 );
 
-type Props = ReturnType<typeof useAdminCuarentenaDetail>;
+type Props = ReturnType<typeof useAdminCuarentenaDetail> & {
+  focusStatus?: boolean;
+};
 
 const TABS: { key: DetailTab; label: string; icon: typeof FileText }[] = [
-  { key: "resumen",  label: "Resumen",   icon: FileText },
-  { key: "upp",      label: "Rancho",    icon: Building2 },
-  { key: "mapa",     label: "Mapa",      icon: MapPin },
-  { key: "historial",label: "Historial", icon: Clock },
+  { key: "resumen", label: "Resumen", icon: FileText },
+  { key: "upp", label: "Rancho", icon: Building2 },
+  { key: "mapa", label: "Mapa", icon: MapPin },
+  { key: "historial", label: "Historial", icon: Clock },
 ];
 
 const STATUS_LABELS: Record<string, string> = {
-  active:    "Activa",
-  released:  "Liberada",
+  active: "Activa",
+  released: "Liberada",
   suspended: "Suspendida",
 };
 
 export function AdminCuarentenaDetailContent({
-  quarantine: q,
+  quarantine: quarantine,
   loading,
   error,
   activeTab,
@@ -47,177 +56,206 @@ export function AdminCuarentenaDetailContent({
   statusSaving,
   statusError,
   handleStatusChange,
+  focusStatus = false,
 }: Readonly<Props>) {
-  if (loading) return <p className="py-16 text-center text-muted-foreground">Cargando…</p>;
-  if (error || !q)  return <DetailEmptyState icon={AlertTriangle} message={error || "Cuarentena no encontrada"} description="Puede que haya sido eliminada o no tengas acceso." />;
+  if (loading) {
+    return <p className="py-16 text-center text-sm text-muted-foreground">Cargando cuarentena...</p>;
+  }
 
-  const mapPoints = q.locationLat != null && q.locationLng != null
+  if (error || !quarantine) {
+    return (
+      <DetailEmptyState
+        icon={AlertTriangle}
+        message={error || "Cuarentena no encontrada"}
+        description="Puede que haya sido eliminada o no tengas acceso."
+      />
+    );
+  }
+
+  const mapPoints = quarantine.locationLat != null && quarantine.locationLng != null
     ? [{
-        id:             q.id,
-        title:         q.title,
-        status:        q.status,
-        quarantineType: q.quarantineType,
-        lat:           q.locationLat,
-        lng:           q.locationLng,
-        uppName:       q.uppName,
-        producerName:  q.producerName,
+        id: quarantine.id,
+        title: quarantine.title,
+        status: quarantine.status,
+        quarantineType: quarantine.quarantineType,
+        lat: quarantine.locationLat,
+        lng: quarantine.locationLng,
+        uppName: quarantine.uppName,
+        producerName: quarantine.producerName,
       }]
     : [];
 
-  return (
-    <div className="space-y-4">
-      <DetailHeader
-        title={q.title}
-        subtitle={q.uppName ? `${q.uppName} — ${q.producerName ?? ""}` : "Sin rancho específico"}
-        backHref="/admin/quarantines"
-        backLabel="Cuarentenas"
-        status={q.status}
-        statusLabel={STATUS_LABELS[q.status] ?? q.status}
-        statusVariant={q.status}
-      />
-
-      {/* Acciones de estado */}
-      <div className="flex flex-wrap gap-2 items-center">
-        {q.status !== "released" && (
-          <Button
-            size="sm"
-            variant="success"
-            disabled={statusSaving}
-            onClick={() => void handleStatusChange("released")}
-          >
-            Liberar cuarentena
-          </Button>
+  const mainContent =
+    activeTab === "upp" ? (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Rancho / UPP</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          {quarantine.uppId ? (
+            <DetailInfoGrid
+              columns={2}
+              items={[
+                { label: "Nombre", icon: Building2, value: quarantine.uppName ?? "-" },
+                { label: "Codigo UPP", icon: FileText, value: quarantine.uppCode ?? "-" },
+                { label: "Productor", icon: Building2, value: quarantine.producerName ?? "-" },
+                { label: "Direccion", icon: MapPin, value: quarantine.addressText ?? "-" },
+                { label: "Animales registrados", icon: Clock, value: String(quarantine.animalCount) },
+              ]}
+            />
+          ) : (
+            <p className="text-muted-foreground">Cuarentena sin rancho asignado.</p>
+          )}
+        </CardContent>
+      </Card>
+    ) : activeTab === "mapa" ? (
+      <div className="h-96 overflow-hidden rounded-xl border">
+        {mapPoints.length === 0 ? (
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+            Sin coordenadas disponibles para este rancho.
+          </div>
+        ) : (
+          <SinglePointMap points={mapPoints} onMarkerClick={() => {}} />
         )}
-        {q.status === "active" && (
-          <Button
-            size="sm"
-            variant="warning"
-            disabled={statusSaving}
-            onClick={() => void handleStatusChange("suspended")}
-          >
-            Suspender
-          </Button>
-        )}
-        {q.status === "suspended" && (
-          <Button
-            size="sm"
-            variant="info"
-            disabled={statusSaving}
-            onClick={() => void handleStatusChange("active")}
-          >
-            Reactivar
-          </Button>
-        )}
-        {statusError && <p className="text-xs text-destructive">{statusError}</p>}
       </div>
-
-      <DetailTabBar
-        tabs={TABS}
-        active={activeTab}
-        onChange={(k) => setActiveTab(k as DetailTab)}
-      />
-
-      {/* ── RESUMEN ─────────────────────────────────────────────────────────── */}
-      {activeTab === "resumen" && (
-        <Card>
-          <CardContent className="pt-4 space-y-3 text-sm">
-            <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-              <div>
-                <p className="text-xs text-muted-foreground">Estado</p>
-                <AdminCuarentenaEstadoBadge status={q.status} />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Tipo</p>
-                <p className="font-medium capitalize">{q.quarantineType === "state" ? "Estatal" : "Operacional"}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Inicio</p>
-                <p className="font-medium">{new Date(q.startedAt).toLocaleDateString("es-MX")}</p>
-              </div>
-              {q.releasedAt && (
-                <div>
-                  <p className="text-xs text-muted-foreground">Liberada</p>
-                  <p className="font-medium">{new Date(q.releasedAt).toLocaleDateString("es-MX")}</p>
-                </div>
-              )}
-            </div>
-            {q.reason && (
-              <div>
-                <p className="text-xs text-muted-foreground">Motivo</p>
-                <p>{q.reason}</p>
-              </div>
-            )}
-            {q.epidemiologicalNote && (
-              <div>
-                <p className="text-xs text-muted-foreground">Nota epidemiológica</p>
-                <p className="whitespace-pre-wrap">{q.epidemiologicalNote}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── RANCHO ──────────────────────────────────────────────────────────── */}
-      {activeTab === "upp" && (
+    ) : activeTab === "historial" ? (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Historial</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p>Creada: {new Date(quarantine.createdAt).toLocaleString("es-MX")}</p>
+          {quarantine.createdByUserId ? <p>Creada por UID: {quarantine.createdByUserId}</p> : null}
+          {quarantine.releasedAt ? <p>Liberada: {new Date(quarantine.releasedAt).toLocaleString("es-MX")}</p> : null}
+          {quarantine.releasedByUserId ? <p>Liberada por UID: {quarantine.releasedByUserId}</p> : null}
+        </CardContent>
+      </Card>
+    ) : (
+      <div className="space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Rancho / UPP</CardTitle>
+            <CardTitle className="text-base">Resumen epidemiologico</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm space-y-2">
-            {q.uppId ? (
-              <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                <div>
-                  <p className="text-xs text-muted-foreground">Nombre</p>
-                  <p className="font-medium">{q.uppName ?? "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Código UPP</p>
-                  <p className="font-mono text-xs">{q.uppCode ?? "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Productor</p>
-                  <p className="font-medium">{q.producerName ?? "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Dirección</p>
-                  <p>{q.addressText ?? "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Animales registrados</p>
-                  <p className="font-semibold">{q.animalCount}</p>
-                </div>
+          <CardContent>
+            <DetailInfoGrid
+              columns={2}
+              items={[
+                { label: "Estado", icon: FileText, value: <AdminCuarentenaEstadoBadge status={quarantine.status} /> },
+                { label: "Tipo", icon: FileText, value: quarantine.quarantineType === "state" ? "Estatal" : "Operacional" },
+                { label: "Inicio", icon: Clock, value: new Date(quarantine.startedAt).toLocaleDateString("es-MX") },
+                {
+                  label: "Liberada",
+                  icon: Clock,
+                  value: quarantine.releasedAt ? new Date(quarantine.releasedAt).toLocaleDateString("es-MX") : "Activa",
+                },
+                { label: "Motivo", icon: AlertTriangle, value: quarantine.reason ?? "Sin motivo registrado" },
+                {
+                  label: "Nota epidemiologica",
+                  icon: FileText,
+                  value: quarantine.epidemiologicalNote ?? "Sin nota epidemiologica",
+                },
+              ]}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+
+  return (
+    <div className="space-y-6">
+      <DetailHeader
+        title={quarantine.title}
+        subtitle={quarantine.uppName ? `${quarantine.uppName} - ${quarantine.producerName ?? ""}` : "Sin rancho especifico"}
+        backHref="/admin/quarantines"
+        backLabel="Cuarentenas"
+        status={quarantine.status}
+        statusLabel={STATUS_LABELS[quarantine.status] ?? quarantine.status}
+        statusVariant={quarantine.status}
+      />
+
+      {statusError ? <p className="text-sm text-destructive">{statusError}</p> : null}
+
+      <DetailWorkspace
+        summary={
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Rancho</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1 text-sm">
+                <p className="font-medium">{quarantine.uppName ?? "Sin rancho asignado"}</p>
+                <p className="text-muted-foreground">{quarantine.producerName ?? "Sin productor"}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Cobertura</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1 text-sm">
+                <p className="font-medium">{quarantine.animalCount} animales</p>
+                <p className="text-muted-foreground">{quarantine.quarantineType === "state" ? "Estatal" : "Operacional"}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Estado</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <AdminCuarentenaEstadoBadge status={quarantine.status} />
+                <p className="text-muted-foreground">Inicio: {new Date(quarantine.startedAt).toLocaleDateString("es-MX")}</p>
+              </CardContent>
+            </Card>
+          </div>
+        }
+        tabs={<DetailTabBar tabs={TABS} active={activeTab} onChange={(key) => setActiveTab(key as DetailTab)} />}
+        main={mainContent}
+        sidebar={
+          <>
+            <DetailSidebarSection
+              title="Acciones Rapidas"
+              className={cn(focusStatus && "ring-2 ring-primary/25 ring-offset-2 ring-offset-background")}
+              contentClassName="space-y-2"
+            >
+              {quarantine.status !== "released" ? (
+                <Button type="button" variant="outline" className="w-full justify-start" disabled={statusSaving} onClick={() => void handleStatusChange("released")}>
+                  Liberar cuarentena
+                </Button>
+              ) : null}
+              {quarantine.status === "active" ? (
+                <Button type="button" variant="outline" className="w-full justify-start" disabled={statusSaving} onClick={() => void handleStatusChange("suspended")}>
+                  Suspender
+                </Button>
+              ) : null}
+              {quarantine.status === "suspended" ? (
+                <Button type="button" variant="outline" className="w-full justify-start" disabled={statusSaving} onClick={() => void handleStatusChange("active")}>
+                  Reactivar
+                </Button>
+              ) : null}
+              <Button type="button" variant={activeTab === "resumen" ? "secondary" : "outline"} className="w-full justify-start" onClick={() => setActiveTab("resumen")}>
+                Ver resumen
+              </Button>
+              <Button type="button" variant={activeTab === "mapa" ? "secondary" : "outline"} className="w-full justify-start" onClick={() => setActiveTab("mapa")}>
+                Ver mapa
+              </Button>
+            </DetailSidebarSection>
+
+            <DetailSidebarSection title="Informacion" contentClassName="space-y-3 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">Creada</p>
+                <p>{new Date(quarantine.createdAt).toLocaleString("es-MX")}</p>
               </div>
-            ) : (
-              <p className="text-muted-foreground">Cuarentena sin rancho asignado (estatal).</p>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── MAPA ────────────────────────────────────────────────────────────── */}
-      {activeTab === "mapa" && (
-        <div className="rounded-xl border overflow-hidden h-96">
-          {mapPoints.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-              Sin coordenadas disponibles para este rancho.
-            </div>
-          ) : (
-            <SinglePointMap points={mapPoints} onMarkerClick={() => {}} />
-          )}
-        </div>
-      )}
-
-      {/* ── HISTORIAL ───────────────────────────────────────────────────────── */}
-      {activeTab === "historial" && (
-        <Card>
-          <CardContent className="pt-4 text-sm space-y-1 text-muted-foreground">
-            <p>Creada: {new Date(q.createdAt).toLocaleString("es-MX")}</p>
-            {q.createdByUserId && <p>Creada por UID: {q.createdByUserId}</p>}
-            {q.releasedAt && <p>Liberada: {new Date(q.releasedAt).toLocaleString("es-MX")}</p>}
-            {q.releasedByUserId && <p>Liberada por UID: {q.releasedByUserId}</p>}
-          </CardContent>
-        </Card>
-      )}
+              <div>
+                <p className="text-xs text-muted-foreground">Direccion</p>
+                <p>{quarantine.addressText ?? "Sin direccion"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">ID</p>
+                <p className="break-all font-mono text-xs">{quarantine.id}</p>
+              </div>
+            </DetailSidebarSection>
+          </>
+        }
+      />
     </div>
   );
 }

@@ -1,10 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ArrowUpDown, ArrowUp, ArrowDown, Eye } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { ArrowUpDown, ArrowUp, ArrowDown, Edit3, Eye, RefreshCw } from "lucide-react";
 import { Card, CardContent } from "@/shared/ui/card";
-import { Button } from "@/shared/ui/button";
+import { TableRowActions } from "@/shared/ui/table-row-actions";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/shared/ui/table";
@@ -20,6 +19,10 @@ interface Props {
   mvzList: AdminMvz[];
   sort: AdminMvzSortState;
   onSortChange: (sort: AdminMvzSortState) => void;
+  onEdit?: (mvzId: string) => void;
+  onViewMore?: (mvzId: string) => void;
+  onToggleStatus?: (mvz: AdminMvz) => void;
+  isStatusActionDisabled?: (mvz: AdminMvz) => boolean;
 }
 
 interface SortableHeadProps {
@@ -60,8 +63,15 @@ function SortableHead({ field, sort, onSortChange, children, className }: Readon
   );
 }
 
-export function AdminMvzList({ mvzList, sort, onSortChange }: Readonly<Props>) {
-  const router = useRouter();
+export function AdminMvzList({
+  mvzList,
+  sort,
+  onSortChange,
+  onEdit,
+  onViewMore,
+  onToggleStatus,
+  isStatusActionDisabled,
+}: Readonly<Props>) {
   return (
     <Card>
       <CardContent className="pt-0">
@@ -104,14 +114,31 @@ export function AdminMvzList({ mvzList, sort, onSortChange }: Readonly<Props>) {
                     {new Date(m.created_at).toLocaleDateString("es-MX")}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => router.push(`/admin/mvz/${m.id}`)}
-                      title="Ver detalle"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
+                    <TableRowActions
+                      items={[
+                        {
+                          key: "edit",
+                          label: "Editar",
+                          icon: Edit3,
+                          onSelect: () => onEdit?.(m.id),
+                          disabled: !onEdit,
+                        },
+                        {
+                          key: "status",
+                          label: m.status === "active" ? "Desactivar" : "Activar",
+                          icon: RefreshCw,
+                          onSelect: () => onToggleStatus?.(m),
+                          disabled: !onToggleStatus || isStatusActionDisabled?.(m),
+                        },
+                        {
+                          key: "view",
+                          label: "Ver mas",
+                          icon: Eye,
+                          onSelect: () => onViewMore?.(m.id),
+                          disabled: !onViewMore,
+                        },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))
