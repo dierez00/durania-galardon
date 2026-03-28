@@ -7,7 +7,8 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Card, CardContent } from "@/shared/ui/card";
-import { Eye, EyeOff, Shield } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
+import { ThemeLogo } from "@/shared/ui/branding/ThemeLogo";
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase-browser";
 import { resolveClientRole } from "@/shared/lib/auth-client";
 import {
@@ -107,12 +108,12 @@ function PublicLoginPageContent() {
           <div className="absolute top-1/2 left-1/3 h-48 w-48 rounded-full border border-primary-foreground/15" />
         </div>
         <div className="relative z-10 max-w-lg px-12 text-center text-primary-foreground">
-          <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-2xl border border-primary-foreground/20 bg-primary-foreground/10 backdrop-blur">
-            <Shield className="h-12 w-12 text-primary-foreground" />
+          <div className="mx-auto h-20 w-20">
+            <ThemeLogo className="h-20 w-20" tone="on-dark" alt="Logo O.C.H.O.A" priority />
           </div>
-          <h1 className="mb-4 text-4xl font-bold tracking-tight">SIINIGA</h1>
+          <h1 className="mb-4 text-4xl font-bold tracking-tight">O.C.H.O.A</h1>
           <p className="mb-2 text-lg text-primary-foreground/85">
-            Sistema de Identificacion Individual del Ganado
+            Operacion y Control de Hatos Offline Automatizados  
           </p>
           <div className="mx-auto my-6 h-0.5 w-16 bg-primary-foreground/30" />
           <p className="text-sm leading-relaxed text-primary-foreground/70">
@@ -125,10 +126,10 @@ function PublicLoginPageContent() {
       <div className="flex-1 flex items-center justify-center bg-background p-8">
         <div className="w-full max-w-md">
           <div className="lg:hidden text-center mb-8">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-xl bg-primary/10">
-              <Shield className="h-8 w-8 text-primary" />
+            <div className="mx-auto mb-4 h-16 w-16">
+              <ThemeLogo className="h-16 w-16" alt="Logo O.C.H.O.A" priority />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">SIINIGA</h1>
+            <h1 className="text-2xl font-bold text-foreground">O.C.H.O.A</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Sistema de Identificacion Individual del Ganado
             </p>
@@ -193,7 +194,7 @@ function PublicLoginPageContent() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="usuario@siiniga.gob.mx"
+                    placeholder="usuario@email.com"
                     className="h-11"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
@@ -245,7 +246,7 @@ function PublicLoginPageContent() {
           </Card>
 
           <p className="text-center text-xs text-muted-foreground mt-6">
-            SIINIGA Estatal v2.0 - Gobierno del Estado
+            O.C.H.O.A v1.0 - Durania
           </p>
         </div>
       </div>

@@ -1,10 +1,9 @@
-﻿"use client";
+"use client";
 
 import type { ReactNode } from "react";
-import { ArrowUpDown, ArrowUp, ArrowDown, Eye } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { ArrowUpDown, ArrowUp, ArrowDown, Edit3, Eye, RefreshCw } from "lucide-react";
 import { Card, CardContent } from "@/shared/ui/card";
-import { Button } from "@/shared/ui/button";
+import { TableRowActions } from "@/shared/ui/table-row-actions";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/shared/ui/table";
@@ -20,6 +19,10 @@ interface Props {
   cuarentenas: AdminCuarentena[];
   sort: AdminCuarentenasSortState;
   onSortChange: (next: AdminCuarentenasSortState) => void;
+  onEdit?: (quarantineId: string) => void;
+  onViewMore?: (quarantineId: string) => void;
+  onStatusChange?: (quarantine: AdminCuarentena) => void;
+  isStatusActionDisabled?: (quarantine: AdminCuarentena) => boolean;
 }
 
 interface SortableHeadProps {
@@ -60,15 +63,22 @@ function SortableHead({ field, sort, onSortChange, children, className }: Readon
   );
 }
 
-export function AdminCuarentenasList({ cuarentenas, sort, onSortChange }: Readonly<Props>) {
-  const router = useRouter();
+export function AdminCuarentenasList({
+  cuarentenas,
+  sort,
+  onSortChange,
+  onEdit,
+  onViewMore,
+  onStatusChange,
+  isStatusActionDisabled,
+}: Readonly<Props>) {
   return (
     <Card>
       <CardContent className="pt-0">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>TÃ­tulo</TableHead>
+              <TableHead>Titulo</TableHead>
               <TableHead>Rancho (UPP)</TableHead>
               <TableHead>Productor</TableHead>
               <SortableHead field="quarantine_type" sort={sort} onSortChange={onSortChange}>Tipo</SortableHead>
@@ -80,7 +90,7 @@ export function AdminCuarentenasList({ cuarentenas, sort, onSortChange }: Readon
           <TableBody>
             {cuarentenas.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                   No se encontraron cuarentenas.
                 </TableCell>
               </TableRow>
@@ -88,26 +98,43 @@ export function AdminCuarentenasList({ cuarentenas, sort, onSortChange }: Readon
               cuarentenas.map((c) => (
                 <TableRow key={c.id}>
                   <TableCell className="font-medium">{c.title}</TableCell>
-                  <TableCell className="text-muted-foreground text-xs">{c.uppName ?? "â€”"}</TableCell>
-                  <TableCell className="text-muted-foreground text-xs">{c.producerName ?? "â€”"}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{c.uppName ?? "-"}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{c.producerName ?? "-"}</TableCell>
                   <TableCell className="text-sm">
                     {c.quarantineType === "state" ? "Estatal" : "Operacional"}
                   </TableCell>
                   <TableCell>
                     <AdminCuarentenaEstadoBadge status={c.status} />
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
+                  <TableCell className="text-sm text-muted-foreground">
                     {new Date(c.startedAt).toLocaleDateString("es-MX")}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => router.push(`/admin/quarantines/${c.id}`)}
-                      title="Ver detalle"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
+                    <TableRowActions
+                      items={[
+                        {
+                          key: "edit",
+                          label: "Editar",
+                          icon: Edit3,
+                          onSelect: () => onEdit?.(c.id),
+                          disabled: !onEdit,
+                        },
+                        {
+                          key: "status",
+                          label: c.status === "active" ? "Suspender" : "Reactivar",
+                          icon: RefreshCw,
+                          onSelect: () => onStatusChange?.(c),
+                          disabled: !onStatusChange || isStatusActionDisabled?.(c),
+                        },
+                        {
+                          key: "view",
+                          label: "Ver mas",
+                          icon: Eye,
+                          onSelect: () => onViewMore?.(c.id),
+                          disabled: !onViewMore,
+                        },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))
@@ -118,5 +145,3 @@ export function AdminCuarentenasList({ cuarentenas, sort, onSortChange }: Readon
     </Card>
   );
 }
-
-

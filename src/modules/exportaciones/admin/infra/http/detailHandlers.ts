@@ -37,6 +37,7 @@ export async function GET(
     )
     .eq("id", id)
     .eq("tenant_id", tenantId)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (result.error) {
@@ -123,10 +124,17 @@ export async function PATCH(
     .from("export_requests")
     .update(updateData)
     .eq("id", id)
-    .eq("tenant_id", auth.context.user.tenantId);
+    .eq("tenant_id", auth.context.user.tenantId)
+    .is("deleted_at", null)
+    .select("id")
+    .maybeSingle();
 
   if (updateResult.error) {
     return apiError("ADMIN_EXPORT_UPDATE_FAILED", updateResult.error.message, 500);
+  }
+
+  if (!updateResult.data) {
+    return apiError("ADMIN_EXPORT_NOT_FOUND", "No existe solicitud con ese id.", 404);
   }
 
   await logAuditEvent({
@@ -139,4 +147,55 @@ export async function PATCH(
   });
 
   return apiSuccess({ updated: true });
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await requireAuthorized(request, {
+    roles: ["tenant_admin"],
+    permissions: ["admin.exports.write"],
+    resource: "admin.exports",
+  });
+  if (!auth.ok) return auth.response;
+
+  const { id } = await params;
+  const supabase = getSupabaseAdminClient();
+  const deletedAt = new Date().toISOString();
+
+  const deleteResult = await supabase
+    .from("export_requests")
+    .update({
+      deleted_at: deletedAt,
+      deleted_by_user_id: auth.context.user.id,
+      updated_at: deletedAt,
+    })
+    .eq("id", id)
+    .eq("tenant_id", auth.context.user.tenantId)
+    .is("deleted_at", null)
+    .select("id,status,deleted_at")
+    .maybeSingle();
+
+  if (deleteResult.error) {
+    return apiError("ADMIN_EXPORT_DELETE_FAILED", deleteResult.error.message, 500);
+  }
+
+  if (!deleteResult.data) {
+    return apiError("ADMIN_EXPORT_NOT_FOUND", "No existe solicitud con ese id.", 404);
+  }
+
+  await logAuditEvent({
+    request,
+    user: auth.context.user,
+    action: "delete",
+    resource: "admin.exports",
+    resourceId: id,
+    payload: {
+      previousStatus: deleteResult.data.status,
+      deletedAt,
+    },
+  });
+
+  return apiSuccess({ deleted: true, id });
 }

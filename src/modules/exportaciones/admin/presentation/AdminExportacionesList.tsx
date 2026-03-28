@@ -1,13 +1,13 @@
-﻿"use client";
+"use client";
 
 import type { ReactNode } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Edit3, Eye, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/shared/ui/card";
+import { PaginationControls } from "@/shared/ui/pagination-controls";
+import { TableRowActions } from "@/shared/ui/table-row-actions";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/shared/ui/table";
-import { PaginationControls } from "@/shared/ui/pagination-controls";
 import { AdminExportacionEstadoBadge } from "./AdminExportacionEstadoBadge";
 import { cn } from "@/shared/lib/utils";
 import type {
@@ -17,9 +17,9 @@ import type {
 } from "@/modules/exportaciones/admin/domain/entities/AdminExportacionEntity";
 
 function Check({ value }: Readonly<{ value: boolean | null }>) {
-  if (value === true) return <span className="text-success font-medium">S\u00ed</span>;
-  if (value === false) return <span className="text-error font-medium">No</span>;
-  return <span className="text-muted-foreground">&mdash;</span>;
+  if (value === true) return <span className="font-medium text-success">Si</span>;
+  if (value === false) return <span className="font-medium text-error">No</span>;
+  return <span className="text-muted-foreground">-</span>;
 }
 
 interface SortableHeadProps {
@@ -50,7 +50,7 @@ function SortableHead({ field, sort, onSortChange, children, className }: Readon
         )}
       >
         {children}
-        <Icon className={cn("w-3.5 h-3.5 shrink-0", isActive ? "text-primary" : "")} />
+        <Icon className={cn("h-3.5 w-3.5 shrink-0", isActive ? "text-primary" : "")} />
       </button>
     </TableHead>
   );
@@ -63,6 +63,9 @@ interface Props {
   onPageChange: (page: number) => void;
   sort: AdminExportacionesSortState;
   onSortChange: (sort: AdminExportacionesSortState) => void;
+  onEdit?: (exportId: string) => void;
+  onViewMore?: (exportId: string) => void;
+  onDelete?: (exportacion: AdminExportacion) => void;
 }
 
 export function AdminExportacionesList({
@@ -72,14 +75,16 @@ export function AdminExportacionesList({
   onPageChange,
   sort,
   onSortChange,
+  onEdit,
+  onViewMore,
+  onDelete,
 }: Readonly<Props>) {
-  const router = useRouter();
   const canPrev = page > 1;
   const canNext = page < totalPages;
 
   return (
     <Card>
-      <CardContent className="pt-0 space-y-4">
+      <CardContent className="space-y-4 pt-0">
         <Table>
           <TableHeader>
             <TableRow>
@@ -97,24 +102,21 @@ export function AdminExportacionesList({
               <SortableHead field="created_at" sort={sort} onSortChange={onSortChange}>
                 Creada
               </SortableHead>
+              <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {exportaciones.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
                   No se encontraron exportaciones.
                 </TableCell>
               </TableRow>
             ) : (
               exportaciones.map((e) => (
-                <TableRow
-                  key={e.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => router.push(`/admin/exports/${e.id}`)}
-                >
-                  <TableCell className="text-sm">{e.producer_name ?? "\u2014"}</TableCell>
-                  <TableCell className="text-sm">{e.upp_name ?? e.upp_id ?? "\u2014"}</TableCell>
+                <TableRow key={e.id}>
+                  <TableCell className="text-sm">{e.producer_name ?? "-"}</TableCell>
+                  <TableCell className="text-sm">{e.upp_name ?? e.upp_id ?? "-"}</TableCell>
                   <TableCell>
                     <AdminExportacionEstadoBadge status={e.status} />
                   </TableCell>
@@ -127,16 +129,45 @@ export function AdminExportacionesList({
                   <TableCell className="text-center">
                     <Check value={e.blue_tag_assigned} />
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
+                  <TableCell className="text-sm text-muted-foreground">
                     {e.monthly_bucket
                       ? new Date(e.monthly_bucket).toLocaleDateString("es-MX", {
                           month: "long",
                           year: "numeric",
                         })
-                      : "\u2014"}
+                      : "-"}
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
+                  <TableCell className="text-sm text-muted-foreground">
                     {new Date(e.created_at).toLocaleDateString("es-MX")}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <TableRowActions
+                      items={[
+                        {
+                          key: "edit",
+                          label: "Editar",
+                          icon: Edit3,
+                          onSelect: () => onEdit?.(e.id),
+                          disabled: !onEdit,
+                        },
+                        {
+                          key: "view",
+                          label: "Ver mas",
+                          icon: Eye,
+                          onSelect: () => onViewMore?.(e.id),
+                          disabled: !onViewMore,
+                        },
+                        {
+                          key: "delete",
+                          label: "Eliminar",
+                          icon: Trash2,
+                          onSelect: () => onDelete?.(e),
+                          disabled: !onDelete,
+                          variant: "destructive",
+                          separatorBefore: true,
+                        },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))
@@ -159,4 +190,3 @@ export function AdminExportacionesList({
     </Card>
   );
 }
-

@@ -12,7 +12,11 @@ import type { UpdateAdminExportacionStatusDTO } from "@/modules/exportaciones/ad
 
 export type ExportacionDetailTab = "info" | "animales" | "proceso";
 
-export function useAdminExportacionDetail(id: string) {
+interface UseAdminExportacionDetailOptions {
+  initialTab?: ExportacionDetailTab;
+}
+
+export function useAdminExportacionDetail(id: string, options: UseAdminExportacionDetailOptions = {}) {
   const [detail, setDetail] = useState<AdminExportacionDetallada | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(true);
   const [errorDetail, setErrorDetail] = useState("");
@@ -20,7 +24,7 @@ export function useAdminExportacionDetail(id: string) {
   const [animals, setAnimals] = useState<AdminExportacionAnimal[]>([]);
   const [loadingAnimals, setLoadingAnimals] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<ExportacionDetailTab>("info");
+  const [activeTab, setActiveTab] = useState<ExportacionDetailTab>(options.initialTab ?? "info");
 
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
@@ -83,6 +87,10 @@ export function useAdminExportacionDetail(id: string) {
   useEffect(() => {
     void loadDetail();
   }, [loadDetail]);
+
+  useEffect(() => {
+    handleTabChange(options.initialTab ?? "info");
+  }, [handleTabChange, options.initialTab]);
 
   return {
     detail,

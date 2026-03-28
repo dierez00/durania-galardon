@@ -4,10 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
   ClipboardList,
-  FileText,
   LayoutDashboard,
   MapPin,
   Shield,
+  ShieldCheck,
   Ship,
   Stethoscope,
   TestTube,
@@ -18,7 +18,9 @@ import {
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase-browser";
 import { resolveClientRole } from "@/shared/lib/auth-client";
 import {
+  ADMIN_SETTINGS_NAV_PERMISSIONS,
   ROLE_DEFAULT_PERMISSIONS,
+  hasAnyPermission,
   isProducerViewRole,
   isTenantAdminRole,
   type AppRole,
@@ -27,36 +29,41 @@ import {
 import { SidebarShell, type SidebarNavigationItem } from "@/shared/ui/layout/SidebarShell";
 
 interface NavigationItem extends SidebarNavigationItem {
-  permission: PermissionKey;
+  permissions?: PermissionKey[];
+  anyPermissions?: PermissionKey[];
 }
 
 const adminNavigation: NavigationItem[] = [
-  { name: "Dashboard", href: "/admin", icon: LayoutDashboard, permission: "admin.dashboard.read", exact: true },
-  { name: "Productores", href: "/admin/producers", icon: Users, permission: "admin.producers.read" },
-  { name: "MVZ", href: "/admin/mvz", icon: Stethoscope, permission: "admin.mvz.read" },
-  { name: "Cuarentenas", href: "/admin/quarantines", icon: Shield, permission: "admin.quarantines.read" },
-  { name: "Exportaciones", href: "/admin/exports", icon: Ship, permission: "admin.exports.read" },
-  { name: "Normativa", href: "/admin/normative", icon: ClipboardList, permission: "admin.normative.read" },
-  { name: "Auditoria", href: "/admin/audit", icon: FileText, permission: "admin.audit.read" },
-  { name: "Citas", href: "/admin/appointments", icon: CalendarDays, permission: "admin.appointments.read" },
+  { name: "Dashboard", href: "/admin", icon: LayoutDashboard, permissions: ["admin.dashboard.read"], exact: true },
+  { name: "Productores", href: "/admin/producers", icon: Users, permissions: ["admin.producers.read"] },
+  { name: "MVZ", href: "/admin/mvz", icon: Stethoscope, permissions: ["admin.mvz.read"] },
+  { name: "Cuarentenas", href: "/admin/quarantines", icon: Shield, permissions: ["admin.quarantines.read"] },
+  { name: "Exportaciones", href: "/admin/exports", icon: Ship, permissions: ["admin.exports.read"] },
+  {
+    name: "Configuracion",
+    href: "/admin/settings",
+    icon: ShieldCheck,
+    anyPermissions: ADMIN_SETTINGS_NAV_PERMISSIONS,
+  },
+  { name: "Citas", href: "/admin/appointments", icon: CalendarDays, permissions: ["admin.appointments.read"] },
 ];
 
 const producerNavigation: NavigationItem[] = [
-  { name: "Dashboard", href: "/producer/dashboard", icon: LayoutDashboard, permission: "producer.dashboard.read" },
-  { name: "Ranchos", href: "/producer/ranchos", icon: MapPin, permission: "producer.upp.read" },
-  { name: "Bovinos", href: "/producer/bovinos", icon: Cow, permission: "producer.bovinos.read" },
-  { name: "Movilizacion", href: "/producer/movilizacion", icon: Truck, permission: "producer.movements.read" },
-  { name: "Exportaciones", href: "/producer/exportaciones", icon: Ship, permission: "producer.exports.read" },
-  { name: "Documentos", href: "/producer/documentos", icon: FileText, permission: "producer.documents.read" },
-  { name: "Equipo", href: "/producer/empleados", icon: Users, permission: "producer.employees.read" },
+  { name: "Dashboard", href: "/producer/dashboard", icon: LayoutDashboard, permissions: ["producer.dashboard.read"] },
+  { name: "Ranchos", href: "/producer/ranchos", icon: MapPin, permissions: ["producer.upp.read"] },
+  { name: "Bovinos", href: "/producer/bovinos", icon: Cow, permissions: ["producer.bovinos.read"] },
+  { name: "Movilizacion", href: "/producer/movilizacion", icon: Truck, permissions: ["producer.movements.read"] },
+  { name: "Exportaciones", href: "/producer/exportaciones", icon: Ship, permissions: ["producer.exports.read"] },
+  { name: "Documentos", href: "/producer/documentos", icon: ClipboardList, permissions: ["producer.documents.read"] },
+  { name: "Equipo", href: "/producer/empleados", icon: Users, permissions: ["producer.employees.read"] },
 ];
 
 const mvzNavigation: NavigationItem[] = [
-  { name: "Dashboard", href: "/mvz/dashboard", icon: LayoutDashboard, permission: "mvz.dashboard.read" },
-  { name: "Ranchos", href: "/mvz/ranchos", icon: ClipboardList, permission: "mvz.ranch.read" },
-  { name: "Asignaciones (legacy)", href: "/mvz/asignaciones", icon: ClipboardList, permission: "mvz.assignments.read" },
-  { name: "Pruebas (legacy)", href: "/mvz/pruebas", icon: TestTube, permission: "mvz.tests.read" },
-  { name: "Exportaciones (legacy)", href: "/mvz/exportaciones", icon: Ship, permission: "mvz.exports.read" },
+  { name: "Dashboard", href: "/mvz/dashboard", icon: LayoutDashboard, permissions: ["mvz.dashboard.read"] },
+  { name: "Ranchos", href: "/mvz/ranchos", icon: ClipboardList, permissions: ["mvz.ranch.read"] },
+  { name: "Asignaciones (legacy)", href: "/mvz/asignaciones", icon: ClipboardList, permissions: ["mvz.assignments.read"] },
+  { name: "Pruebas (legacy)", href: "/mvz/pruebas", icon: TestTube, permissions: ["mvz.tests.read"] },
+  { name: "Exportaciones (legacy)", href: "/mvz/exportaciones", icon: Ship, permissions: ["mvz.exports.read"] },
 ];
 
 export default function AppSidebar() {
@@ -113,14 +120,23 @@ export default function AppSidebar() {
       return baseNavigation;
     }
 
-    return baseNavigation.filter((item) => permissions.includes(item.permission));
+    return baseNavigation.filter((item) => {
+      if (item.permissions?.length) {
+        return item.permissions.every((permission) => permissions.includes(permission));
+      }
+
+      if (item.anyPermissions?.length) {
+        return hasAnyPermission(permissions, item.anyPermissions);
+      }
+
+      return true;
+    });
   }, [permissions, role]);
 
   return (
     <SidebarShell
       navigation={navigation}
-      brandIcon={Shield}
-      brandTitle="SIINIGA"
+      brandTitle="O.C.H.O.A"
       brandSubtitle="Control Ganadero Estatal"
     />
   );

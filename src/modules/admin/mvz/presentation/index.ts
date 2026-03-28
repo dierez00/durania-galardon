@@ -6,6 +6,7 @@ export { useAdminMvz } from "./hooks/useAdminMvz";
 export { useCreateAdminMvzBatch } from "./hooks/useCreateAdminMvzBatch";
 export { useAdminMvzDetail } from "./hooks/useAdminMvzDetail";
 export type { MvzDetailTab, UppSubTab } from "./hooks/useAdminMvzDetail";
+export type { MvzDetailViewTab } from "./hooks/useAdminMvzDetail";
 export { AdminMvzDetailContent } from "./AdminMvzDetailContent";
 export { AdminMvzInfoTab } from "./AdminMvzInfoTab";
 export { AdminMvzUppCard } from "./AdminMvzUppCard";

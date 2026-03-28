@@ -47,6 +47,7 @@ export * from "./sonner";
 export * from "./spinner";
 export * from "./switch";
 export * from "./table";
+export * from "./table-row-actions";
 export * from "./tabs";
 export * from "./textarea";
 export * from "./toggle";

@@ -7,6 +7,7 @@ export { useCreateAdminProductor } from "./hooks/useCreateAdminProductor";
 export { useCreateAdminProductoresBatch } from "./hooks/useCreateAdminProductoresBatch";
 export { useAdminProductorDetail } from "./hooks/useAdminProductorDetail";
 export type { ProductorDetailTab } from "./hooks/useAdminProductorDetail";
+export type { ProductorDetailViewTab } from "./hooks/useAdminProductorDetail";
 export { AdminProductorUppsList } from "./AdminProductorUppsList";
 export { AdminProductorDocumentsList } from "./AdminProductorDocumentsList";
 export { AdminProductorVisitsTable } from "./AdminProductorVisitsTable";

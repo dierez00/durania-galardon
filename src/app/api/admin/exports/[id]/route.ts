@@ -1,1 +1,5 @@
-﻿export { GET, PATCH } from "@/modules/exportaciones/admin/infra/http/detailHandlers";
+export {
+  DELETE,
+  GET,
+  PATCH,
+} from "@/modules/exportaciones/admin/infra/http/detailHandlers";

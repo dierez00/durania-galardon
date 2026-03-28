@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listExportacionesUseCase } from "@/modules/exportaciones/admin/infra/container";
+import { deleteAdminExportacion } from "@/modules/exportaciones/admin/infra/api/adminExportacionesApi";
 import type {
   AdminExportacion,
   AdminExportacionesFiltersState,
@@ -93,6 +94,10 @@ export function useAdminExportaciones() {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT));
 
+  const removeExportacion = useCallback(async (exportId: string) => {
+    await deleteAdminExportacion(exportId);
+  }, []);
+
   return {
     exportaciones,
     total,
@@ -106,6 +111,7 @@ export function useAdminExportaciones() {
     sort,
     handleSortChange,
     reload: loadExportaciones,
+    deleteExportacion: removeExportacion,
   };
 }
 

@@ -1,9 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Beef, FileText, Grid3x3, Package, ShieldAlert, Truck } from "lucide-react";
+import Link from "next/link";
+import {
+  Beef,
+  FileCog,
+  FileText,
+  Grid3x3,
+  Package,
+  ShieldAlert,
+  Truck,
+  User,
+  type LucideIcon,
+} from "lucide-react";
+import { Bar, BarChart, Cell, Pie, PieChart, CartesianGrid, XAxis } from "recharts";
 import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/shared/ui/chart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { getAccessToken } from "@/shared/lib/auth-session";
@@ -19,6 +33,43 @@ interface ProducerKpis {
   pendingDocuments: number;
   activeQuarantines: number;
 }
+
+interface DashboardQuickAction {
+  key: string;
+  label: string;
+  description: string;
+  href: string;
+  tone: SemanticTone;
+  icon: "animals" | "movements" | "exports" | "documents" | "settings" | "profile";
+}
+
+interface DashboardActivityPoint {
+  period: string;
+  movements: number;
+  exports: number;
+}
+
+interface DashboardDocumentStatus {
+  key: "pending" | "validated" | "expired" | "rejected";
+  label: string;
+  total: number;
+}
+
+const ACTION_ICON_MAP: Record<DashboardQuickAction["icon"], LucideIcon> = {
+  animals: Beef,
+  movements: Truck,
+  exports: Package,
+  documents: FileText,
+  settings: FileCog,
+  profile: User,
+};
+
+const DOCUMENT_STATUS_TONE_MAP: Record<DashboardDocumentStatus["key"], SemanticTone> = {
+  pending: "warning",
+  validated: "success",
+  expired: "error",
+  rejected: "neutral",
+};
 
 function uppStatusVariant(status: string): "default" | "warning" | "neutral" {
   if (status === "active") return "default";
@@ -47,6 +98,9 @@ export function ProducerDashboardPageContent({
 }: ProducerDashboardPageProps = {}) {
   const { upps, selectedUppId, selectedUpp, setSelectedUppId, hydrated } = useProducerUppContext();
   const [kpis, setKpis] = useState<ProducerKpis | null>(null);
+  const [quickActions, setQuickActions] = useState<DashboardQuickAction[]>([]);
+  const [activityTrend, setActivityTrend] = useState<DashboardActivityPoint[]>([]);
+  const [documentStatus, setDocumentStatus] = useState<DashboardDocumentStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -79,6 +133,9 @@ export function ProducerDashboardPageContent({
     }
 
     setKpis(body.data.kpis ?? null);
+    setQuickActions(body.data.quickActions ?? []);
+    setActivityTrend(body.data.charts?.activityTrend ?? []);
+    setDocumentStatus(body.data.charts?.documentStatus ?? []);
     setLoading(false);
   }, []);
 
@@ -97,6 +154,15 @@ export function ProducerDashboardPageContent({
     { label: "Documentos pendientes", value: kpis?.pendingDocuments, icon: FileText, tone: "warning" },
     { label: "Cuarentenas activas", value: kpis?.activeQuarantines, icon: ShieldAlert, tone: "error" },
   ] satisfies Array<{ label: string; value: number | undefined; icon: typeof Grid3x3; tone: SemanticTone }>;
+
+  const documentStatusChartData = useMemo(
+    () =>
+      documentStatus.map((item) => ({
+        ...item,
+        fill: `var(--color-${item.key})`,
+      })),
+    [documentStatus]
+  );
 
   return (
     <div className="space-y-8">
@@ -205,6 +271,131 @@ export function ProducerDashboardPageContent({
               </CardContent>
             </Card>
           ))}
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Accesos rapidos
+        </h2>
+        {loading ? (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Skeleton key={index} className="h-28 rounded-lg" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {quickActions.map((action) => {
+              const Icon = ACTION_ICON_MAP[action.icon];
+              return (
+                <Card key={action.key}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Icon className={`h-4 w-4 ${toneClass(action.tone, "icon")}`} />
+                      {action.label}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm text-muted-foreground">{action.description}</p>
+                    <Button asChild variant="outline" size="sm" className="w-full justify-start">
+                      <Link href={action.href}>Abrir modulo</Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+            {!quickActions.length ? (
+              <p className="col-span-full text-sm text-muted-foreground">
+                No hay accesos disponibles para el rol actual.
+              </p>
+            ) : null}
+          </div>
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Analitica</h2>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Tendencia de solicitudes (6 meses)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <Skeleton className="h-64 w-full rounded-lg" />
+              ) : (
+                <ChartContainer
+                  className="h-64 w-full"
+                  config={{
+                    movements: { label: "Movilizaciones", color: "var(--info)" },
+                    exports: { label: "Exportaciones", color: "var(--highlight)" },
+                  }}
+                >
+                  <BarChart data={activityTrend} margin={{ left: 8, right: 8 }}>
+                    <CartesianGrid vertical={false} />
+                    <XAxis dataKey="period" tickLine={false} axisLine={false} tickMargin={8} />
+                    <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                    <Bar dataKey="movements" fill="var(--color-movements)" radius={6} />
+                    <Bar dataKey="exports" fill="var(--color-exports)" radius={6} />
+                  </BarChart>
+                </ChartContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Estado documental vigente</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {loading ? (
+                <Skeleton className="h-64 w-full rounded-lg" />
+              ) : (
+                <>
+                  <ChartContainer
+                    className="h-64 w-full"
+                    config={{
+                      pending: { label: "En revision", color: "var(--warning)" },
+                      validated: { label: "Validados", color: "var(--success)" },
+                      expired: { label: "Vencidos", color: "var(--error)" },
+                      rejected: { label: "Rechazados", color: "var(--tone-neutral)" },
+                    }}
+                  >
+                    <PieChart>
+                      <ChartTooltip cursor={false} content={<ChartTooltipContent nameKey="label" />} />
+                      <Pie
+                        data={documentStatusChartData}
+                        dataKey="total"
+                        nameKey="label"
+                        innerRadius={52}
+                        outerRadius={86}
+                        paddingAngle={4}
+                      >
+                        {documentStatusChartData.map((entry) => (
+                          <Cell key={entry.key} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ChartContainer>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {documentStatus.map((item) => (
+                      <div
+                        key={item.key}
+                        className="rounded-md border border-border bg-muted/25 px-3 py-2 text-sm"
+                      >
+                        <p className={`font-medium ${toneClass(DOCUMENT_STATUS_TONE_MAP[item.key], "text")}`}>
+                          {item.label}
+                        </p>
+                        <p className="text-2xl font-bold">{item.total}</p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </section>
     </div>

@@ -1,6 +1,5 @@
 "use client";
 
-import type { ComponentType } from "react";
 import { TenantSidebar } from "@/shared/ui/layout/TenantSidebar";
 import { TenantTopbar } from "@/shared/ui/layout/TenantTopbar";
 import type {
@@ -10,7 +9,6 @@ import type {
 } from "@/modules/workspace/domain/types";
 
 interface TenantAppShellProps {
-  brandIcon: ComponentType<{ className?: string }>;
   brandSubtitle: string;
   navigation: ResolvedNavItem[];
   breadcrumbs: WorkspaceBreadcrumbItem[];
@@ -28,7 +26,6 @@ interface TenantAppShellProps {
 }
 
 export function TenantAppShell({
-  brandIcon,
   brandSubtitle,
   navigation,
   breadcrumbs,
@@ -47,7 +44,6 @@ export function TenantAppShell({
   return (
     <div className="flex min-h-screen bg-background">
       <TenantSidebar
-        brandIcon={brandIcon}
         brandSubtitle={brandSubtitle}
         navigation={navigation}
       />
