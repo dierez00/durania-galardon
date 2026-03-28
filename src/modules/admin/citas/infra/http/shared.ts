@@ -49,6 +49,16 @@ export async function listTenantAppointments(accessToken: string, tenantId: stri
     .order("created_at", { ascending: false });
 }
 
+export async function getTenantAppointmentById(accessToken: string, tenantId: string, id: string) {
+  const supabase = createSupabaseRlsServerClient(accessToken);
+  return supabase
+    .from("appointment_requests")
+    .select(APPOINTMENTS_SELECT)
+    .eq("tenant_id", tenantId)
+    .eq("id", id)
+    .maybeSingle();
+}
+
 export async function updateTenantAppointmentStatus(
   accessToken: string,
   tenantId: string,
