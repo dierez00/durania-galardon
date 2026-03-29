@@ -1,8 +1,10 @@
 export { AdminProductoresList } from "./AdminProductoresList";
 export { AdminProductoresFilters } from "./AdminProductoresFilters";
 export { AdminProductorEstadoBadge } from "./AdminProductorEstadoBadge";
+export { AdminProductoresPageContent } from "./AdminProductoresPageContent";
 export type { AdminProductoresFiltersState } from "@/modules/admin/productores/domain/entities/AdminProductorEntity";
 export { useAdminProductores } from "./hooks/useAdminProductores";
+export { useAdminCollars } from "./hooks/useAdminCollars";
 export { useCreateAdminProductor } from "./hooks/useCreateAdminProductor";
 export { useCreateAdminProductoresBatch } from "./hooks/useCreateAdminProductoresBatch";
 export { useAdminProductorDetail } from "./hooks/useAdminProductorDetail";

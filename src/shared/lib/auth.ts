@@ -48,6 +48,8 @@ export const PERMISSION_KEYS = [
   "admin.reports.export",
   "admin.appointments.read",
   "admin.appointments.write",
+  "admin.collars.read",
+  "admin.collars.write",
   "mvz.dashboard.read",
   "mvz.assignments.read",
   "mvz.bovinos.read",
@@ -99,6 +101,8 @@ export const PERMISSION_KEYS = [
   "producer.employees.write",
   "producer.roles.read",
   "producer.roles.write",
+  "producer.collars.read",
+  "producer.collars.write",
 ] as const;
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
@@ -228,6 +232,8 @@ const PRODUCER_PERMISSION_SET: PermissionKey[] = [
   "producer.employees.write",
   "producer.roles.read",
   "producer.roles.write",
+  "producer.collars.read",
+  "producer.collars.write",
 ];
 const PRODUCER_EMPLOYEE_PERMISSION_SET: PermissionKey[] = [
   "producer.dashboard.read",
@@ -238,6 +244,8 @@ const PRODUCER_EMPLOYEE_PERMISSION_SET: PermissionKey[] = [
   "producer.movements.write",
   "producer.exports.read",
   "producer.notifications.read",
+  "producer.collars.read",
+  "producer.collars.write",
 ];
 const PRODUCER_VIEWER_PERMISSION_SET: PermissionKey[] = [
   "producer.dashboard.read",
@@ -246,6 +254,7 @@ const PRODUCER_VIEWER_PERMISSION_SET: PermissionKey[] = [
   "producer.movements.read",
   "producer.exports.read",
   "producer.notifications.read",
+  "producer.collars.read",
 ];
 
 export const ROLE_DEFAULT_PERMISSIONS: Record<AppRole, PermissionKey[]> = {

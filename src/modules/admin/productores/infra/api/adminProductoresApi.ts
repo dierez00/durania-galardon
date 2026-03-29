@@ -38,6 +38,12 @@ export interface FetchAdminProductoresResult {
   limit: number;
 }
 
+export interface AdminProducerOption {
+  id: string;
+  full_name: string;
+  curp?: string;
+}
+
 export interface CreateAdminProductorParams extends CreateAdminProductorDTO {
   accessToken: string;
 }
@@ -54,6 +60,27 @@ function authHeaders(accessToken: string): HeadersInit {
   return {
     Authorization: `Bearer ${accessToken}`,
     "Content-Type": "application/json",
+  };
+}
+
+async function requireSessionAccessToken(): Promise<string> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) throw new Error("No existe sesion activa.");
+  return accessToken;
+}
+
+async function fetchAdminProductoresFromSession(
+  params: Omit<FetchAdminProductoresParams, "accessToken">
+): Promise<FetchAdminProductoresResult> {
+  const accessToken = await requireSessionAccessToken();
+  return fetchAdminProductores({ accessToken, ...params });
+}
+
+function toAdminProducerOption(producer: AdminProductor): AdminProducerOption {
+  return {
+    id: producer.id,
+    full_name: producer.full_name,
+    curp: producer.curp ?? undefined,
   };
 }
 
@@ -175,20 +202,25 @@ export async function updateAdminProductor(
 
 export class AdminProductoresApiRepository implements AdminProductoresRepository {
   async list(params: ListAdminProductoresParams): Promise<ListAdminProductoresResult> {
-    const accessToken = await getAccessToken();
-    if (!accessToken) throw new Error("No existe sesion activa.");
-    return fetchAdminProductores({ accessToken, ...params });
+    return fetchAdminProductoresFromSession(params);
   }
 
   async create(input: AdminProductorCreateInput): Promise<AdminProductorCreateResult> {
-    const accessToken = await getAccessToken();
-    if (!accessToken) throw new Error("No existe sesion activa.");
+    const accessToken = await requireSessionAccessToken();
     return createAdminProductor({ accessToken, ...input });
   }
 
   async createBatch(input: AdminProductorBatchCreateInput): Promise<AdminProductorBatchCreateResult> {
-    const accessToken = await getAccessToken();
-    if (!accessToken) throw new Error("No existe sesion activa.");
+    const accessToken = await requireSessionAccessToken();
     return createAdminProductoresBatch({ accessToken, ...input });
   }
+}
+
+export async function apiFetchAdminProducerOptions(limit = 1000): Promise<AdminProducerOption[]> {
+  const result = await fetchAdminProductoresFromSession({
+    page: 1,
+    limit,
+  });
+
+  return result.producers.map(toAdminProducerOption);
 }

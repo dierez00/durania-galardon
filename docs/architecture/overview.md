@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-27
+Last Updated: 2026-03-28
 Source of Truth: Active architecture, ownership rules, and layering conventions for the application.
 
 # Arquitectura
@@ -41,6 +41,7 @@ src/
       profile/
       settings/
     bovinos/
+    collars/
     cuarentenas/
     exportaciones/
     iam/
@@ -98,9 +99,9 @@ La normalizacion pendiente quedo cerrada en estas familias:
 - `src/app/api/producer/roles/*` -> `src/modules/producer/settings/infra/http`
 - `src/app/api/producer/settings/ranchos/*` -> `src/modules/producer/settings/infra/http`
 - `src/app/api/producer/upp/*` -> `src/modules/producer/ranchos/infra/http`
-- `src/app/api/admin/appointments` y `src/app/api/admin/appointments/[id]` -> `src/modules/admin/citas/infra/http`
-- `src/app/api/public/appointments` -> `src/modules/admin/citas/infra/http`
+- `src/app/api/admin/appointments` y `src/app/api/public/appointments` -> `src/modules/admin/citas/infra/http`
 - `src/app/api/admin/audit` -> `src/modules/admin/auditoria/infra/http`
+- `src/app/api/admin/collars` y `src/app/api/producer/collars` -> `src/modules/collars/infra/http`
 - `src/app/api/mvz/assignments` -> `src/modules/ranchos/infra/http`
 - `src/app/api/mvz/profile/*` -> `src/modules/mvz/profile/infra/http`
 - `src/app/api/mvz/members/*` -> `src/modules/mvz/members/infra/http`
@@ -116,13 +117,14 @@ Tambien quedaron consolidados estos owners transversales:
 ## Owners activos
 
 - `src/modules/admin`
-  - `auditoria`, `citas`, `dashboard`, `mvz`, `normativa`, `productores`, `profile`, `settings`
+  - `auditoria`, `citas`, `dashboard`, `empleados`, `mvz`, `normativa`, `productores`, `profile`, `settings`
 - `src/modules/producer`
   - `dashboard`, `documents`, `empleados`, `movilizacion`, `profile`, `productores`, `ranchos`, `settings`
 - `src/modules/mvz`
   - `dashboard`, `members`, `profile`, `settings`
 - `src/modules`
   - `bovinos`
+  - `collars`
   - `cuarentenas`
   - `exportaciones`
   - `iam`
