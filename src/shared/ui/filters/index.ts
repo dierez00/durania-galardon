@@ -10,6 +10,7 @@ export {
 export { SearchBar } from "./search-bar";
 export { FilterSelect } from "./filter-select";
 export { DateRangeFilter } from "./date-range-filter";
+export { TimeRangeFilter } from "./time-range-filter";
 export { FilterBadge, ActiveFiltersIndicator } from "./filter-badge";
 export { ActionButtons } from "./action-buttons";
 

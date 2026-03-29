@@ -113,12 +113,21 @@ Contrato operativo de `admin/producers/:id/documents`:
 - `GET /api/producer/settings/ranchos`
 - `GET|POST|PATCH|DELETE /api/producer/roles`
 - `GET|POST /api/producer/bovinos`
+- `GET /api/producer/collars`
+- `POST /api/producer/collars/:collarId/assign`
+- `POST /api/producer/collars/:collarId/unassign`
 - `GET|POST /api/producer/movements`
 - `GET|POST /api/producer/exports`
 - `GET|POST|PATCH /api/producer/documents`
 - `GET|POST /api/producer/upp-documents`
 - `GET|POST|PATCH /api/producer/employees`
 - `POST /api/producer/employees/resend-invite`
+- `GET /api/producer/upp/:uppId/collars/realtime`
+- `GET /api/producer/upp/:uppId/collars/history`
+- `GET /api/producer/upp/:uppId/collars/realtime/stream`
+- `GET /api/producer/upp/:uppId/collars/realtime-stream` (alias de compatibilidad)
+- `GET /api/producer/collars/:collarId/iot/history`
+- `GET /api/producer/collars/:collarId/iot/realtime/stream`
 
 Contrato operativo de `producer/dashboard`:
 - `GET /api/producer/dashboard`: devuelve KPIs globales del tenant productor, acciones rapidas disponibles por permisos y series analiticas para charts.
@@ -143,6 +152,11 @@ Cuando la UI esta en `/producer/projects/[uppId]/*`, estas APIs aceptan `?uppId=
 Politica de comentarios en documentos:
 - Productor consume `comments` en modo solo lectura para feedback de rechazo y vigencia.
 - Solo flujos de admin/gobierno pueden actualizar `comments`.
+
+Contrato operativo de telemetria IoT para collares:
+- rutas `producer/upp/:uppId/collars/*` validan acceso por UPP con `canAccessUpp` y permisos `producer.collars.read`
+- rutas `producer/collars/:collarId/iot/*` exponen historico y stream SSE por collar para tabs de ubicacion e historial de actividad
+- los entrypoints en `src/app/api` se mantienen delgados y delegan en `src/modules/collars/infra/http/external/producerIotHandlers.ts`
 
 ## MVZ
 

@@ -33,7 +33,7 @@ export function TableRowActions({
   items,
   align = "end",
 }: Readonly<TableRowActionsProps>) {
-  const visibleItems = items.filter((item) => !item.disabled);
+  const visibleItems = items;
 
   if (visibleItems.length === 0) {
     return null;
@@ -63,8 +63,12 @@ export function TableRowActions({
               {item.separatorBefore ? <DropdownMenuSeparator /> : null}
               <DropdownMenuItem
                 variant={item.variant}
+                disabled={item.disabled}
                 onClick={(event) => {
                   event.stopPropagation();
+                  if (item.disabled) {
+                    return;
+                  }
                   item.onSelect();
                 }}
               >

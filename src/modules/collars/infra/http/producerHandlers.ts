@@ -136,11 +136,12 @@ export async function assignCollar(
   }
 
   const { animal_id, linked_by, notes } = body;
+  const actorId = linked_by?.trim() || auth.context.user.id;
 
-  if (!animal_id?.trim() || !linked_by?.trim()) {
+  if (!animal_id?.trim()) {
     return apiError(
       "INVALID_PAYLOAD",
-      "Los campos 'animal_id' y 'linked_by' son requeridos."
+      "El campo 'animal_id' es requerido."
     );
   }
 
@@ -152,7 +153,7 @@ export async function assignCollar(
 
     const result = await useCases.assignCollar.execute(collarId, {
       animal_id: animal_id.trim(),
-      linked_by: linked_by.trim(),
+      linked_by: actorId,
       notes: notes?.trim(),
     });
 
@@ -162,7 +163,7 @@ export async function assignCollar(
       action: "update",
       resource: "producer.collars",
       resourceId: collarId,
-      payload: { animal_id, linked_by },
+      payload: { animal_id, linked_by: actorId },
     });
 
     return apiSuccess({
@@ -205,10 +206,7 @@ export async function unassignCollar(
   }
 
   const { unlinked_by, notes } = body;
-
-  if (!unlinked_by?.trim()) {
-    return apiError("INVALID_PAYLOAD", "El campo 'unlinked_by' es requerido.");
-  }
+  const actorId = unlinked_by?.trim() || auth.context.user.id;
 
   try {
     const useCases = createCollarUseCases(
@@ -217,7 +215,7 @@ export async function unassignCollar(
     );
 
     const result = await useCases.unassignCollar.execute(collarId, {
-      unlinked_by: unlinked_by.trim(),
+      unlinked_by: actorId,
       notes: notes?.trim(),
     });
 

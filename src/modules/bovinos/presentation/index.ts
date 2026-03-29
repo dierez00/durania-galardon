@@ -7,6 +7,8 @@ export { SanitarioBadge } from "./SanitarioBadge";
 export { PruebaStatusBadge } from "./PruebaStatusBadge";
 export { ExportableCheckBadge } from "./ExportableCheckBadge";
 export { default as ProducerBovinosPage } from "./ProducerBovinosPage";
+export { ProducerCollarsTab } from "./ProducerCollarsTab";
+export { ProducerCollarsFilters } from "./ProducerCollarsFilters";
 export { useBovinos } from "./hooks/useBovinos";
 export { useBovinoDetail } from "./hooks/useBovinoDetail";
 export { useMvzBovinoDetail } from "./hooks/useMvzBovinoDetail";

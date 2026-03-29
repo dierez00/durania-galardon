@@ -93,8 +93,11 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 SUPABASE_SERVICE_ROLE_KEY=
 DATABASE_URL=
 DATABASE_URL_DIRECT=
+IOT_BACKEND_URL=
 DEFAULT_TENANT_SLUG=
 ```
+
+`IOT_BACKEND_URL` se usa para integrar telemetria externa de collares (snapshot, historico y stream SSE) en las vistas de producer.
 
 4. Ejecuta migraciones SQL en el orden documentado.
 
@@ -229,10 +232,17 @@ Ejecuta estas comprobaciones minimas:
 - `GET /api/producer/dashboard`
 - `GET /api/producer/upp`
 - `GET|POST /api/producer/bovinos`
+- `GET /api/producer/collars`
+- `POST /api/producer/collars/[collarId]/assign`
 - `GET|POST /api/producer/movements`
 - `GET|POST /api/producer/exports`
 - `GET|POST|PATCH /api/producer/documents`
 - `GET|POST|PATCH /api/producer/employees`
+- `GET /api/producer/upp/[uppId]/collars/realtime`
+- `GET /api/producer/upp/[uppId]/collars/history`
+- `GET /api/producer/upp/[uppId]/collars/realtime/stream`
+- `GET /api/producer/collars/[collarId]/iot/history`
+- `GET /api/producer/collars/[collarId]/iot/realtime/stream`
 
 ### MVZ
 

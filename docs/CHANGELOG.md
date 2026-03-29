@@ -9,6 +9,10 @@ Source of Truth: Historical log of documentation-only changes. Current operation
 
 ### Added
 
+- `docs/architecture/collar-management.md`: agrega contrato del proxy IoT de producer (snapshot, historico y SSE por UPP/collar), reglas de authz/canAccessUpp y variable `IOT_BACKEND_URL`.
+- `docs/reference/modules/bovinos.md`: documenta tabs `Animales/Collares`, mapa general por UPP, tab `Ubicacion`, tab `Historial de actividad`, filtros de hora y limpieza de coordenadas `0,0`.
+- `src/app/api/README.md`: agrega ownership y contratos de rutas `producer/collars` y `producer/upp/:uppId/collars/*` para telemetria IoT.
+
 - `src/app/api/README.md`: ownership y contratos nuevos para `admin/profile`, `admin/settings`, `admin/dashboard` enriquecido y `admin/appointments/:id`.
 - `src/modules/producer/dashboard/*`: dashboard productor alineado al patron MVZ con accesos rapidos por permisos y dos bloques de analitica (tendencia de solicitudes + estado documental vigente).
 - `docs/reference/modules/bovinos.md`: referencia tecnica actualizada del modulo compartido de animales, incluyendo perfil ampliado, snapshot de collar y acciones rapidas por panel.
@@ -29,6 +33,11 @@ Source of Truth: Historical log of documentation-only changes. Current operation
 - Regla de trabajo y patron de reexport en `src/app/api/README.md`.
 
 ### Changed
+
+- `docs/README.md`: indexa `docs/architecture/collar-management.md` como referencia canonica en arquitectura.
+- `docs/guides/setup.md`: incluye `IOT_BACKEND_URL` y sincroniza orden de migraciones hasta `migration_010_animals_backfill_and_collar_link.sql`.
+- `README.md`: agrega `IOT_BACKEND_URL` y rutas producer para collares/mapas en la seccion de APIs.
+
 
 - `docs/architecture/auth-admin.md`, `docs/architecture/routing.md`, `docs/architecture/tenant-iam.md`, `docs/architecture/overview.md`, `docs/data/database.md` y `src/app/api/README.md`: sincronizan el nuevo panel admin `Configuracion` por tabs (`Resumen`, `Auditoria`, `Empleados`, `Roles`), los permisos `admin.tenant.*`, `admin.employees.*`, `admin.roles.*`, los redirects legacy de `/admin/audit` y `/admin/normative`, y el soft delete de exportaciones con `deleted_at` / `deleted_by_user_id`.
 - `docs/architecture/overview.md`: registra `src/modules/admin/profile`, `src/modules/admin/settings`, la shell compartida de detalle admin y el dropdown canonico de acciones por fila.

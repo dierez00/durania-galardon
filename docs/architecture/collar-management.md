@@ -1,6 +1,6 @@
 Status: Draft
 Owner: Backend Engineering
-Last Updated: 2026-02-27
+Last Updated: 2026-03-29
 Source of Truth: Cross-actor capability for IoT collar provisioning, assignment, and trazabilidad.
 
 # Gestión de Collares IoT - Arquitectura Detallada
@@ -598,6 +598,41 @@ Authorization: Bearer {admin_token}
   "total": 2
 }
 ```
+
+---
+
+### Producer IoT Telemetry Proxy (UPP y Collar)
+
+Adicional al inventario de collares, producer consume telemetria IoT mediante proxy interno autenticado:
+
+- cliente externo server-side: `src/modules/collars/infra/api/external/iotAppWebClient.ts`
+- handlers proxy internos: `src/modules/collars/infra/http/external/producerIotHandlers.ts`
+- entrypoints delgados en `src/app/api/producer/upp/*/collars/*` y `src/app/api/producer/collars/*/iot/*`
+
+Contratos expuestos internamente:
+
+- `GET /api/producer/upp/{uppId}/collars/realtime`
+- `GET /api/producer/upp/{uppId}/collars/history`
+- `GET /api/producer/upp/{uppId}/collars/realtime/stream` (SSE)
+- `GET /api/producer/upp/{uppId}/collars/realtime-stream` (alias de compatibilidad)
+- `GET /api/producer/collars/{collarId}/iot/history`
+- `GET /api/producer/collars/{collarId}/iot/realtime/stream` (SSE)
+
+Reglas de seguridad aplicadas por los handlers:
+
+- `requireAuthorized` con roles `producer` y `employee`
+- permiso `producer.collars.read`
+- validacion de ownership por UPP via `canAccessUpp` en endpoints a nivel rancho
+
+Comportamiento SSE actual:
+
+- proxy transparente del stream externo (content type `text/event-stream`)
+- fallback en cliente frontend del stream UPP: intenta `/realtime/stream` y, ante `404`, usa `/realtime-stream`
+- el frontend de detalle bovino mantiene modo respaldo por snapshot/historico cuando el stream falla
+
+Variable de entorno obligatoria para este flujo:
+
+- `IOT_BACKEND_URL`
 
 ---
 

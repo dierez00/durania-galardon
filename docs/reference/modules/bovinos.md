@@ -1,6 +1,6 @@
 Status: Reference
 Owner: Engineering
-Last Updated: 2026-03-24
+Last Updated: 2026-03-29
 Source of Truth: Deep technical reference for the live `bovinos` module. System-wide architecture and data rules live in `docs/architecture/overview.md` and `docs/data/database.md`.
 
 # Modulo Bovinos
@@ -14,7 +14,10 @@ El modulo `bovinos` concentra control sanitario, elegibilidad de exportacion y l
 - listado de animales con indicadores inline de TB, BR, salud, exportabilidad y collar activo
 - perfil ampliado del animal (`name`, `breed`, `weight_kg`, `age_years`, `health_status`, `last_vaccine_at`)
 - ficha detalle con pruebas, incidentes, genealogia, vacunaciones y exportaciones
+- tabs adicionales de detalle para ubicacion actual e historial de actividad con mapa
 - acciones rapidas contextuales por panel
+- tab de collares en producer integrado dentro de la pantalla de animales
+- mapa general de animales por UPP en producer con telemetria IoT
 - consumo SQL-first desde `v_animals_sanitary`
 
 Superficies activas:
@@ -46,7 +49,13 @@ src/modules/bovinos/
     |-- MvzBovinoDetail.tsx
     |-- BovinoDetailContent.tsx
     |-- ProducerBovinosPage.tsx
-    `-- BovinosFilters.tsx
+  |-- BovinosFilters.tsx
+  |-- ProducerCollarsTab.tsx
+  |-- ProducerCollarsFilters.tsx
+  |-- ProducerBovinosMapSection.tsx
+  |-- ProducerBovinosLeafletMap.tsx
+  |-- BovinoLocationTab.tsx
+  `-- BovinoActivityHistoryTab.tsx
 ```
 
 Reglas de ownership:
@@ -148,6 +157,17 @@ Campos usados por el modulo:
 - `lastVaccineAt`
 - `motherAnimalId`
 
+Rutas internas consumidas por las vistas de mapas/collares en producer:
+
+- `GET /api/producer/collars`
+- `POST /api/producer/collars/[collarId]/assign`
+- `GET /api/producer/upp/[uppId]/collars/realtime`
+- `GET /api/producer/upp/[uppId]/collars/history`
+- `GET /api/producer/upp/[uppId]/collars/realtime/stream`
+- `GET /api/producer/upp/[uppId]/collars/realtime-stream` (alias de compatibilidad)
+- `GET /api/producer/collars/[collarId]/iot/history`
+- `GET /api/producer/collars/[collarId]/iot/realtime/stream`
+
 ### MVZ
 
 - `GET /api/mvz/ranchos/[uppId]/animales`
@@ -195,6 +215,7 @@ La ficha detalle muestra:
 - snapshot sanitario superior
 - `DetailInfoGrid` con perfil, UPP, genealogia y collar
 - tabs para pruebas, incidentes, genealogia, vacunaciones y exportaciones
+- tabs para pruebas, incidentes, genealogia, vacunaciones, ubicacion, historial de actividad y exportaciones
 
 Acciones rapidas por panel:
 
@@ -205,9 +226,29 @@ Acciones rapidas por panel:
 
 `ProducerBovinosPage.tsx` incluye:
 
+- tabs de pagina `Animales` y `Collares`
+- mapa general por UPP despues del titulo
 - filtros
 - lista contextual por UPP
 - dialogo de alta de bovino con perfil ampliado
+
+`ProducerCollarsTab.tsx` incluye:
+
+- filtros por busqueda, estado, firmware y fecha de vinculacion
+- acciones por fila con menu contextual (`Ver mas`, `Asignar vaca`)
+- drawer de asignacion con tarjetas de bovinos elegibles por SINIIGA
+
+`BovinoLocationTab.tsx` incluye:
+
+- mapa de punto unico con ultima coordenada del bovino
+- stream SSE por UPP con reconexion exponencial y fallback a snapshot
+- estados de UX para stream (`Tiempo real`, `Conectando stream...`, `Modo respaldo`)
+
+`BovinoActivityHistoryTab.tsx` incluye:
+
+- filtro por fecha (`DateRangeFilter`) y por hora (`TimeRangeFilter`)
+- mapa de trayecto historico con polyline y puntos
+- limpieza de telemetria invalida `lat/lng = 0,0`
 
 ### MVZ
 

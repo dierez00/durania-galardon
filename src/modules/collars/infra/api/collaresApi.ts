@@ -33,6 +33,21 @@ export interface FetchCollarResponse {
   offset: number;
 }
 
+export interface IotHistoryQuery {
+  from?: string;
+  to?: string;
+  limit?: number;
+  page?: number;
+}
+
+function appendHistoryQuery(params: URLSearchParams, query?: IotHistoryQuery) {
+  if (!query) return;
+  if (query.from) params.set("from", query.from);
+  if (query.to) params.set("to", query.to);
+  if (query.limit) params.set("limit", String(query.limit));
+  if (query.page) params.set("page", String(query.page));
+}
+
 /**
  * Listar TODOS los collares con filtros y paginación
  * Uso: admin/collars list, collars table con filtros
@@ -117,7 +132,7 @@ export async function apiFetchCollarDetail(collarId: string): Promise<unknown> {
 export async function apiAssignCollar(
   collarId: string,
   animalId: string,
-  linkedBy: string,
+  linkedBy?: string,
   notes?: string
 ): Promise<unknown> {
   const token = await getToken();
@@ -167,6 +182,136 @@ export async function apiFetchCollarHistory(collarId: string): Promise<unknown[]
     throw new Error(body.error?.message ?? "No fue posible cargar historial.");
   }
   return body.data.history ?? [];
+}
+
+// ============================================================================
+// PRODUCER: IoT App Web Internal Proxy
+// ============================================================================
+
+export async function apiFetchProducerUppRealtimeSnapshot(uppId: string): Promise<unknown> {
+  const token = await getToken();
+  const res = await fetch(`/api/producer/upp/${encodeURIComponent(uppId)}/collars/realtime`, {
+    headers: authHeaders(token),
+  });
+
+  const body = await res.json();
+  if (!res.ok || !body.ok) {
+    throw new Error(body.error?.message ?? "No fue posible cargar ubicaciones en tiempo real.");
+  }
+
+  return body.data;
+}
+
+export async function apiFetchProducerUppHistory(
+  uppId: string,
+  query?: IotHistoryQuery
+): Promise<unknown> {
+  const token = await getToken();
+  const params = new URLSearchParams();
+  appendHistoryQuery(params, query);
+
+  const qs = params.toString();
+  const url = `/api/producer/upp/${encodeURIComponent(uppId)}/collars/history${
+    qs ? `?${qs}` : ""
+  }`;
+
+  const res = await fetch(url, { headers: authHeaders(token) });
+  const body = await res.json();
+  if (!res.ok || !body.ok) {
+    throw new Error(body.error?.message ?? "No fue posible cargar historial IoT por UPP.");
+  }
+
+  return body.data;
+}
+
+export async function apiFetchProducerCollarIotHistory(
+  collarId: string,
+  query?: IotHistoryQuery
+): Promise<unknown> {
+  const token = await getToken();
+  const params = new URLSearchParams();
+  appendHistoryQuery(params, query);
+
+  const qs = params.toString();
+  const url = `/api/producer/collars/${encodeURIComponent(collarId)}/iot/history${
+    qs ? `?${qs}` : ""
+  }`;
+
+  const res = await fetch(url, { headers: authHeaders(token) });
+  const body = await res.json();
+  if (!res.ok || !body.ok) {
+    throw new Error(body.error?.message ?? "No fue posible cargar historial IoT por collar.");
+  }
+
+  return body.data;
+}
+
+export async function apiOpenProducerUppRealtimeStream(uppId: string): Promise<Response> {
+  const token = await getToken();
+  const headers = {
+    ...authHeaders(token),
+    Accept: "text/event-stream",
+    "Cache-Control": "no-cache",
+  };
+
+  const primaryUrl = `/api/producer/upp/${encodeURIComponent(uppId)}/collars/realtime/stream`;
+  const fallbackUrl = `/api/producer/upp/${encodeURIComponent(uppId)}/collars/realtime-stream`;
+
+  let response = await fetch(primaryUrl, {
+    method: "GET",
+    headers,
+    cache: "no-store",
+  });
+
+  if (response.status === 404) {
+    response = await fetch(fallbackUrl, {
+      method: "GET",
+      headers,
+      cache: "no-store",
+    });
+  }
+
+  if (!response.ok || !response.body) {
+    let message = "No fue posible abrir stream IoT por UPP.";
+    try {
+      const body = await response.json();
+      message = body?.error?.message ?? message;
+    } catch {
+      // noop: mantiene mensaje por defecto
+    }
+    throw new Error(message);
+  }
+
+  return response;
+}
+
+export async function apiOpenProducerCollarRealtimeStream(collarId: string): Promise<Response> {
+  const token = await getToken();
+  const response = await fetch(
+    `/api/producer/collars/${encodeURIComponent(collarId)}/iot/realtime/stream`,
+    {
+      method: "GET",
+      headers: {
+        ...authHeaders(token),
+        Accept: "text/event-stream",
+        "Cache-Control": "no-cache",
+      },
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok || !response.body) {
+    let message = "No fue posible abrir stream IoT por collar.";
+    try {
+      const body = await response.json();
+      message = body?.error?.message ?? message;
+    } catch {
+      // noop: mantiene mensaje por defecto
+    }
+    throw new Error(message);
+  }
+
+  return response;
 }
 
 // ============================================================================

@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-28
+Last Updated: 2026-03-29
 Source of Truth: Active architecture, ownership rules, and layering conventions for the application.
 
 # Arquitectura
@@ -99,6 +99,7 @@ La normalizacion pendiente quedo cerrada en estas familias:
 - `src/app/api/producer/roles/*` -> `src/modules/producer/settings/infra/http`
 - `src/app/api/producer/settings/ranchos/*` -> `src/modules/producer/settings/infra/http`
 - `src/app/api/producer/upp/*` -> `src/modules/producer/ranchos/infra/http`
+- `src/app/api/producer/upp/*/collars/*` -> `src/modules/collars/infra/http/external`
 - `src/app/api/admin/appointments` y `src/app/api/public/appointments` -> `src/modules/admin/citas/infra/http`
 - `src/app/api/admin/audit` -> `src/modules/admin/auditoria/infra/http`
 - `src/app/api/admin/collars` y `src/app/api/producer/collars` -> `src/modules/collars/infra/http`

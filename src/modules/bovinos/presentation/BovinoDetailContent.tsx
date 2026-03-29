@@ -38,6 +38,8 @@ import {
   TableRow,
 } from "@/shared/ui/table";
 import { ExportableCheckBadge } from "./ExportableCheckBadge";
+import { BovinoActivityHistoryTab } from "./BovinoActivityHistoryTab";
+import { BovinoLocationTab } from "./BovinoLocationTab";
 import { PruebaStatusBadge } from "./PruebaStatusBadge";
 import { SanitarioBadge } from "./SanitarioBadge";
 import type { BovinoDetailTab } from "./hooks/useBovinoDetail";
@@ -85,6 +87,8 @@ const TABS = [
   { key: "incidentes", label: "Incidentes sanitarios", icon: AlertTriangle },
   { key: "genealogia", label: "Genealogia", icon: GitFork },
   { key: "vacunaciones", label: "Vacunaciones", icon: Syringe },
+  { key: "ubicacion", label: "Ubicacion", icon: MapPin },
+  { key: "historial_actividad", label: "Historial de actividad", icon: Activity },
   { key: "exportaciones", label: "Exportaciones", icon: Truck },
 ] as const;
 
@@ -487,6 +491,10 @@ export function BovinoDetailContent({
             </TableBody>
           </Table>
         ))}
+
+      {activeTab === "ubicacion" && <BovinoLocationTab bovino={bovino} />}
+
+      {activeTab === "historial_actividad" && <BovinoActivityHistoryTab bovino={bovino} />}
 
       {activeTab === "exportaciones" &&
         (exports.length === 0 ? (

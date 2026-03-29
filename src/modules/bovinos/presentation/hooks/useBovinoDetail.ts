@@ -13,6 +13,8 @@ export type BovinoDetailTab =
   | "incidentes"
   | "genealogia"
   | "vacunaciones"
+  | "ubicacion"
+  | "historial_actividad"
   | "exportaciones";
 
 interface BovinoDetailState {
