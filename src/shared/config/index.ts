@@ -22,6 +22,7 @@ export function getServerEnv() {
     databaseUrl: requireEnv("DATABASE_URL", process.env.DATABASE_URL),
     databaseUrlDirect: requireEnv("DATABASE_URL_DIRECT", process.env.DATABASE_URL_DIRECT),
     apiOcrUrl: requireEnv("API_OCR_URL", process.env.API_OCR_URL),
+    iotBackendUrl: requireEnv("IOT_BACKEND_URL", process.env.IOT_BACKEND_URL),
     defaultTenantSlug: process.env.DEFAULT_TENANT_SLUG ?? "default-tenant",
   };
 }

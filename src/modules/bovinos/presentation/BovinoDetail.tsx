@@ -1,7 +1,7 @@
 "use client";
 
 import { startTransition, useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTenantWorkspace } from "@/modules/workspace";
 import { getAccessToken } from "@/shared/lib/auth-session";
 import { BovinoDetailContent } from "./BovinoDetailContent";
@@ -14,6 +14,7 @@ interface Props {
 export function BovinoDetail({ id }: Props) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const workspace = useTenantWorkspace();
   const { setDetailBreadcrumbLabel, setDetailBreadcrumbSelector } = workspace;
   const {
@@ -28,6 +29,25 @@ export function BovinoDetail({ id }: Props) {
     exports,
     offspring,
   } = useBovinoDetail(id);
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (!tabParam) {
+      return;
+    }
+
+    if (
+      tabParam === "pruebas" ||
+      tabParam === "incidentes" ||
+      tabParam === "genealogia" ||
+      tabParam === "vacunaciones" ||
+      tabParam === "ubicacion" ||
+      tabParam === "historial_actividad" ||
+      tabParam === "exportaciones"
+    ) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams, setActiveTab]);
 
   useEffect(() => {
     setDetailBreadcrumbLabel(bovino?.siniiga_tag ?? "Detalle animal");

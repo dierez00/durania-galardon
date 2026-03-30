@@ -24,7 +24,7 @@ import type {
   AdminDocumentStatus,
 } from "@/modules/admin/productores/domain/entities/AdminProductorDetailEntity";
 
-export type ProductorDetailTab = "info" | "upps" | "documentos" | "visitas";
+export type ProductorDetailTab = "info" | "upps" | "documentos" | "visitas" | "collares";
 export type ProductorDetailViewTab = "overview" | ProductorDetailTab;
 
 interface UseAdminProductorDetailOptions {

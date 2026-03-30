@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { Beef, Plus, Zap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/shared/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,8 @@ import { getAccessToken } from "@/shared/lib/auth-session";
 import { useProducerUppContext } from "@/modules/producer/ranchos/presentation";
 import { BovinosFilters } from "./BovinosFilters";
 import { BovinoList } from "./BovinoList";
+import { ProducerBovinosMapSection } from "./ProducerBovinosMapSection";
+import { ProducerCollarsTab } from "./ProducerCollarsTab";
 import { useBovinos } from "./hooks/useBovinos";
 
 interface ProducerBovinosPageProps {
@@ -27,7 +30,7 @@ interface ProducerBovinosPageProps {
 export default function ProducerBovinosPage({
   title = "Animales",
   description,
-}: ProducerBovinosPageProps) {
+}: Readonly<ProducerBovinosPageProps>) {
   const { upps, selectedUppId, selectedUpp } = useProducerUppContext();
   const { bovinos, loading, error, filters, onFiltersChange, reload } =
     useBovinos(selectedUppId);
@@ -46,6 +49,7 @@ export default function ProducerBovinosPage({
   const [motherAnimalId, setMotherAnimalId] = useState("");
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState<"animales" | "collares">("animales");
 
   useEffect(() => {
     if (selectedUppId) {
@@ -89,8 +93,8 @@ export default function ProducerBovinosPage({
           breed: breed || undefined,
           sex,
           birthDate: birthDate || undefined,
-          ageYears: ageYears !== "" ? Number(ageYears) : undefined,
-          weightKg: weightKg !== "" ? Number(weightKg) : undefined,
+          ageYears: ageYears === "" ? undefined : Number(ageYears),
+          weightKg: weightKg === "" ? undefined : Number(weightKg),
           healthStatus: healthStatus || undefined,
           lastVaccineAt: lastVaccineAt ? new Date(lastVaccineAt).toISOString() : undefined,
           motherAnimalId: motherAnimalId || undefined,
@@ -279,30 +283,57 @@ export default function ProducerBovinosPage({
         </Dialog>
       </div>
 
-      <BovinosFilters filters={filters} onFiltersChange={onFiltersChange} />
+      <ProducerBovinosMapSection
+        selectedUppId={selectedUppId}
+        selectedUppName={selectedUpp?.name}
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Listado de bovinos</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {error ? <p className="px-6 pb-4 text-sm text-destructive">{error}</p> : null}
-          {loading ? (
-            <p className="px-6 pb-6 text-sm text-muted-foreground">Cargando...</p>
-          ) : (
-            <BovinoList
-              bovinos={bovinos}
-              showUpp={false}
-              getDetailHref={(bovino) => `/producer/projects/${bovino.upp_id}/animales/${bovino.id}`}
-              detailHrefBase={
-                selectedUppId
-                  ? `/producer/projects/${selectedUppId}/animales`
-                  : "/producer/bovinos"
-              }
-            />
-          )}
-        </CardContent>
-      </Card>
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "animales" | "collares")}>
+        <TabsList className="grid w-full max-w-sm grid-cols-2">
+          <TabsTrigger value="animales" className="gap-2">
+            <Beef className="h-4 w-4" />
+            Animales
+          </TabsTrigger>
+          <TabsTrigger value="collares" className="gap-2">
+            <Zap className="h-4 w-4" />
+            Collares
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="animales" className="space-y-4">
+          <BovinosFilters filters={filters} onFiltersChange={onFiltersChange} />
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Listado de bovinos</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {error ? <p className="px-6 pb-4 text-sm text-destructive">{error}</p> : null}
+              {loading ? (
+                <p className="px-6 pb-6 text-sm text-muted-foreground">Cargando...</p>
+              ) : (
+                <BovinoList
+                  bovinos={bovinos}
+                  showUpp={false}
+                  getDetailHref={(bovino) => `/producer/projects/${bovino.upp_id}/animales/${bovino.id}`}
+                  detailHrefBase={
+                    selectedUppId
+                      ? `/producer/projects/${selectedUppId}/animales`
+                      : "/producer/bovinos"
+                  }
+                />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="collares">
+          <ProducerCollarsTab
+            selectedUppId={selectedUppId}
+            onAssigned={reload}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

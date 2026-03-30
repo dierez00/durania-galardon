@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-24
+Last Updated: 2026-03-29
 Source of Truth: Canonical local setup, environment, and SQL execution order for the repository.
 
 # Setup y comandos
@@ -26,6 +26,7 @@ Define en `.env`:
 - `SUPABASE_SERVICE_ROLE_KEY` (solo backend)
 - `DATABASE_URL`
 - `DATABASE_URL_DIRECT`
+- `IOT_BACKEND_URL` (backend externo IoT App Web para snapshot, historico y stream SSE de collares)
 - `DEFAULT_TENANT_SLUG` (recomendado para local)
 
 ## Requisitos de Supabase
@@ -40,8 +41,10 @@ Orden recomendado de ejecucion SQL:
 6. `sql/migration_006_tenant_custom_roles.sql`
 7. `sql/migration_007_add_iot_telemetry_tables.sql`
 8. `sql/migration_008_allow_multiple_mvz_profiles_per_tenant.sql`
-9. `sql/views.sql`
-10. `sql/seeds.sql`
+9. `sql/migration_009_alter_telemetry_rssi_snr_to_float8.sql`
+10. `sql/migration_010_animals_backfill_and_collar_link.sql`
+11. `sql/views.sql`
+12. `sql/seeds.sql`
 
 Nota:
 

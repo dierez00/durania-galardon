@@ -8,6 +8,7 @@ import {
   Beef,
   Mail,
   ShieldCheck,
+  Zap,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -36,6 +37,7 @@ import { AdminProductorDocumentsList } from "./AdminProductorDocumentsList";
 import { AdminProductorVisitsTable } from "./AdminProductorVisitsTable";
 import { AdminProductorInfoTab } from "./AdminProductorInfoTab";
 import { AdminProductorDocumentReviewDialog } from "./components/AdminProductorDocumentReviewDialog";
+import { AdminProductorCollarsTab } from "./collars/AdminProductorCollarsTab";
 import { useAdminProductorDetail, type ProductorDetailViewTab } from "./hooks/useAdminProductorDetail";
 
 type Props = ReturnType<typeof useAdminProductorDetail>;
@@ -45,6 +47,7 @@ const TABS: { key: ProductorDetailViewTab; label: string; icon: typeof User }[] 
   { key: "info", label: "Informacion", icon: User },
   { key: "upps", label: "UPPs / Ranchos", icon: Home },
   { key: "documentos", label: "Documentos", icon: FileText },
+  { key: "collares", label: "Collares", icon: Zap },
   { key: "visitas", label: "Visitas MVZ", icon: CalendarCheck },
 ];
 
@@ -134,6 +137,11 @@ export function AdminProductorDetailContent({
         documents={documents}
         loading={loadingDocuments}
         onReview={handleOpenDocumentReview}
+      />
+    ) : activeTab === "collares" ? (
+      <AdminProductorCollarsTab 
+        producerId={detail.id}
+        producerName={detail.fullName}
       />
     ) : activeTab === "visitas" ? (
       <AdminProductorVisitsTable
