@@ -1,11 +1,11 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-19
+Last Updated: 2026-04-06
 Source of Truth: Current security posture, controls, and gaps for the repository.
 
 # Seguridad actual del proyecto
 
-Fecha de corte: 2026-03-03  
+Fecha de corte: 2026-04-06  
 Estado: evaluacion tecnica basada en evidencia de codigo y SQL del repositorio.
 
 ## 1) Objetivo y alcance
@@ -223,26 +223,31 @@ Implementado:
 - Endpoint sync revisa evento previo por `clientMutationId` y evita reprocesar:
   - `src/app/api/mvz/tests/sync/route.ts:64-74`
 
-### 7.3 Estado actual de calidad tecnica (fecha de corte 2026-03-03)
+### 7.3 Estado actual de calidad tecnica (fecha de corte 2026-04-06)
 
 Comandos ejecutados:
 
 ```bash
 npm test
+npm run lint
 npm run typecheck
-npm audit --json
-npm ls xlsx react-spreadsheet
+npm audit
+npm run build
 ```
 
 Resultados:
 
-- `npm test`: 14 suites totales, 13 pasan y 1 falla (`tests/unit/spreadsheetUtils.test.ts`) por modulo faltante `xlsx`.
-- `npm run typecheck`: falla con errores activos, incluyendo:
-  - `src/app/api/admin/producers/[id]/route.ts(172,36)` uso de `supabaseAdmin` antes de declaracion.
-  - errores de tipado en `src/app/api/admin/producers/[id]/visits/route.ts`.
-  - modulos no resueltos `xlsx` y `react-spreadsheet`.
-- `npm audit --json`: 3 vulnerabilidades `high` (incluye `xlsx` directo, `hono`, `minimatch`).
-- `npm ls xlsx react-spreadsheet`: arbol local reportado como vacio en este entorno (`-- (empty)`), indicando drift de instalacion/dependencias.
+- `npm test`: 34 suites en verde, 112 pruebas pasando.
+- `npm run lint`: en verde.
+- `npm run typecheck`: en verde.
+- `npm audit`: `0 vulnerabilities`.
+- `npm run build`: en verde despues de inyectar valores placeholder para variables requeridas en build time (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `DATABASE_URL_DIRECT`, `API_OCR_URL`, `IOT_BACKEND_URL`).
+
+Actualizacion 2026-04-06:
+
+- Se reemplazo `xlsx` por `exceljs` en el flujo de importacion/exportacion de plantillas del editor batch (`src/shared/ui/spreadsheet/utils.ts`) para eliminar la dependencia sin fix oficial.
+- Se retiro `shadcn` como dependencia de npm y se movio su CSS utilitario a `src/app/shadcn.css`, reduciendo superficie de dependencias no necesarias en runtime.
+- Se actualizaron dependencias directas del arbol afectado por advisories (`next`, `eslint-config-next`, `prisma`, `@prisma/client`) y luego se ejecuto `npm audit fix` para resolver transitivas remediables.
 
 ## 8) Controles faltantes o parciales
 
@@ -296,4 +301,4 @@ Riesgo residual actual:
 - Riesgo de privilegios no intencionales por fallback de rol/permisos por defecto.
 - Exposicion de datos internos en errores API y contrasenas temporales en respuestas de alta.
 - Ausencia de rate limiting/anti-bot en endpoints expuestos.
-- Salud tecnica incompleta (typecheck/tests/dependencias) que incrementa probabilidad de regresiones de seguridad.
+- La salud tecnica base del repositorio quedo recuperada en esta revision (`test`, `lint`, `typecheck`, `build`, `audit`), pero sigue siendo importante mantener esos gates en CI para evitar regresiones.
