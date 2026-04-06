@@ -10,7 +10,7 @@ interface SpreadsheetToolbarProps {
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   canAddRow: boolean;
   canRemoveRow: boolean;
-  onDownloadTemplate: () => void;
+  onDownloadTemplate: () => Promise<void>;
   onImportExcel: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onAddRow: () => void;
   onRemoveRow: () => void;
@@ -52,7 +52,7 @@ export const SpreadsheetToolbar: React.FC<SpreadsheetToolbarProps> = ({
     <input
       ref={fileInputRef}
       type="file"
-      accept=".xlsx,.xls"
+      accept=".xlsx"
       className="hidden"
       onChange={onImportExcel}
     />

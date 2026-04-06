@@ -12,14 +12,17 @@ describe("documentDeletionPolicy", () => {
     ).toBe(false);
   });
 
-  it("bloquea cuando no existe otra version", () => {
+  it("permite pendientes aunque no exista otra version", () => {
     expect(
       documentDeletionPolicy.canDelete({
         isCurrent: true,
         status: "pending",
         hasOtherVersion: false,
       })
-    ).toBe(false);
+    ).toBe(true);
+  });
+
+  it("bloquea rechazados cuando no existe otra version", () => {
     expect(
       documentDeletionPolicy.canDelete({
         isCurrent: false,

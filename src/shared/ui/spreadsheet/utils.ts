@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import type { CellBase, Matrix } from "react-spreadsheet";
 import type {
   SpreadsheetCellError,
@@ -12,6 +12,37 @@ function toCellValue(cell: SpreadsheetCell | undefined): string {
   if (!cell) return "";
   const value = cell.value;
   return typeof value === "string" ? value : String(value ?? "");
+}
+
+function toArrayBuffer(buffer: ArrayBuffer | Uint8Array): ArrayBuffer {
+  if (buffer instanceof ArrayBuffer) {
+    return buffer;
+  }
+
+  const copy = new Uint8Array(buffer.byteLength);
+  copy.set(buffer);
+  return copy.buffer;
+}
+
+function spreadsheetValueToString(value: ExcelJS.CellValue | undefined): string {
+  if (value == null) return "";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) {
+    return value.map((entry) => spreadsheetValueToString(entry)).join("");
+  }
+  if (typeof value === "object") {
+    if ("text" in value && typeof value.text === "string") return value.text;
+    if ("hyperlink" in value && typeof value.hyperlink === "string") return value.hyperlink;
+    if ("result" in value) return spreadsheetValueToString(value.result);
+    if ("richText" in value && Array.isArray(value.richText)) {
+      return value.richText.map((entry) => entry.text).join("");
+    }
+    if ("formula" in value && typeof value.formula === "string") return value.formula;
+  }
+  return "";
 }
 
 export function buildEmptyMatrix(rows: number, columns: number): Matrix<SpreadsheetCell> {
@@ -104,14 +135,18 @@ export function validateRows<TRow extends object>(
   };
 }
 
-/* ── Excel helpers ── */
+export async function buildExcelBuffer(
+  headers: string[],
+  rows: string[][]
+): Promise<ArrayBuffer> {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Datos");
 
-export function buildExcelBuffer(headers: string[], rows: string[][]): ArrayBuffer {
-  const aoa = [headers, ...rows];
-  const worksheet = XLSX.utils.aoa_to_sheet(aoa);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Datos");
-  return XLSX.write(workbook, { bookType: "xlsx", type: "array" }) as ArrayBuffer;
+  worksheet.addRow(headers);
+  rows.forEach((row) => worksheet.addRow(row));
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  return toArrayBuffer(buffer);
 }
 
 export function downloadExcel(filename: string, buffer: ArrayBuffer): void {
@@ -130,18 +165,16 @@ export function downloadExcel(filename: string, buffer: ArrayBuffer): void {
 
 export async function parseExcelFile(file: File, columnCount: number): Promise<string[][]> {
   const arrayBuffer = await file.arrayBuffer();
-  const workbook = XLSX.read(arrayBuffer, { type: "array" });
-  const firstSheetName = workbook.SheetNames[0];
-  if (!firstSheetName) return [];
-  const worksheet = workbook.Sheets[firstSheetName];
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(arrayBuffer);
+  const worksheet = workbook.worksheets[0];
+
   if (!worksheet) return [];
-  const raw = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1 });
-  // Skip the header row (first row) and pad/trim each row to columnCount
-  const dataRows = raw.slice(1).map((row) => {
-    const padded = Array.from({ length: columnCount }, (_, i) =>
-      String(row[i] ?? "")
+
+  return Array.from({ length: Math.max(worksheet.rowCount - 1, 0) }, (_, rowIndex) => {
+    const row = worksheet.getRow(rowIndex + 2);
+    return Array.from({ length: columnCount }, (_, columnIndex) =>
+      spreadsheetValueToString(row.getCell(columnIndex + 1).value)
     );
-    return padded;
   });
-  return dataRows;
 }

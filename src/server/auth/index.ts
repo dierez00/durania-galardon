@@ -343,8 +343,6 @@ async function resolvePrimaryContext(
 
   row.is_system_role = await resolveRoleSystemFlag(row.tenant_id, row.role_key);
 
-  const compatibleRole = deriveCompatibleRole(row.tenant_type, row.role_key);
-
   const permissionsResult = await supabase
     .from("v_user_permissions")
     .select("permission_key")
