@@ -244,6 +244,20 @@ function PublicLoginPageContent() {
               </form>
             </CardContent>
           </Card>
+          <Card className="my-6 border-t" >
+                <p className="text-center text-sm text-muted-foreground">
+                  Para acceder al sistema y poder visualizar los datos puedes usar las siguientes credenciales:
+                </p>
+                <p className="text-center text-sm text-muted-foreground">
+                  Admin: admin@gmail.com  / password
+                </p>
+                <p className="text-center text-sm text-muted-foreground">
+                  Productor: productor@gmail.com  / password
+                </p>
+                <p className="text-center text-sm text-muted-foreground">
+                  Mvz: mvz@gmail.com  / password
+                </p>
+          </Card>
 
           <p className="text-center text-xs text-muted-foreground mt-6">
             O.C.H.O.A v1.0 - Durania
