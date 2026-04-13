@@ -18,6 +18,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Sistema Gestor Ganadero ",
   description: "Sistema oficial de control ganadero, trazabilidad sanitaria y exportacion bovina",
+  icons: {
+    icon: "/logos/logo8a_verde_icono.ico",
+    shortcut: "/logos/logo8a_verde_icono.ico",
+    apple: "/logos/logo8a_verde_icono.ico",
+  },
 };
 
 export default function RootLayout({
