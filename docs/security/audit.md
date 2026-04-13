@@ -1,12 +1,25 @@
 Status: Assessment
 Owner: Engineering
-Last Updated: 2026-03-19
+Last Updated: 2026-04-06
 Source of Truth: Dated security assessment retained for prioritization history. Current security posture lives in `docs/security/security.md`.
 
 # Auditoria de seguridad (priorizada)
 
 Fecha de corte: 2026-03-03  
 Alcance: estado actual del repositorio (app + SQL + dependencias).
+
+## 0) Actualizacion de remediacion (2026-04-06)
+
+Estado de seguimiento sobre hallazgos cerrados despues del corte original:
+
+- `SEC-009` remediado: se corrigio el drift de dependencias, se reemplazo `xlsx` por `exceljs` en `src/shared/ui/spreadsheet/utils.ts` y el arbol local vuelve a validar `npm test`, `npm run lint` y `npm run typecheck`.
+- `SEC-010` remediado: se actualizaron dependencias directas (`next`, `eslint-config-next`, `prisma`, `@prisma/client`), se retiro `shadcn` como dependencia npm, se ejecuto `npm audit fix` y el repositorio queda en `0 vulnerabilities`.
+- Validacion ejecutada en esta remediacion:
+  - `npm audit`
+  - `npm run test`
+  - `npm run lint`
+  - `npm run typecheck`
+  - `npm run build` con variables de entorno placeholder para satisfacer los checks de configuracion en build time
 
 ## 1) Metodologia
 

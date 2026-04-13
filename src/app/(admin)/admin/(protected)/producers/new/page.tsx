@@ -55,9 +55,9 @@ const PRODUCTOR_COLUMNS: SpreadsheetColumn<AdminProductorBatchRowInput>[] = [
 export default function AdminProducersBatchCreatePage() {
   const { creating, error, createdRows, handleCreateBatch } = useCreateAdminProductoresBatch();
 
-  const handleDownloadCredentials = () => {
+  const handleDownloadCredentials = async () => {
     if (createdRows.length === 0) return;
-    const buffer = buildExcelBuffer(
+    const buffer = await buildExcelBuffer(
       ["Fila", "ID entidad", "Organización", "Correo", "Invitación enviada"],
       createdRows.map((row) => [
         String(row.rowIndex + 1),

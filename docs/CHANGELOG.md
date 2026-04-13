@@ -1,6 +1,6 @@
 Status: History
 Owner: Engineering
-Last Updated: 2026-03-27
+Last Updated: 2026-04-06
 Source of Truth: Historical log of documentation-only changes. Current operational guidance lives in `docs/README.md` and the linked canonical docs.
 
 # Docs Changelog
@@ -34,6 +34,8 @@ Source of Truth: Historical log of documentation-only changes. Current operation
 
 ### Changed
 
+- `docs/security/security.md`: actualiza la postura actual despues de remediar vulnerabilidades de dependencias, migrar el flujo batch de `xlsx` a `exceljs` y revalidar `audit`, `test`, `lint`, `typecheck` y `build`.
+- `docs/security/audit.md`: agrega seguimiento de cierre para `SEC-009` y `SEC-010`, incluyendo el estado final `npm audit = 0 vulnerabilities`.
 - `docs/README.md`: indexa `docs/architecture/collar-management.md` como referencia canonica en arquitectura.
 - `docs/guides/setup.md`: incluye `IOT_BACKEND_URL` y sincroniza orden de migraciones hasta `migration_010_animals_backfill_and_collar_link.sql`.
 - `README.md`: agrega `IOT_BACKEND_URL` y rutas producer para collares/mapas en la seccion de APIs.

@@ -87,6 +87,7 @@ Todas las fechas usan formato YYYY-MM-DD.
 
 ### Fixed
 
+- Se remedia el arbol de dependencias afectado por advisories: `xlsx` se sustituye por `exceljs`, se retira `shadcn` como dependencia npm, se actualizan `next`, `eslint-config-next`, `prisma` y `@prisma/client`, y `npm audit` queda en `0 vulnerabilities`.
 - Tipado en `src/server/db/prisma.ts` para compatibilidad con `tsc --noEmit`.
 
 ## [2026-02-24]

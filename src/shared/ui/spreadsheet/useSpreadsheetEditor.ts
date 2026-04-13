@@ -41,7 +41,7 @@ export interface UseSpreadsheetEditorReturn<TRow extends object> {
   // Handlers
   handleAddRow: () => void;
   handleRemoveRow: () => void;
-  handleDownloadTemplate: () => void;
+  handleDownloadTemplate: () => Promise<void>;
   handleImportExcel: (event: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
   handleSubmit: () => Promise<void>;
 }
@@ -96,8 +96,8 @@ export function useSpreadsheetEditor<TRow extends object>({
   }, [data.length]);
 
   // ── Excel ───────────────────────────────────────────────────────────────────
-  const handleDownloadTemplate = () => {
-    const buffer = buildExcelBuffer(
+  const handleDownloadTemplate = async () => {
+    const buffer = await buildExcelBuffer(
       columns.map((col) => col.header),
       []
     );
