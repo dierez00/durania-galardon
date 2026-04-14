@@ -1,6 +1,7 @@
 import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
-import { createSupabaseRlsServerClient, getSupabaseProvisioningClient } from "@/server/auth/supabase";
+import { getSupabaseAdminClient, getSupabaseProvisioningClient } from "@/server/auth/supabase";
+import { resolveAdminAccessibleExportRequest } from "./exportRequestAccess";
 
 export async function GET(
   request: Request,
@@ -14,19 +15,16 @@ export async function GET(
   if (!auth.ok) return auth.response;
 
   const { id } = await params;
-  const tenantId = auth.context.user.tenantId;
-  const supabase = createSupabaseRlsServerClient(auth.context.user.accessToken);
+  const supabase = getSupabaseAdminClient();
 
-  const exportResult = await supabase
-    .from("export_requests")
-    .select("metrics_json")
-    .eq("id", id)
-    .eq("tenant_id", tenantId)
-    .is("deleted_at", null)
-    .maybeSingle();
+  const exportResult = await resolveAdminAccessibleExportRequest<{
+    id: string;
+    tenant_id: string;
+    metrics_json?: { animal_ids?: string[] } | null;
+  }>(supabase, id, "id,tenant_id,metrics_json");
 
   if (exportResult.error) {
-    return apiError("ADMIN_EXPORT_QUERY_FAILED", exportResult.error.message, 500);
+    return apiError("ADMIN_EXPORT_QUERY_FAILED", exportResult.error, 500);
   }
   if (!exportResult.data) {
     return apiError("ADMIN_EXPORT_NOT_FOUND", "No existe la solicitud de exportacion.", 404);

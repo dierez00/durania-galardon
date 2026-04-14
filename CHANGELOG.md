@@ -87,6 +87,8 @@ Todas las fechas usan formato YYYY-MM-DD.
 
 ### Fixed
 
+- `admin/exports` en panel gobierno ya no falla con `404` al abrir, editar o eliminar exportaciones de tenants `producer`; el backend ahora resuelve y muta cada solicitud usando el `tenant_id` real del registro.
+- `POST /api/admin/exports` ahora crea solicitudes en el tenant productor duenio de la `UPP`, en lugar de asociarlas incorrectamente al tenant gobierno.
 - Se remedia el arbol de dependencias afectado por advisories: `xlsx` se sustituye por `exceljs`, se retira `shadcn` como dependencia npm, se actualizan `next`, `eslint-config-next`, `prisma` y `@prisma/client`, y `npm audit` queda en `0 vulnerabilities`.
 - Tipado en `src/server/db/prisma.ts` para compatibilidad con `tsc --noEmit`.
 

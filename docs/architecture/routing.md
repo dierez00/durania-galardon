@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-27
+Last Updated: 2026-04-14
 Source of Truth: Active route map, legacy redirects, and guard expectations for the current application.
 
 # Rutas y guards
@@ -133,6 +133,7 @@ Regla especial `mvz_internal`:
   - `Configuracion del panel` -> `/admin/settings`
 - Las vistas detalle del panel admin usan una shell comun `header + summary cards + tabs + sidebar`.
 - `/admin/settings` se compone por tabs visibles por permisos: `Resumen`, `Auditoria`, `Empleados` y `Roles`.
+- `/admin/exports` opera como vista global de gobierno: una fila puede pertenecer a cualquier tenant `producer`, y las rutas detalle o acciones no deben asumir `tenant_id = tenant gobierno`.
 - Deep-links activos en detalles admin:
   - Productores y MVZ: `?tab=overview|info|upps|documentos|visitas` y `?mode=view|edit`
   - Exportaciones: `?tab=info|animales|proceso` y `?focus=status`
@@ -169,6 +170,7 @@ Reglas activas del shell:
   - resuelve permisos requeridos por segmento (`/admin/exports`, `/admin/settings`, etc.)
   - redirige al primer home disponible segun permisos en este orden: dashboard, producers, mvz, quarantines, exports, appointments, settings, profile
   - permite `/admin/settings` con cualquier permiso de tabs admin (`admin.tenant.*`, `admin.audit.read`, `admin.employees.*`, `admin.roles.*`)
+  - trata `admin/exports` como modulo cross-tenant de gobierno; el guard habilita la ruta por permiso y la resolucion del registro ocurre sobre el `tenant_id` real de la exportacion
 - `src/app/(tenant)/layout.tsx`
   - valida sesion
   - resuelve rol tenant

@@ -1,6 +1,6 @@
 Status: History
 Owner: Engineering
-Last Updated: 2026-04-06
+Last Updated: 2026-04-14
 Source of Truth: Historical log of documentation-only changes. Current operational guidance lives in `docs/README.md` and the linked canonical docs.
 
 # Docs Changelog
@@ -34,6 +34,8 @@ Source of Truth: Historical log of documentation-only changes. Current operation
 
 ### Changed
 
+- `docs/architecture/auth-admin.md`, `docs/architecture/routing.md` y `docs/data/database.md`: aclaran que `admin/exports` es una capacidad global de gobierno sobre `export_requests` de tenants `producer`, y que el `tenant_id` del registro sigue siendo el del productor/UPP real.
+- `src/app/api/README.md`: documenta `GET|PATCH|DELETE /api/admin/exports/:id` y deja explicito que `POST /api/admin/exports` deriva el `tenant_id` desde la `UPP` destino.
 - `docs/security/security.md`: actualiza la postura actual despues de remediar vulnerabilidades de dependencias, migrar el flujo batch de `xlsx` a `exceljs` y revalidar `audit`, `test`, `lint`, `typecheck` y `build`.
 - `docs/security/audit.md`: agrega seguimiento de cierre para `SEC-009` y `SEC-010`, incluyendo el estado final `npm audit = 0 vulnerabilities`.
 - `docs/README.md`: indexa `docs/architecture/collar-management.md` como referencia canonica en arquitectura.

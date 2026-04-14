@@ -66,7 +66,7 @@ Si el modulo aun no expone alias desde `index.ts`, el reexport puede apuntar tem
 - `POST /api/admin/mvz/batch`
 - `GET|POST|PATCH /api/admin/quarantines`
 - `GET|POST|PATCH /api/admin/exports`
-- `DELETE /api/admin/exports/:id`
+- `GET|PATCH|DELETE /api/admin/exports/:id`
 - `GET|POST|PATCH /api/admin/normative`
 - `GET /api/admin/audit`
 - `GET|PATCH /api/admin/appointments`
@@ -97,6 +97,13 @@ Contrato operativo de `admin/appointments`:
 - `PATCH /api/admin/appointments`: actualiza estado por `id`.
 - `GET /api/admin/appointments/:id`: detalle de una cita para la vista `Ver mas`.
 - `PATCH /api/admin/appointments/:id`: actualiza estado desde la vista detalle.
+
+Contrato operativo de `admin/exports`:
+- `GET /api/admin/exports`: listado global de exportaciones para gobierno, abarcando tenants `producer`.
+- `GET /api/admin/exports/:id`: detalle global por exportacion, aunque pertenezca a un tenant productor distinto al tenant gobierno.
+- `PATCH /api/admin/exports` y `PATCH /api/admin/exports/:id`: actualizan la exportacion usando el `tenant_id` real del registro.
+- `DELETE /api/admin/exports/:id`: aplica borrado logico sobre la exportacion en su tenant productor real.
+- `POST /api/admin/exports`: crea la exportacion en el `tenant_id` dueno de la `uppId` indicada, no en el tenant gobierno.
 
 Contrato operativo de `admin/producers/:id/documents`:
 - `GET /api/admin/producers/:id/documents`: listado unificado de `producer_documents` y `upp_documents` del productor.
