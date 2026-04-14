@@ -1,6 +1,6 @@
 ﻿Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-27
+Last Updated: 2026-04-14
 Source of Truth: Canonical database reference for schema, IAM tables, views, RLS helpers, MVZ hierarchy additions, and IoT telemetry tables.
 # DURANIA MVP PRO â€” DocumentaciÃ³n de Base de Datos
 
@@ -540,6 +540,8 @@ Solicitudes de exportaciÃ³n de ganado.
 **Flujo de bloqueo:** `requested` â†’ `blocked` / `rejected`
 
 **Soft delete admin:** usa `deleted_at` y `deleted_by_user_id`; no reutiliza `status`.
+**Regla operativa de tenant:** `tenant_id` siempre apunta al tenant `producer` duenio de la `UPP`. El panel `government` las administra de forma global, pero no las reubica al tenant gobierno.
+**Creacion desde gobierno:** `POST /api/admin/exports` debe derivar `tenant_id` desde `upps.tenant_id`.
 
 | Columna | Tipo | DescripciÃ³n |
 |---|---|---|

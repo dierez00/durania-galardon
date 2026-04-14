@@ -1,6 +1,6 @@
 Status: Canonical
 Owner: Engineering
-Last Updated: 2026-03-27
+Last Updated: 2026-04-14
 Source of Truth: Canonical auth flow, role routing, and tenant-level authorization model.
 
 # Auth y Tenant IAM
@@ -121,6 +121,8 @@ Redireccion inicial por panel y permisos:
   - `admin.tenant.read` / `admin.tenant.write`
   - `admin.employees.read` / `admin.employees.write`
   - `admin.roles.read` / `admin.roles.write`
+- `admin/exports` se comporta como capacidad global del panel gobierno: lista, detalle, animales y mutaciones pueden operar sobre exportaciones de tenants `producer` distintos al tenant `government`.
+- Cuando gobierno crea o actualiza una exportacion admin, el backend resuelve y usa el `tenant_id` real del registro o de la `UPP`; no reutiliza el `tenantId` del admin autenticado como duenio de `export_requests`.
 - `admin.users.*` se mantiene por compatibilidad, pero ya no define la navegacion de `Configuracion`.
 - `admin/settings` se compone por tabs (`Resumen`, `Auditoria`, `Empleados`, `Roles`) y cada tab se habilita por permisos del modulo correspondiente.
 - `admin/employees` da de alta por email, asigna `roleId`, permite suspender/reactivar y reenviar onboarding pendiente; la UI excluye al usuario actual de acciones destructivas.
