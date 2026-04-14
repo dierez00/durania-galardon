@@ -14,8 +14,20 @@ Implementado en:
 Orden de resolucion:
 
 1. Subdominio desde `x-forwarded-host` o `host`.
-2. Header `x-tenant-slug`.
-3. Fallback local (`DEFAULT_TENANT_SLUG` o `default-tenant`).
+2. Tenant publico fijo para hosts configurados (`PUBLIC_SITE_HOSTS`) y previews `*.vercel.app`.
+3. Header `x-tenant-slug`.
+4. Fallback local (`DEFAULT_TENANT_SLUG` o `default-tenant`).
+
+Configuracion relevante:
+
+- `DEFAULT_TENANT_SLUG`: fallback local para `localhost`.
+- `PUBLIC_SITE_TENANT_SLUG`: slug fijo usado por la web publica en Vercel. Valor esperado en produccion: `gobierno-durango`.
+- `PUBLIC_SITE_HOSTS`: lista opcional de hosts publicos canonicos separados por comas, por ejemplo `durania-galardon.vercel.app`.
+
+Notas operativas:
+
+- `NEXT_PUBLIC_SITE_URL`, si existe, aporta su host automaticamente a `PUBLIC_SITE_HOSTS`.
+- Los previews `*.vercel.app` reutilizan el mismo `PUBLIC_SITE_TENANT_SLUG`; no se tratan como subdominios tenant.
 
 ## Middleware
 
@@ -102,3 +114,9 @@ Si `POST /api/auth/login` responde `TENANT_NOT_RESOLVED`:
 2. Confirma que el tenant existe y esta activo en `tenants`.
 3. Revisa `DEFAULT_TENANT_SLUG`.
 4. Si la UI carga tenant pero no proyectos, revisa el scope UPP/Rancho (`resolveAccessibleUppIds()` y asignaciones activas).
+
+Si `POST /api/public/appointments` responde `TENANT_NOT_FOUND` en Vercel:
+
+1. Confirma `PUBLIC_SITE_TENANT_SLUG=gobierno-durango` en el entorno.
+2. Confirma que `gobierno-durango` existe en `tenants` con `status = active`.
+3. Verifica que el host publico este incluido en `PUBLIC_SITE_HOSTS` o que la solicitud entre por `*.vercel.app`.

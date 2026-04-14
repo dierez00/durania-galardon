@@ -28,6 +28,8 @@ Define en `.env`:
 - `DATABASE_URL_DIRECT`
 - `IOT_BACKEND_URL` (backend externo IoT App Web para snapshot, historico y stream SSE de collares)
 - `DEFAULT_TENANT_SLUG` (recomendado para local)
+- `PUBLIC_SITE_TENANT_SLUG` (backend; tenant fijo para la web publica en Vercel, por ejemplo `gobierno-durango`)
+- `PUBLIC_SITE_HOSTS` (opcional; hosts publicos canonicos separados por comas, por ejemplo `durania-galardon.vercel.app`)
 
 ## Requisitos de Supabase
 
@@ -68,6 +70,9 @@ Verificar despues de migrar:
 ## Auth redirects de Supabase
 
 - Para produccion, configura `NEXT_PUBLIC_SITE_URL` con la URL publica real de la app.
+- Para produccion publica en Vercel, configura `PUBLIC_SITE_TENANT_SLUG=gobierno-durango`.
+- Si quieres fijar explicitamente el host principal, agrega `PUBLIC_SITE_HOSTS=durania-galardon.vercel.app`.
+- Los previews `*.vercel.app` usan el mismo tenant publico fijo; no se resuelven como subdominios tenant.
 - Para desarrollo, agrega `http://localhost:3000/**` en Redirect URLs de Supabase Auth.
 - El flujo nuevo usa:
   - `/forgot-password` para solicitar recovery.
