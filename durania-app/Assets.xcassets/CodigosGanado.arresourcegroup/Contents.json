@@ -1,0 +1,17 @@
+{
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  },
+  "resources" : [
+    {
+      "filename" : "MX-14205.arreferenceimage"
+    },
+    {
+      "filename" : "MX-20395.arreferenceimage"
+    },
+    {
+      "filename" : "vaca_01.arreferenceimage"
+    }
+  ]
+}
