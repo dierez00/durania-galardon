@@ -2,6 +2,7 @@ import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
 import { getSupabaseAdminClient } from "@/server/auth/supabase";
 import { logAuditEvent } from "@/server/audit";
+import { resolveAdminAccessibleExportRequest } from "./exportRequestAccess";
 
 interface PatchBody {
   status?: "requested" | "mvz_validated" | "final_approved" | "blocked" | "rejected";
@@ -23,35 +24,44 @@ export async function GET(
   if (!auth.ok) return auth.response;
 
   const { id } = await params;
-  const tenantId = auth.context.user.tenantId;
   const supabase = getSupabaseAdminClient();
 
-  const result = await supabase
-    .from("export_requests")
-    .select(
-      `id,producer_id,upp_id,status,compliance_60_rule,tb_br_validated,blue_tag_assigned,
-       monthly_bucket,metrics_json,blocked_reason,validated_by_mvz_user_id,
-       approved_by_admin_user_id,created_at,updated_at,
-       producers(full_name),
-       upps(upp_code,name)`
-    )
-    .eq("id", id)
-    .eq("tenant_id", tenantId)
-    .is("deleted_at", null)
-    .maybeSingle();
-
-  if (result.error) {
-    return apiError("ADMIN_EXPORT_QUERY_FAILED", result.error.message, 500);
-  }
-  if (!result.data) {
-    return apiError("ADMIN_EXPORT_NOT_FOUND", "No existe solicitud de exportación con ese id.", 404);
-  }
-
-  const row = result.data as Record<string, unknown> & {
+  const result = await resolveAdminAccessibleExportRequest<{
+    id: string;
+    tenant_id: string;
+    producer_id: string | null;
+    upp_id: string | null;
+    status: string;
+    compliance_60_rule: boolean | null;
+    tb_br_validated: boolean | null;
+    blue_tag_assigned: boolean | null;
+    monthly_bucket: string | null;
+    metrics_json?: { animal_ids?: string[]; total_animals?: number; validated_animals?: number } | null;
+    blocked_reason: string | null;
+    validated_by_mvz_user_id: string | null;
+    approved_by_admin_user_id: string | null;
+    created_at: string;
+    updated_at: string | null;
     producers?: { full_name?: string } | null;
     upps?: { upp_code?: string; name?: string } | null;
-    metrics_json?: { animal_ids?: string[]; total_animals?: number; validated_animals?: number } | null;
-  };
+  }>(
+    supabase,
+    id,
+    `id,tenant_id,producer_id,upp_id,status,compliance_60_rule,tb_br_validated,blue_tag_assigned,
+     monthly_bucket,metrics_json,blocked_reason,validated_by_mvz_user_id,
+     approved_by_admin_user_id,created_at,updated_at,
+     producers(full_name),
+     upps(upp_code,name)`
+  );
+
+  if (result.error) {
+    return apiError("ADMIN_EXPORT_QUERY_FAILED", result.error, 500);
+  }
+  if (!result.data) {
+    return apiError("ADMIN_EXPORT_NOT_FOUND", "No existe solicitud de exportacion con ese id.", 404);
+  }
+
+  const row = result.data;
 
   const exportacion = {
     id: row.id,
@@ -94,12 +104,12 @@ export async function PATCH(
   try {
     body = (await request.json()) as PatchBody;
   } catch {
-    return apiError("INVALID_BODY", "El cuerpo de la solicitud no es JSON válido.");
+    return apiError("INVALID_BODY", "El cuerpo de la solicitud no es JSON valido.");
   }
 
   const validStatuses = ["requested", "mvz_validated", "final_approved", "blocked", "rejected"];
   if (!body.status || !validStatuses.includes(body.status)) {
-    return apiError("INVALID_STATUS", "Estado inválido.");
+    return apiError("INVALID_STATUS", "Estado invalido.");
   }
 
   if (body.status === "blocked" && !body.blockedReason?.trim()) {
@@ -107,6 +117,19 @@ export async function PATCH(
   }
 
   const supabase = getSupabaseAdminClient();
+  const exportResult = await resolveAdminAccessibleExportRequest<{ id: string; tenant_id: string }>(
+    supabase,
+    id,
+    "id,tenant_id"
+  );
+
+  if (exportResult.error) {
+    return apiError("ADMIN_EXPORT_QUERY_FAILED", exportResult.error, 500);
+  }
+
+  if (!exportResult.data) {
+    return apiError("ADMIN_EXPORT_NOT_FOUND", "No existe solicitud con ese id.", 404);
+  }
 
   const updateData: Record<string, unknown> = {
     status: body.status,
@@ -124,7 +147,7 @@ export async function PATCH(
     .from("export_requests")
     .update(updateData)
     .eq("id", id)
-    .eq("tenant_id", auth.context.user.tenantId)
+    .eq("tenant_id", exportResult.data.tenant_id)
     .is("deleted_at", null)
     .select("id")
     .maybeSingle();
@@ -163,6 +186,19 @@ export async function DELETE(
   const { id } = await params;
   const supabase = getSupabaseAdminClient();
   const deletedAt = new Date().toISOString();
+  const exportResult = await resolveAdminAccessibleExportRequest<{ id: string; tenant_id: string }>(
+    supabase,
+    id,
+    "id,tenant_id"
+  );
+
+  if (exportResult.error) {
+    return apiError("ADMIN_EXPORT_QUERY_FAILED", exportResult.error, 500);
+  }
+
+  if (!exportResult.data) {
+    return apiError("ADMIN_EXPORT_NOT_FOUND", "No existe solicitud con ese id.", 404);
+  }
 
   const deleteResult = await supabase
     .from("export_requests")
@@ -172,7 +208,7 @@ export async function DELETE(
       updated_at: deletedAt,
     })
     .eq("id", id)
-    .eq("tenant_id", auth.context.user.tenantId)
+    .eq("tenant_id", exportResult.data.tenant_id)
     .is("deleted_at", null)
     .select("id,status,deleted_at")
     .maybeSingle();

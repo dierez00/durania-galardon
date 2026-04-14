@@ -2,6 +2,10 @@ import { apiError, apiSuccess } from "@/shared/lib/api-response";
 import { requireAuthorized } from "@/server/authz";
 import { getSupabaseAdminClient } from "@/server/auth/supabase";
 import { logAuditEvent } from "@/server/audit";
+import {
+  resolveAdminAccessibleExportRequest,
+  resolveAdminExportUppContext,
+} from "./exportRequestAccess";
 
 interface ExportBody {
   id?: string;
@@ -41,7 +45,6 @@ export async function GET(request: Request) {
 
   const supabase = getSupabaseAdminClient();
 
-  // If search provided, first resolve matching UPP IDs
   let uppIdFilter: string[] | null = null;
   if (search) {
     const uppSearch = await supabase
@@ -139,11 +142,26 @@ export async function POST(request: Request) {
   }
 
   const supabase = getSupabaseAdminClient();
+  const uppContextResult = await resolveAdminExportUppContext(supabase, uppId);
+
+  if (uppContextResult.error) {
+    return apiError("ADMIN_EXPORT_UPP_QUERY_FAILED", uppContextResult.error, 500);
+  }
+
+  if (!uppContextResult.data) {
+    return apiError("ADMIN_EXPORT_UPP_NOT_FOUND", "No existe la UPP indicada.", 404);
+  }
+
+  const producerId = body.producerId?.trim() || null;
+  if (producerId && producerId !== uppContextResult.data.producer_id) {
+    return apiError("INVALID_PAYLOAD", "producerId no coincide con la UPP indicada.");
+  }
+
   const createResult = await supabase
     .from("export_requests")
     .insert({
-      tenant_id: auth.context.user.tenantId,
-      producer_id: body.producerId?.trim() || null,
+      tenant_id: uppContextResult.data.tenant_id,
+      producer_id: producerId ?? uppContextResult.data.producer_id ?? null,
       upp_id: uppId,
       requested_by_user_id: auth.context.user.id,
       status: body.status ?? "requested",
@@ -229,10 +247,24 @@ export async function PATCH(request: Request) {
   updatePayload.updated_at = new Date().toISOString();
 
   const supabase = getSupabaseAdminClient();
+  const exportResult = await resolveAdminAccessibleExportRequest<{ id: string; tenant_id: string }>(
+    supabase,
+    id,
+    "id,tenant_id"
+  );
+
+  if (exportResult.error) {
+    return apiError("ADMIN_EXPORT_QUERY_FAILED", exportResult.error, 500);
+  }
+
+  if (!exportResult.data) {
+    return apiError("ADMIN_EXPORT_NOT_FOUND", "No existe solicitud con ese id.", 404);
+  }
+
   const updateResult = await supabase
     .from("export_requests")
     .update(updatePayload)
-    .eq("tenant_id", auth.context.user.tenantId)
+    .eq("tenant_id", exportResult.data.tenant_id)
     .eq("id", id)
     .is("deleted_at", null)
     .select(
