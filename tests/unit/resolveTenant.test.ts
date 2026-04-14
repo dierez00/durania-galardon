@@ -3,13 +3,22 @@ import { resolveTenant } from "../../src/server/tenants/resolveTenant";
 
 describe("resolveTenant", () => {
   const previousDefaultTenant = process.env.DEFAULT_TENANT_SLUG;
+  const previousPublicSiteTenant = process.env.PUBLIC_SITE_TENANT_SLUG;
+  const previousPublicSiteHosts = process.env.PUBLIC_SITE_HOSTS;
+  const previousSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
   beforeEach(() => {
     process.env.DEFAULT_TENANT_SLUG = "dev-tenant";
+    process.env.PUBLIC_SITE_TENANT_SLUG = "gobierno-durango";
+    process.env.PUBLIC_SITE_HOSTS = "durania-galardon.vercel.app";
+    process.env.NEXT_PUBLIC_SITE_URL = "https://durania-galardon.vercel.app";
   });
 
   afterEach(() => {
     process.env.DEFAULT_TENANT_SLUG = previousDefaultTenant;
+    process.env.PUBLIC_SITE_TENANT_SLUG = previousPublicSiteTenant;
+    process.env.PUBLIC_SITE_HOSTS = previousPublicSiteHosts;
+    process.env.NEXT_PUBLIC_SITE_URL = previousSiteUrl;
   });
 
   it("resolves tenant from subdomain", () => {
@@ -38,6 +47,34 @@ describe("resolveTenant", () => {
     expect(tenant).toEqual({
       tenantSlug: "header-tenant",
       source: "header",
+    });
+  });
+
+  it("resolves public tenant from configured vercel host", () => {
+    const request = new Request("https://durania-galardon.vercel.app/api/tenant/resolve", {
+      headers: {
+        host: "durania-galardon.vercel.app",
+      },
+    });
+
+    const tenant = resolveTenant(request);
+    expect(tenant).toEqual({
+      tenantSlug: "gobierno-durango",
+      source: "public-site",
+    });
+  });
+
+  it("resolves public tenant from vercel preview hosts", () => {
+    const request = new Request("https://rama-x.vercel.app/api/tenant/resolve", {
+      headers: {
+        host: "rama-x.vercel.app",
+      },
+    });
+
+    const tenant = resolveTenant(request);
+    expect(tenant).toEqual({
+      tenantSlug: "gobierno-durango",
+      source: "public-site",
     });
   });
 

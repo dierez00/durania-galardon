@@ -1,7 +1,9 @@
 import type { ITenantResolver, TenantContext } from "@/core/domain";
+import { getServerEnv } from "@/shared/config";
 
 const TENANT_SLUG_REGEX = /^[a-z0-9-]+$/;
 const LOCALHOST_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
+const VERCEL_HOST_SUFFIX = ".vercel.app";
 
 function stripPort(host: string): string {
   return host.split(":")[0]?.toLowerCase() ?? "";
@@ -33,14 +35,38 @@ function isLocalRequest(hostname: string): boolean {
   return hostname.endsWith(".localhost");
 }
 
+function isPublicSiteHost(hostname: string): boolean {
+  if (!hostname) {
+    return false;
+  }
+
+  const { publicSiteHosts } = getServerEnv();
+  return publicSiteHosts.includes(hostname) || hostname.endsWith(VERCEL_HOST_SUFFIX);
+}
+
 export class SubdomainTenantResolver implements ITenantResolver {
   resolve(request: Request): TenantContext | null {
     const forwardedHost = request.headers.get("x-forwarded-host");
     const host = request.headers.get("host");
     const tenantHeader = request.headers.get("x-tenant-slug")?.trim().toLowerCase();
-    const fallbackTenant = (process.env.DEFAULT_TENANT_SLUG ?? "default-tenant").trim().toLowerCase();
+    const { defaultTenantSlug, publicSiteTenantSlug } = getServerEnv();
+    const fallbackTenant = defaultTenantSlug.trim().toLowerCase();
 
     const hostname = stripPort(forwardedHost || host || "");
+    if (hostname && isLocalRequest(hostname) && TENANT_SLUG_REGEX.test(fallbackTenant)) {
+      return {
+        tenantSlug: fallbackTenant,
+        source: "local",
+      };
+    }
+
+    if (hostname && isPublicSiteHost(hostname) && TENANT_SLUG_REGEX.test(publicSiteTenantSlug)) {
+      return {
+        tenantSlug: publicSiteTenantSlug,
+        source: "public-site",
+      };
+    }
+
     const subdomainSlug = extractSubdomain(hostname);
     if (subdomainSlug) {
       return {
@@ -53,13 +79,6 @@ export class SubdomainTenantResolver implements ITenantResolver {
       return {
         tenantSlug: tenantHeader,
         source: "header",
-      };
-    }
-
-    if (hostname && isLocalRequest(hostname) && TENANT_SLUG_REGEX.test(fallbackTenant)) {
-      return {
-        tenantSlug: fallbackTenant,
-        source: "local",
       };
     }
 

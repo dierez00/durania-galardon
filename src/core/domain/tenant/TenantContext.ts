@@ -1,4 +1,4 @@
-export type TenantSource = "subdomain" | "header" | "local";
+export type TenantSource = "subdomain" | "header" | "local" | "public-site";
 
 export interface TenantContext {
   tenantSlug: string;
